@@ -16,18 +16,23 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const OFFICER_ROLES: Role[] = ["division_head", "vice_president", "president"]
 
 export type Division =
-  | "Competitive Programming"
-  | "Development"
-  | "Cyber Security"
-  | "Data Science"
   | "Capacity Building"
+  | "Development"
+  | "Competitive Programming"
+  | "Data Science"
+  | "Cybersecurity"
+  | "Cyber Security"
+  | "Social Media"
+  | "Blockchain team"
 
 export const DIVISIONS: Division[] = [
-  "Competitive Programming",
-  "Development",
-  "Cyber Security",
-  "Data Science",
   "Capacity Building",
+  "Development",
+  "Competitive Programming",
+  "Data Science",
+  "Cybersecurity",
+  "Social Media",
+  "Blockchain team",
 ]
 
 export type TaskCategory =

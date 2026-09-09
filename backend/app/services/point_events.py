@@ -24,7 +24,10 @@ async def create_claim(
     reason: str | None,
     settings: Settings,
     division_id: UUID | None = None,
+    verification_code: str | None = None,
 ) -> PointEvent:
+    from app.models.attendance_session import AttendanceSession
+
     task = await db.get(Task, task_id)
     if task is None or not task.active:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -46,13 +49,76 @@ async def create_claim(
         else:
             event_division_id = member.division_id or member.secondary_division_id
 
+    # Session code verification
+    attendance_session: AttendanceSession | None = None
+    clean_code = verification_code.strip() if verification_code else None
+
+    if task.category == "division_session":
+        if not clean_code:
+            raise HTTPException(
+                status_code=400,
+                detail="A 6-digit session verification code is required to claim session attendance.",
+            )
+
+    if clean_code:
+        if len(clean_code) != 6 or not clean_code.isdigit():
+            raise HTTPException(
+                status_code=400,
+                detail="Verification code must be exactly 6 digits.",
+            )
+
+        now = datetime.now(UTC)
+        session_stmt = (
+            select(AttendanceSession)
+            .where(
+                AttendanceSession.code == clean_code,
+                AttendanceSession.is_active.is_(True),
+                AttendanceSession.expires_at > now,
+                or_(
+                    AttendanceSession.task_id == task.id,
+                    AttendanceSession.division_id == event_division_id,
+                ),
+            )
+            .order_by(AttendanceSession.created_at.desc())
+        )
+        res = await db.execute(session_stmt)
+        attendance_session = res.scalars().first()
+
+        if not attendance_session:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or expired session verification code.",
+            )
+
+        # Flag 3: Strict Once-Per-Session Claim Enforcement
+        existing_claim = await db.scalar(
+            select(PointEvent).where(
+                PointEvent.member_id == member.id,
+                PointEvent.attendance_session_id == attendance_session.id,
+                PointEvent.status != PointEventStatus.REJECTED,
+            )
+        )
+        if existing_claim:
+            raise HTTPException(
+                status_code=400,
+                detail="You have already claimed attendance for this session.",
+            )
+
     year = await get_current_academic_year(db)
-    auto = abs(task.base_points) <= settings.auto_approve_claim_max_points and not task.is_penalty
+    # If verified by session code or low-stakes non-penalty task
+    is_session_verified = attendance_session is not None
+    auto = (
+        is_session_verified
+        or (abs(task.base_points) <= settings.auto_approve_claim_max_points and not task.is_penalty)
+    )
+
+    decision_msg = "verified whiteboard session code" if is_session_verified else "auto-approved (low-stakes claim)"
 
     event = PointEvent(
         member_id=member.id,
         task_id=task.id,
         division_id=event_division_id,
+        attendance_session_id=attendance_session.id if attendance_session else None,
         event_type=PointEventType.CLAIM,
         points_delta=task.base_points,
         reason=reason or f"Claim: {task.title}",
@@ -60,7 +126,7 @@ async def create_claim(
         approved_by=member.id if auto else None,
         academic_year=year,
         decided_at=datetime.now(UTC) if auto else None,
-        decision_reason="auto-approved (low-stakes claim)" if auto else None,
+        decision_reason=decision_msg if auto else None,
     )
     db.add(event)
     await db.flush()

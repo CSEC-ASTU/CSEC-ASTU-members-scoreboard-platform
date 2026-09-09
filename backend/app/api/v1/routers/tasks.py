@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.core.permissions import has_permission, is_club_wide_officer
 from app.dependencies import DbSession, RequireUser
@@ -35,6 +35,18 @@ async def list_tasks(
 ) -> Paginated[TaskOut]:
     q = select(Task)
     cq = select(func.count()).select_from(Task)
+
+    # Server-side division visibility scope:
+    # Members and division heads only see tasks belonging to their enrolled divisions (primary & secondary) or club-wide tasks
+    if not (user.member.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT} or is_club_wide_officer(user.member)):
+        enrolled_divs = {d for d in (user.member.division_id, user.member.secondary_division_id) if d is not None}
+        if enrolled_divs:
+            div_visibility = or_(Task.division_id.is_(None), Task.division_id.in_(enrolled_divs))
+        else:
+            div_visibility = Task.division_id.is_(None)
+        q = q.where(div_visibility)
+        cq = cq.where(div_visibility)
+
     if division_id is not None:
         q = q.where(Task.division_id == division_id)
         cq = cq.where(Task.division_id == division_id)

@@ -164,7 +164,28 @@ export interface ClaimCreateIn {
   task_id: string
   reason?: string | null
   division_id?: string | null
+  verification_code?: string | null
 }
+
+export interface AttendanceSessionOut {
+  id: string
+  task_id: string
+  division_id: string | null
+  code: string
+  created_by: string | null
+  expires_at: string
+  is_active: boolean
+  created_at: string
+  task_title?: string | null
+  division_name?: string | null
+}
+
+export interface AttendanceSessionCreateIn {
+  task_id: string
+  division_id?: string | null
+  duration_minutes?: number
+}
+
 
 export interface OfficerAdjustmentIn {
   member_id: string

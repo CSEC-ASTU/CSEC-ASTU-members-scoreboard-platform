@@ -5,13 +5,14 @@ import { toast } from "sonner"
 import Layout from "@/components/kokonutui/layout"
 import { PageHeader } from "@/components/csec/page-header"
 import { ClaimDialog } from "@/components/csec/claim-dialog"
+import { SessionCodeCard } from "@/components/csec/session-code-card"
 import List02 from "@/components/kokonutui/list-02"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCurrentUser } from "@/components/user-context"
 import { TASK_CATEGORY_LABELS, PLATFORM_SETTINGS, type PointEvent, type TaskDef, type TaskCategory } from "@/lib/csec-data"
-import { Plus, CheckCircle2, Clock, AlertCircle, Zap, ShieldAlert } from "lucide-react"
+import { Plus, CheckCircle2, Clock, AlertCircle, Zap, ShieldAlert, KeyRound } from "lucide-react"
 import { tasksService, pointEventsService, divisionsService, type TaskOut, type PointEventOut, type DivisionOut } from "@/lib/api"
 import { TasksSkeleton } from "@/components/csec/skeletons"
 import { useTasks, useMemberEvents, useDivisions, useCreateClaimMutation } from "@/lib/hooks/use-queries"
@@ -77,14 +78,29 @@ export default function TasksPage() {
     return new Set(memberDivisions.map((d) => d.id))
   }, [memberDivisions])
 
+  const isClubOfficer = currentUser.role === "president" || currentUser.role === "vice_president"
+
   const visibleTasks = useMemo(() => {
     return tasks
       .filter((t) => {
         if (!t.active) return false
+        // Non-officer members must only ever see tasks from their enrolled divisions (primary & secondary) or club-wide tasks
+        if (!isClubOfficer) {
+          if (t.division_id && !memberDivisionIds.has(t.division_id)) {
+            return false
+          }
+        }
         if (selectedCategory !== "all" && t.category !== selectedCategory) return false
         if (selectedDivisionFilter === "club_wide" && t.division_id) return false
         if (selectedDivisionFilter === "my_divisions" && t.division_id && !memberDivisionIds.has(t.division_id)) return false
-        if (selectedDivisionFilter !== "all" && selectedDivisionFilter !== "club_wide" && selectedDivisionFilter !== "my_divisions" && t.division_id !== selectedDivisionFilter) return false
+        if (
+          selectedDivisionFilter !== "all" &&
+          selectedDivisionFilter !== "club_wide" &&
+          selectedDivisionFilter !== "my_divisions" &&
+          t.division_id !== selectedDivisionFilter
+        ) {
+          return false
+        }
         return true
       })
       .map((t) => ({
@@ -97,16 +113,24 @@ export default function TasksPage() {
         isPenalty: t.is_penalty,
         division_id: t.division_id,
       }))
-  }, [tasks, selectedCategory, selectedDivisionFilter, memberDivisionIds])
+  }, [tasks, selectedCategory, selectedDivisionFilter, memberDivisionIds, isClubOfficer])
 
-  async function submitClaim(task: TaskDef & { division_id?: string | null }, payload: { reason: string; division_id?: string | null }) {
+  async function submitClaim(
+    task: TaskDef & { division_id?: string | null },
+    payload: { reason: string; division_id?: string | null; verification_code?: string | null }
+  ) {
     try {
       await createClaimMutation.mutateAsync({
         task_id: task.id,
         reason: payload.reason,
         division_id: payload.division_id || undefined,
+        verification_code: payload.verification_code || undefined,
       })
-      toast.success("Claim submitted successfully!")
+      toast.success(
+        payload.verification_code
+          ? "Attendance verified! +10 points awarded instantly."
+          : "Claim submitted successfully!"
+      )
     } catch (err: any) {
       toast.error("Failed to submit claim", { description: err.message })
     }
@@ -125,17 +149,30 @@ export default function TasksPage() {
       ) : (
         <div className="space-y-6">
         <PageHeader
-          title="Task Catalog &amp; Submissions"
+          title="Task Catalog & Submissions"
           description="Fulfill official club duties, claim earned points, and track verification statuses in real-time."
         />
 
         <Tabs defaultValue="tasks" className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:w-80">
-            <TabsTrigger value="tasks">Available Tasks ({tasks.filter((t) => t.active).length})</TabsTrigger>
+            <TabsTrigger value="tasks">Available Tasks ({visibleTasks.length})</TabsTrigger>
             <TabsTrigger value="claims">My History ({events.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks" className="mt-6 space-y-4">
+            {/* Officer Live Session Whiteboard Generator */}
+            <SessionCodeCard currentUser={currentUser} tasks={tasks} divisions={divisions} />
+
+            {/* Honor Code & Physical Presence Notice */}
+            <div className="rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:text-amber-300 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="leading-relaxed">
+                  <strong>Attendance &amp; Task Integrity:</strong> If you are not actually present in a session or did not complete the duty, please do not submit a claim. Submitting false claims will result in negative point deductions, official warnings, or club dismissal.
+                </span>
+              </div>
+            </div>
+
             {/* Division filter pills */}
             <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-100 dark:border-zinc-800 text-xs">
               <span className="text-zinc-400 mr-1 text-[11px] font-medium uppercase tracking-wider">Division:</span>
@@ -148,21 +185,8 @@ export default function TasksPage() {
                     : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
                 }`}
               >
-                All Tasks
+                {isClubOfficer ? "All Tasks" : "All My Tasks"}
               </button>
-              {memberDivisions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDivisionFilter("my_divisions")}
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                    selectedDivisionFilter === "my_divisions"
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
-                  }`}
-                >
-                  My Enrolled Divisions
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => setSelectedDivisionFilter("club_wide")}
@@ -174,7 +198,8 @@ export default function TasksPage() {
               >
                 Club-Wide
               </button>
-              {divisions.map((d) => (
+              {/* Show only member's enrolled divisions if regular member; show all divisions if club officer */}
+              {(isClubOfficer ? divisions : memberDivisions).map((d) => (
                 <button
                   key={d.id}
                   type="button"
@@ -258,11 +283,15 @@ export default function TasksPage() {
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-                      {isAutoApprove && (
+                      {task.category === "division_session" ? (
+                        <div className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+                          <KeyRound className="h-3 w-3" /> Requires Whiteboard PIN
+                        </div>
+                      ) : isAutoApprove ? (
                         <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
                           <Zap className="h-3 w-3" /> Auto-approved (low-stakes claim)
                         </div>
-                      )}
+                      ) : null}
 
                       {!isEligible ? (
                         <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-1.5">

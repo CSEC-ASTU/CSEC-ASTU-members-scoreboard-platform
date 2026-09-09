@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.routers import (
     admin,
     annual,
+    attendance,
     auth,
     divisions,
     health,
@@ -23,6 +24,9 @@ api_router.include_router(divisions.router, prefix="/divisions", tags=["division
 api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["leaderboard"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(point_events.router, prefix="/point-events", tags=["point-events"])
+api_router.include_router(
+    attendance.router, prefix="/attendance-sessions", tags=["attendance-sessions"]
+)
 api_router.include_router(permissions.router, prefix="/permissions", tags=["permissions"])
 api_router.include_router(
     member_permissions.router, prefix="/member-permissions", tags=["member-permissions"]
@@ -30,3 +34,4 @@ api_router.include_router(
 api_router.include_router(annual.router, prefix="/annual-summaries", tags=["annual-summaries"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+

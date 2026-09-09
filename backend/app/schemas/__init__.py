@@ -213,6 +213,7 @@ class ClaimCreate(BaseModel):
     task_id: UUID
     reason: str | None = None
     division_id: UUID | None = None
+    verification_code: str | None = None
 
 
 class OfficerPointEventCreate(BaseModel):
@@ -231,6 +232,7 @@ class PointEventOut(BaseModel):
     member_id: UUID
     task_id: UUID | None
     division_id: UUID | None = None
+    attendance_session_id: UUID | None = None
     event_type: PointEventType
     points_delta: int
     reason: str
@@ -248,6 +250,30 @@ class RejectRequest(BaseModel):
 
 class BulkApproveRequest(BaseModel):
     event_ids: list[UUID] = Field(min_length=1)
+
+
+# ---- Attendance Sessions ----
+
+
+class AttendanceSessionCreate(BaseModel):
+    task_id: UUID
+    division_id: UUID | None = None
+    duration_minutes: int = Field(default=90, ge=15, le=360)
+
+
+class AttendanceSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    task_id: UUID
+    division_id: UUID | None
+    code: str
+    created_by: UUID | None
+    expires_at: datetime
+    is_active: bool
+    created_at: datetime
+    task_title: str | None = None
+    division_name: str | None = None
 
 
 class BulkRejectRequest(BaseModel):

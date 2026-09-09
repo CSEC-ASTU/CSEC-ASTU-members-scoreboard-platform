@@ -5,18 +5,20 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.database import AsyncSessionLocal
 from app.models import Division, Member, Permission, PlatformSetting, Task
 from app.models.enums import MemberRole, PermissionScopeType
 
 DIVISIONS_DATA = [
-    {"name": "Competitive Programming", "description": "Algorithms, ICPC, data structures, and problem-solving."},
-    {"name": "Development", "description": "Full-stack web, mobile applications, and software engineering."},
-    {"name": "Cyber Security", "description": "Network security, CTFs, penetration testing, and ethical hacking."},
-    {"name": "Data Science", "description": "Machine learning, AI, analytics, and data visualization."},
-    {"name": "Capacity Building", "description": "Workshops, mentoring, external outreach, and leadership."},
+    {"name": "Capacity Building", "description": "Workshops, mentoring, external outreach, peer tutoring, and club leadership."},
+    {"name": "Development", "description": "Full-stack web, mobile applications, cloud infrastructure, and software engineering."},
+    {"name": "Competitive Programming", "description": "Algorithms, ICPC, data structures, competitive mathematics, and problem-solving."},
+    {"name": "Data Science", "description": "Machine learning, AI, predictive modeling, analytics, and data engineering."},
+    {"name": "Cybersecurity", "description": "Network security, CTFs, penetration testing, reverse engineering, and ethical hacking."},
+    {"name": "Social Media", "description": "Content creation, graphic design, photography, video production, and public branding."},
+    {"name": "Blockchain team", "description": "Smart contracts, Web3, decentralized applications, cryptography, and protocol research."},
 ]
 
 PERMISSIONS_DATA = [
@@ -38,33 +40,163 @@ SETTINGS_DATA = [
     },
 ]
 
-TASKS_DATA = [
-    {"title": "Attend Weekly Division Session", "category": "division_session", "base_points": 10, "description": "Attend your division's scheduled weekly technical session."},
-    {"title": "Weekly Lab Cleaning Duty", "category": "lab_cleaning", "base_points": 15, "description": "Complete assigned lab cleaning duty for the week (confirmed)."},
-    {"title": "Lead Organizer, Club-Wide Event", "category": "event_organizing", "base_points": 125, "description": "Lead club-wide seminar or hackathon as assigned by VP/President."},
-    {"title": "Lead Organizer, Division Event", "category": "event_organizing", "base_points": 75, "description": "Lead division-specific technical workshop or seminar."},
-    {"title": "Event Co-Organizer / Support", "category": "event_organizing", "base_points": 50, "description": "Support logistics, registration, and operations during events."},
-    {"title": "Deliver Bootcamp Lecture", "category": "internal_bootcamp", "base_points": 75, "description": "Prepare and deliver an internal technical lecture or workshop."},
-    {"title": "Prepare Bootcamp Material", "category": "internal_bootcamp", "base_points": 40, "description": "Create exercises, slides, or starter repos for internal bootcamps."},
-    {"title": "Attend Bootcamp Session", "category": "internal_bootcamp", "base_points": 10, "description": "Participate actively as a learner in an internal bootcamp."},
-    {"title": "External Event Representation", "category": "external_activity", "base_points": 75, "description": "Represent CSEC ASTU at an external hackathon, ICPC, or CTF."},
-    {"title": "Game Night Attendance", "category": "game_night", "base_points": 25, "description": "Attend bi-weekly community bonding and game night."},
-    {"title": "Game Night 3x Streak Bonus", "category": "game_night", "base_points": 25, "description": "Bonus for attending 3 consecutive game nights."},
-    {"title": "Organize Game Night", "category": "game_night", "base_points": 60, "description": "Plan, prepare games, and host the bi-weekly game night."},
-    {"title": "Deliver External Academic Lecture Support", "category": "academic_support", "base_points": 75, "description": "Deliver tutorial or lecture support assigned by CBD."},
-    {"title": "Social Media Design Asset", "category": "social_media", "base_points": 25, "description": "Create promotional poster, motion graphic, or UI visual."},
-    {"title": "Social Media Video Edit", "category": "social_media", "base_points": 40, "description": "Edit highlight reel, session recap, or promotional video."},
+CLUB_WIDE_TASKS = [
+    {
+        "title": "Weekly Lab Cleaning Duty",
+        "category": "lab_cleaning",
+        "base_points": 15,
+        "description": "Complete assigned weekly lab cleaning, workspace maintenance, and hardware care.",
+    },
+    {
+        "title": "Game Night Attendance",
+        "category": "game_night",
+        "base_points": 25,
+        "description": "Attend scheduled bi-weekly community bonding and club game night.",
+    },
+    {
+        "title": "Event Co-Organizer",
+        "category": "event_organizing",
+        "base_points": 50,
+        "description": "Support logistics, registration, participant onboarding, or technical operations for a club-wide event.",
+    },
+    {
+        "title": "Lead Event Organizer",
+        "category": "event_organizing",
+        "base_points": 125,
+        "description": "Lead end-to-end planning, coordination, and execution of a major club-wide seminar, hackathon, or conference.",
+    },
+    {
+        "title": "Game Night Organizer",
+        "category": "game_night",
+        "base_points": 60,
+        "description": "Plan, prepare games, coordinate refreshments, and host the bi-weekly community game night.",
+    },
+    {
+        "title": "External Event Representation",
+        "category": "external_activity",
+        "base_points": 75,
+        "description": "Represent CSEC ASTU at an external hackathon, national competition, ICPC round, or tech conference.",
+    },
 ]
+
+# Track-specific additional bonus tasks per division
+EXTRA_DIVISION_TASKS: dict[str, list[dict]] = {
+    "Development": [
+        {
+            "title": "Development Open-Source Contribution",
+            "category": "internal_bootcamp",
+            "base_points": 40,
+            "description": "Submit a merged pull request or feature addition to club platforms or division open-source repositories.",
+        },
+        {
+            "title": "Development Code Review & Mentorship",
+            "category": "academic_support",
+            "base_points": 25,
+            "description": "Conduct constructive code reviews and mentor junior developers during division development sprints.",
+        },
+    ],
+    "Competitive Programming": [
+        {
+            "title": "CP Problem Setting & Editorial",
+            "category": "academic_support",
+            "base_points": 50,
+            "description": "Author, test, and prepare test cases/editorials for internal division practice contests.",
+        },
+        {
+            "title": "CP Contest Top Performer",
+            "category": "external_activity",
+            "base_points": 35,
+            "description": "Place in top quartile in internal division algorithmic contest or speed-coding sprint.",
+        },
+    ],
+    "Cybersecurity": [
+        {
+            "title": "Cybersecurity CTF Challenge Authoring",
+            "category": "internal_bootcamp",
+            "base_points": 45,
+            "description": "Create a Jeopardy-style CTF challenge (pwn, web, reverse, forensics) with full writeup and flag verify.",
+        },
+        {
+            "title": "Cybersecurity Lab Vulnerability Assessment",
+            "category": "academic_support",
+            "base_points": 30,
+            "description": "Participate in internal security audits, penetration testing exercises, and write remediation reports.",
+        },
+    ],
+    "Data Science": [
+        {
+            "title": "Data Science Dataset & Baseline Notebook",
+            "category": "internal_bootcamp",
+            "base_points": 40,
+            "description": "Clean, document, and publish a machine learning dataset with an exploratory data analysis (EDA) notebook.",
+        },
+        {
+            "title": "Data Science Kaggle / Challenge Sprint",
+            "category": "event_organizing",
+            "base_points": 45,
+            "description": "Organize or place in the top leaderboard bracket of a division machine learning challenge sprint.",
+        },
+    ],
+    "Capacity Building": [
+        {
+            "title": "Capacity Building Peer Tutoring Series",
+            "category": "academic_support",
+            "base_points": 40,
+            "description": "Conduct scheduled peer tutoring or academic mentorship sessions for club members.",
+        },
+        {
+            "title": "Capacity Building External Outreach Support",
+            "category": "external_activity",
+            "base_points": 60,
+            "description": "Coordinate external speaker invites, sponsor partnerships, or high school tech outreach sessions.",
+        },
+    ],
+    "Social Media": [
+        {
+            "title": "Social Media Promotional Graphic / Poster",
+            "category": "social_media",
+            "base_points": 25,
+            "description": "Design an official promotional poster, carousel, or motion graphic for upcoming events or announcements.",
+        },
+        {
+            "title": "Social Media Video Reel / Highlight Edit",
+            "category": "social_media",
+            "base_points": 40,
+            "description": "Film, edit, and publish a high-quality event recap video, member spotlight, or promotional reel.",
+        },
+    ],
+    "Blockchain team": [
+        {
+            "title": "Blockchain Smart Contract / DApp Demo",
+            "category": "internal_bootcamp",
+            "base_points": 45,
+            "description": "Build, test, and deploy a verifiable smart contract or Web3 application prototype for division study.",
+        },
+        {
+            "title": "Blockchain Protocol Deep-Dive Breakdown",
+            "category": "internal_bootcamp",
+            "base_points": 35,
+            "description": "Deliver a technical deep dive on consensus mechanisms, ZK-rollups, Layer-2 scaling, or cryptography.",
+        },
+    ],
+}
 
 PRESIDENT_EMAIL = "milkessahabtamukebu@gmail.com"
 PRESIDENT_NAME = "Milkessa Habtamu"
+PRESIDENT_GOOGLE_ID = "103201334684228447710"
 
 
 async def run_seed() -> None:
     print("Starting database seeding...")
     async with AsyncSessionLocal() as db:
-        # 1. Seed Divisions
-        divisions_map = {}
+        # 1. Seed / Update Divisions
+        # Handle rename of "Cyber Security" -> "Cybersecurity" if it exists
+        old_cyber = (await db.execute(select(Division).where(Division.name == "Cyber Security"))).scalar_one_or_none()
+        if old_cyber:
+            old_cyber.name = "Cybersecurity"
+            print("  [*] Renamed 'Cyber Security' to 'Cybersecurity'")
+
+        divisions_map: dict[str, Division] = {}
         for div_data in DIVISIONS_DATA:
             res = await db.execute(select(Division).where(Division.name == div_data["name"]))
             div = res.scalar_one_or_none()
@@ -74,6 +206,7 @@ async def run_seed() -> None:
                 await db.flush()
                 print(f"  [+] Created Division: {div.name}")
             else:
+                div.description = div_data["description"]
                 print(f"  [*] Existing Division: {div.name}")
             divisions_map[div.name] = div
 
@@ -99,24 +232,72 @@ async def run_seed() -> None:
                 db.add(setting)
                 print(f"  [+] Created Setting: {setting.key}")
 
-        # 4. Seed Tasks Catalog
-        for task_data in TASKS_DATA:
-            res = await db.execute(select(Task).where(Task.title == task_data["title"]))
-            task = res.scalar_one_or_none()
-            if not task:
+        # 4. Remove all currently available tasks as requested
+        print("  [-] Removing existing tasks from catalog...")
+        await db.execute(delete(Task))
+        await db.flush()
+
+        # 5. Seed Club-Wide Tasks
+        print("  [+] Seeding Club-Wide Tasks...")
+        for t in CLUB_WIDE_TASKS:
+            task = Task(
+                title=t["title"],
+                category=t["category"],
+                base_points=t["base_points"],
+                description=t["description"],
+                division_id=None,
+                active=True,
+                is_repeatable=True,
+                is_penalty=False,
+            )
+            db.add(task)
+            print(f"      - [Club-Wide] {task.title} ({task.base_points} pts)")
+
+        # 6. Seed Division-Specific Tasks under each division
+        print("  [+] Seeding Division-Specific Tasks...")
+        for div_name, div in divisions_map.items():
+            print(f"    -> Division: {div_name}")
+
+            # Standard division-specific trifecta
+            standard_div_tasks = [
+                {
+                    "title": f"{div_name} Session Attendance",
+                    "category": "division_session",
+                    "base_points": 10,
+                    "description": f"Attend scheduled weekly technical training and project session for {div_name}.",
+                },
+                {
+                    "title": f"Deliver {div_name} Lecture",
+                    "category": "internal_bootcamp",
+                    "base_points": 75,
+                    "description": f"Prepare and deliver an internal technical workshop, tutorial, or bootcamp lecture for {div_name}.",
+                },
+                {
+                    "title": f"{div_name} Event Co-Organizer",
+                    "category": "event_organizing",
+                    "base_points": 50,
+                    "description": f"Support operations, judging, or coordination for a {div_name} specific workshop or contest.",
+                },
+            ]
+
+            # Combine with extra specialized tasks
+            all_for_div = standard_div_tasks + EXTRA_DIVISION_TASKS.get(div_name, [])
+
+            for t in all_for_div:
                 task = Task(
-                    title=task_data["title"],
-                    category=task_data["category"],
-                    base_points=task_data["base_points"],
-                    description=task_data["description"],
+                    title=t["title"],
+                    category=t["category"],
+                    base_points=t["base_points"],
+                    description=t["description"],
+                    division_id=div.id,
                     active=True,
                     is_repeatable=True,
                     is_penalty=False,
                 )
                 db.add(task)
-                print(f"  [+] Created Task: {task.title} ({task.base_points} pts)")
+                print(f"        * {task.title} ({task.base_points} pts)")
 
-        # 5. Seed President Member
+        # 7. Seed President Member
         res = await db.execute(select(Member).where(Member.email == PRESIDENT_EMAIL))
         president = res.scalar_one_or_none()
         dev_division = divisions_map.get("Development")
@@ -125,6 +306,7 @@ async def run_seed() -> None:
             president = Member(
                 full_name=PRESIDENT_NAME,
                 email=PRESIDENT_EMAIL,
+                google_id=PRESIDENT_GOOGLE_ID,
                 role=MemberRole.PRESIDENT,
                 department="Software Engineering",
                 joining_year=2022,
@@ -136,6 +318,8 @@ async def run_seed() -> None:
         else:
             president.role = MemberRole.PRESIDENT
             president.is_active = True
+            president.google_id = PRESIDENT_GOOGLE_ID
+            president.division_id = dev_division.id if dev_division else president.division_id
             print(f"  [*] Updated President Member: {president.full_name} <{president.email}>")
 
         await db.commit()

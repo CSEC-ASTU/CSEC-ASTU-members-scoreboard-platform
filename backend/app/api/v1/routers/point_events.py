@@ -96,6 +96,7 @@ async def create_point_event(
             reason=claim.reason,
             settings=settings,
             division_id=claim.division_id,
+            verification_code=claim.verification_code,
         )
         return PointEventOut.model_validate(event)
 
