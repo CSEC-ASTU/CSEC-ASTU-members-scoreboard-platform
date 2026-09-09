@@ -181,6 +181,7 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
         email=m.email,
         profile_image_url=m.profile_image_url,
         division_id=m.division_id,
+        secondary_division_id=m.secondary_division_id,
         role=m.role,
         department=m.department,
         joining_year=m.joining_year,

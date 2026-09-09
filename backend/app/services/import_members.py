@@ -102,6 +102,13 @@ async def import_members_csv(
             else:
                 division_id = div.id
 
+        sec_division_name = row.get("secondary_division") or row.get("secondary division") or ""
+        sec_division_id = None
+        if sec_division_name:
+            sec_div = divisions_by_name.get(sec_division_name.lower())
+            if sec_div is not None:
+                sec_division_id = sec_div.id
+
         existing = await db.execute(select(Member).where(Member.email == email))
         member = existing.scalar_one_or_none()
 
@@ -119,6 +126,7 @@ async def import_members_csv(
                 department=department,
                 joining_year=joining_year,
                 division_id=division_id,
+                secondary_division_id=sec_division_id,
                 role=MemberRole.MEMBER,
                 imported_by=importer_id,
             )
@@ -130,6 +138,8 @@ async def import_members_csv(
             member.joining_year = joining_year
             if division_id is not None:
                 member.division_id = division_id
+            if sec_division_id is not None:
+                member.secondary_division_id = sec_division_id
             # Optionally refresh name if still unclaimed
             if member.google_id is None:
                 member.full_name = full_name

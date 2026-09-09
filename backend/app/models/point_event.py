@@ -35,6 +35,9 @@ class PointEvent(Base):
         UUID(as_uuid=True), ForeignKey("members.id", ondelete="SET NULL")
     )
     academic_year: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    division_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Improvement: rejection reason stored separately from original claim reason
@@ -43,3 +46,4 @@ class PointEvent(Base):
     member: Mapped["Member"] = relationship(foreign_keys=[member_id])  # noqa: F821
     task: Mapped["Task | None"] = relationship()  # noqa: F821
     approver: Mapped["Member | None"] = relationship(foreign_keys=[approved_by])  # noqa: F821
+    division: Mapped["Division | None"] = relationship()  # noqa: F821

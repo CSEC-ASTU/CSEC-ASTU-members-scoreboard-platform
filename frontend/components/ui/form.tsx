@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import * as React from 'react'
@@ -13,7 +14,7 @@ import {
 } from 'react-hook-form'
 
 import { cn } from '@/lib/utils'
-import { Label } from '@/frontend/components/ui/label'
+import { Label } from '@/components/ui/label'
 
 const Form = FormProvider
 

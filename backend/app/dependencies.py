@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
@@ -38,8 +39,10 @@ async def _load_user_from_token(db: AsyncSession, token: str | None) -> CurrentU
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject") from exc
 
-    result = await db.execute(select(Member).where(Member.id == member_id))
-    member = result.scalar_one_or_none()
+    result = await db.execute(
+        select(Member).options(joinedload(Member.permissions)).where(Member.id == member_id)
+    )
+    member = result.unique().scalar_one_or_none()
     if member is None or not member.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Member not found or inactive")
     if member.google_id is None:

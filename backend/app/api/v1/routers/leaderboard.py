@@ -32,7 +32,7 @@ async def leaderboard(
     params: dict = {"year": year, "buffer": buffer, "cap": cap}
     division_clause = ""
     if division_id is not None:
-        division_clause = "AND m.division_id = :division_id"
+        division_clause = "AND (m.division_id = :division_id OR m.secondary_division_id = :division_id)"
         params["division_id"] = str(division_id)
 
     rows = await db.execute(

@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Member, PointEvent
@@ -52,7 +52,13 @@ async def list_point_events(
     if academic_year is not None:
         q = q.where(PointEvent.academic_year == academic_year)
     if division_id is not None:
-        q = q.join(Member, Member.id == PointEvent.member_id).where(Member.division_id == division_id)
+        q = q.outerjoin(Member, Member.id == PointEvent.member_id).where(
+            or_(
+                PointEvent.division_id == division_id,
+                Member.division_id == division_id,
+                Member.secondary_division_id == division_id,
+            )
+        )
 
     # Count via subquery
     count_q = select(func.count()).select_from(q.order_by(None).subquery())
@@ -89,6 +95,7 @@ async def create_point_event(
             task_id=claim.task_id,
             reason=claim.reason,
             settings=settings,
+            division_id=claim.division_id,
         )
         return PointEventOut.model_validate(event)
 
@@ -104,8 +111,10 @@ async def create_point_event(
         points_delta=officer.points_delta,
         reason=officer.reason,
         task_id=officer.task_id,
+        division_id=officer.division_id,
     )
     return PointEventOut.model_validate(event)
+
 
 
 @router.get("/{event_id}", response_model=PointEventOut)

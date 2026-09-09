@@ -87,13 +87,21 @@ async def get_effective_permissions(db: AsyncSession, member: Member) -> list[st
         else:
             perms.add(key)
 
-    result = await db.execute(
-        select(MemberPermission).where(
-            MemberPermission.member_id == member.id,
-            MemberPermission.is_enabled.is_(True),
+    from sqlalchemy import inspect
+    from sqlalchemy.orm.base import NO_VALUE
+
+    if "permissions" in inspect(member).attrs and inspect(member).attrs.permissions.loaded_value is not NO_VALUE:
+        grants = [g for g in member.permissions if g.is_enabled]
+    else:
+        result = await db.execute(
+            select(MemberPermission).where(
+                MemberPermission.member_id == member.id,
+                MemberPermission.is_enabled.is_(True),
+            )
         )
-    )
-    for grant in result.scalars():
+        grants = list(result.scalars())
+
+    for grant in grants:
         if grant.permission_key in NON_DELEGABLE:
             continue
         perms.add(format_permission(grant.permission_key, grant.scope_value))

@@ -3,10 +3,10 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { AlertTriangle, ShieldAlert, Sliders, Shield } from "lucide-react"
-import { Button } from "@/frontend/components/ui/button"
-import { Input } from "@/frontend/components/ui/input"
-import { Label } from "@/frontend/components/ui/label"
-import { Textarea } from "@/frontend/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/frontend/components/ui/dialog"
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/frontend/components/ui/select"
+} from "@/components/ui/select"
+import { pointEventsService } from "@/lib/api"
 import { type Member, type PointEvent, type Warning, type EventType } from "@/lib/csec-data"
 
 interface IssueWarningDialogProps {
@@ -42,6 +43,7 @@ export function IssueWarningDialog({
   const [eventType, setEventType] = useState<EventType>("yellow_warning")
   const [reason, setReason] = useState("")
   const [customDelta, setCustomDelta] = useState<number>(-10)
+  const [submitting, setSubmitting] = useState(false)
 
   const defaultDeltas: Record<EventType, number> = {
     yellow_warning: -25,
@@ -51,7 +53,7 @@ export function IssueWarningDialog({
     layoff: -100,
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!reason.trim()) {
       toast.error("A reason is mandatory for logging an officer adjustment or warning.")
       return
@@ -60,50 +62,64 @@ export function IssueWarningDialog({
     const delta =
       eventType === "manual_adjustment" ? Number(customDelta) : defaultDeltas[eventType]
 
-    const newEvent: PointEvent = {
-      id: `local-adj-${Date.now()}`,
-      memberId: member.id,
-      taskTitle:
-        eventType === "yellow_warning"
-          ? "Yellow Warning"
-          : eventType === "red_warning"
-            ? "Red Warning"
-            : "Officer Manual Adjustment",
-      category: "division_session",
-      eventType,
-      delta,
-      status: "approved",
-      reason: reason.trim(),
-      approverId: officer.id,
-      academicYear: 2026,
-      createdAt: new Date().toISOString(),
-    }
-
-    let newWarning: Warning | undefined = undefined
-    if (eventType === "yellow_warning" || eventType === "red_warning") {
-      newWarning = {
-        id: `local-w-${Date.now()}`,
-        memberId: member.id,
-        level: eventType === "yellow_warning" ? "yellow" : "red",
+    setSubmitting(true)
+    try {
+      await pointEventsService.submitOfficerAdjustment({
+        member_id: member.id,
+        event_type: eventType,
+        points_delta: delta,
         reason: reason.trim(),
-        issuedBy: officer.id,
+      })
+
+      const newEvent: PointEvent = {
+        id: `adj-${Date.now()}`,
+        memberId: member.id,
+        taskTitle:
+          eventType === "yellow_warning"
+            ? "Yellow Warning"
+            : eventType === "red_warning"
+              ? "Red Warning"
+              : "Officer Manual Adjustment",
+        category: "division_session",
+        eventType,
+        delta,
+        status: "approved",
+        reason: reason.trim(),
+        approverId: officer.id,
         academicYear: 2026,
         createdAt: new Date().toISOString(),
       }
+
+      let newWarning: Warning | undefined = undefined
+      if (eventType === "yellow_warning" || eventType === "red_warning") {
+        newWarning = {
+          id: `w-${Date.now()}`,
+          memberId: member.id,
+          level: eventType === "yellow_warning" ? "yellow" : "red",
+          reason: reason.trim(),
+          issuedBy: officer.id,
+          academicYear: 2026,
+          createdAt: new Date().toISOString(),
+        }
+      }
+
+      onSuccess(newEvent, newWarning)
+      toast.success(
+        eventType === "yellow_warning"
+          ? `Yellow Warning (-25 pts) issued to ${member.name}`
+          : eventType === "red_warning"
+            ? `Red Warning (-50 pts) issued to ${member.name}`
+            : `Manual point adjustment (${delta >= 0 ? "+" : ""}${delta} pts) applied to ${member.name}`,
+      )
+
+      setReason("")
+      setCustomDelta(-10)
+      onOpenChange(false)
+    } catch (err: any) {
+      toast.error("Failed to submit officer adjustment", { description: err.message })
+    } finally {
+      setSubmitting(false)
     }
-
-    onSuccess(newEvent, newWarning)
-    toast.success(
-      eventType === "yellow_warning"
-        ? `Yellow Warning (-25 pts) issued to ${member.name}`
-        : eventType === "red_warning"
-          ? `Red Warning (-50 pts) issued to ${member.name}`
-          : `Manual point adjustment (${delta >= 0 ? "+" : ""}${delta} pts) applied to ${member.name}`,
-    )
-
-    setReason("")
-    setCustomDelta(-10)
-    onOpenChange(false)
   }
 
   return (

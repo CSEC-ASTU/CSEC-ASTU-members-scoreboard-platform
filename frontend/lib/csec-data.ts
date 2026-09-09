@@ -65,6 +65,7 @@ export interface PlatformSettings {
   scoreCap: number
   initialBuffer: number
   currentAcademicYear: number
+  autoApproveClaimMaxPoints: number // Improvement 03
   badgeTierMultipliers: {
     gold: number // 1.0x cap (2500)
     platinum: number // 1.5x cap (3750)
@@ -76,6 +77,7 @@ export const PLATFORM_SETTINGS: PlatformSettings = {
   scoreCap: 2500,
   initialBuffer: 50,
   currentAcademicYear: 2026,
+  autoApproveClaimMaxPoints: 10,
   badgeTierMultipliers: {
     gold: 1.0,
     platinum: 1.5,
@@ -91,12 +93,24 @@ export interface Permission {
   permissionKey: "approve_task" | "manage_tasks" | "cbd_head" | "social_media_manager" | "cleaning_duty_coordinator"
   scopeCategory?: TaskCategory
   scopeDivision?: Division
-  scopeValue?: string | null // null = club-wide
+  scopeValue?: string | null
   grantedBy: string // member id
   isEnabled: boolean
   grantedAt: string
   updatedAt: string
   expiresAt?: string
+}
+
+export interface PermissionGrantHistory {
+  id: string
+  memberPermissionId?: string
+  memberId: string
+  permissionKey: string
+  scopeValue?: string | null
+  action: "granted" | "enabled" | "disabled" | "revoked"
+  actorId: string
+  note?: string
+  createdAt: string
 }
 
 export interface Member {
@@ -124,6 +138,7 @@ export interface TaskDef {
   active: boolean
   isPenalty?: boolean
   divisionId?: string
+  division_id?: string | null
 }
 
 export interface PointEvent {
@@ -136,7 +151,8 @@ export interface PointEvent {
   delta: number // signed
   status: ClaimStatus
   reason: string
-  approverId?: string
+  decisionReason?: string | null // Improvement 05
+  approverId?: string | null
   academicYear: number
   createdAt: string // ISO UTC
 }
@@ -158,6 +174,14 @@ export interface AnnualSummary {
   finalScore: number
   finalRank: number
   badgesEarned?: BadgeTier | null
+  createdAt: string
+}
+
+export interface LoginAttemptFailure {
+  id: string
+  email: string
+  googleId: string | null
+  reason: string
   createdAt: string
 }
 
@@ -460,7 +484,6 @@ export const TASKS: TaskDef[] = [
 // ---------------------------------------------------------------------------
 
 export const POINT_EVENTS: PointEvent[] = [
-  // Abenezer (President) — top contributor
   {
     id: "e1",
     memberId: "m1",
@@ -471,7 +494,8 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 125,
     status: "approved",
     reason: "Led ASTU Hackathon 2026 planning and execution.",
-    approverId: "m2", // VP approved president per rule
+    decisionReason: null,
+    approverId: "m2",
     academicYear: 2026,
     createdAt: "2026-06-10T10:00:00Z",
   },
@@ -485,6 +509,7 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 75,
     status: "approved",
     reason: "Delivered Full-Stack Architecture session.",
+    decisionReason: null,
     approverId: "m2",
     academicYear: 2026,
     createdAt: "2026-06-25T14:00:00Z",
@@ -492,19 +517,18 @@ export const POINT_EVENTS: PointEvent[] = [
   {
     id: "e3",
     memberId: "m1",
-    taskId: "t10",
-    taskTitle: "Game Night Attendance",
-    category: "game_night",
+    taskId: "t1",
+    taskTitle: "Attend Weekly Division Session",
+    category: "division_session",
     eventType: "claim",
-    delta: 25,
+    delta: 10,
     status: "approved",
-    reason: "Attended June Game Night.",
-    approverId: "m2",
+    reason: "Attended Development weekly sync.",
+    decisionReason: "auto-approved (low-stakes claim)",
+    approverId: null,
     academicYear: 2026,
     createdAt: "2026-07-01T18:00:00Z",
   },
-
-  // Sara (VP)
   {
     id: "e4",
     memberId: "m2",
@@ -515,7 +539,8 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 125,
     status: "approved",
     reason: "Co-led ASTU ICPC Qualifier competition.",
-    approverId: "m1", // President approved VP
+    decisionReason: null,
+    approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-06-15T11:00:00Z",
   },
@@ -529,12 +554,11 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 75,
     status: "approved",
     reason: "Delivered Graph Algorithms masterclass.",
+    decisionReason: null,
     approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-07-05T14:00:00Z",
   },
-
-  // Yohannes (Cyber Sec Head)
   {
     id: "e6",
     memberId: "m3",
@@ -545,12 +569,11 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 75,
     status: "approved",
     reason: "Organized internal Cyber Security CTF round.",
+    decisionReason: null,
     approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-07-12T10:00:00Z",
   },
-
-  // Hanna (Data Science Head)
   {
     id: "e7",
     memberId: "m4",
@@ -561,12 +584,11 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 75,
     status: "approved",
     reason: "Delivered Intro to ML & Pandas tutorial.",
+    decisionReason: null,
     approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-07-15T15:00:00Z",
   },
-
-  // Nahom (Dev Member)
   {
     id: "e8",
     memberId: "m5",
@@ -577,6 +599,7 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 15,
     status: "approved",
     reason: "Completed Week 6 cleaning rotation.",
+    decisionReason: null,
     approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-07-28T09:00:00Z",
@@ -591,28 +614,13 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 75,
     status: "approved",
     reason: "Delivered React 19 fundamentals lecture.",
+    decisionReason: null,
     approverId: "m1",
     academicYear: 2026,
     createdAt: "2026-07-22T15:00:00Z",
   },
   {
     id: "e10",
-    memberId: "m5",
-    taskId: "t10",
-    taskTitle: "Game Night Attendance",
-    category: "game_night",
-    eventType: "claim",
-    delta: 25,
-    status: "approved",
-    reason: "Attended July Game Night.",
-    approverId: "m1",
-    academicYear: 2026,
-    createdAt: "2026-07-25T18:00:00Z",
-  },
-
-  // Mahlet (Capacity Building - Social Media)
-  {
-    id: "e11",
     memberId: "m6",
     taskId: "t14",
     taskTitle: "Social Media Design Asset",
@@ -621,27 +629,12 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 25,
     status: "pending",
     reason: "Designed launch poster for ASTU Hackathon 2026.",
+    decisionReason: null,
     academicYear: 2026,
     createdAt: "2026-08-01T08:30:00Z",
   },
   {
-    id: "e12",
-    memberId: "m6",
-    taskId: "t15",
-    taskTitle: "Social Media Video Edit",
-    category: "social_media",
-    eventType: "claim",
-    delta: 40,
-    status: "approved",
-    reason: "Edited Game Night recap reel.",
-    approverId: "m2",
-    academicYear: 2026,
-    createdAt: "2026-07-29T16:00:00Z",
-  },
-
-  // Dawit (CP Member)
-  {
-    id: "e13",
+    id: "e11",
     memberId: "m7",
     taskId: "t1",
     taskTitle: "Attend Weekly Division Session",
@@ -650,28 +643,13 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: 10,
     status: "approved",
     reason: "Present at CP division practice session.",
-    approverId: "m2",
+    decisionReason: "auto-approved (low-stakes claim)",
+    approverId: null,
     academicYear: 2026,
     createdAt: "2026-07-29T14:00:00Z",
   },
   {
-    id: "e14",
-    memberId: "m7",
-    taskId: "t9",
-    taskTitle: "External Event Representation",
-    category: "external_activity",
-    eventType: "claim",
-    delta: 75,
-    status: "approved",
-    reason: "Represented ASTU in regional programming contest.",
-    approverId: "m2",
-    academicYear: 2026,
-    createdAt: "2026-07-20T13:00:00Z",
-  },
-
-  // Bethlehem (Data Science Member - Warning instance)
-  {
-    id: "e15",
+    id: "e12",
     memberId: "m8",
     taskId: "t2",
     taskTitle: "Weekly Lab Cleaning Duty",
@@ -680,12 +658,13 @@ export const POINT_EVENTS: PointEvent[] = [
     delta: -25,
     status: "approved",
     reason: "Repeated unexcused absence from assigned cleaning duties.",
+    decisionReason: "Officer disciplinary warning issued.",
     approverId: "m4",
     academicYear: 2026,
     createdAt: "2026-07-30T11:00:00Z",
   },
   {
-    id: "e16",
+    id: "e13",
     memberId: "m8",
     taskId: "t10",
     taskTitle: "Game Night Attendance",
@@ -693,53 +672,11 @@ export const POINT_EVENTS: PointEvent[] = [
     eventType: "claim",
     delta: 25,
     status: "rejected",
-    reason: "No attendance record found on the check-in list.",
+    reason: "Attended game night session.",
+    decisionReason: "No attendance record found on the check-in list.",
     approverId: "m4",
     academicYear: 2026,
     createdAt: "2026-07-25T18:00:00Z",
-  },
-
-  // Kaleb (Cyber Sec Member - pending claims)
-  {
-    id: "e17",
-    memberId: "m9",
-    taskId: "t9",
-    taskTitle: "External Event Representation",
-    category: "external_activity",
-    eventType: "claim",
-    delta: 75,
-    status: "pending",
-    reason: "Competed in National Cyber Drill representing CSEC ASTU.",
-    academicYear: 2026,
-    createdAt: "2026-08-02T16:00:00Z",
-  },
-  {
-    id: "e18",
-    memberId: "m9",
-    taskId: "t13",
-    taskTitle: "Deliver External Academic Lecture Support",
-    category: "academic_support",
-    eventType: "claim",
-    delta: 75,
-    status: "pending",
-    reason: "Conducted networking & Wireshark tutorial lab session.",
-    academicYear: 2026,
-    createdAt: "2026-08-04T09:45:00Z",
-  },
-
-  // Rediet (Dev Member)
-  {
-    id: "e19",
-    memberId: "m10",
-    taskId: "t2",
-    taskTitle: "Weekly Lab Cleaning Duty",
-    category: "lab_cleaning",
-    eventType: "claim",
-    delta: 15,
-    status: "pending",
-    reason: "Covered lab cleaning swap for a peer.",
-    academicYear: 2026,
-    createdAt: "2026-08-03T10:15:00Z",
   },
 ]
 
@@ -760,7 +697,7 @@ export const WARNINGS: Warning[] = [
 ]
 
 // ---------------------------------------------------------------------------
-// Seed Data: Annual Summaries (Historical Snapshot)
+// Seed Data: Annual Summaries
 // ---------------------------------------------------------------------------
 
 export const ANNUAL_SUMMARIES: AnnualSummary[] = [
@@ -791,14 +728,55 @@ export const ANNUAL_SUMMARIES: AnnualSummary[] = [
     badgesEarned: null,
     createdAt: "2025-09-01T00:00:00Z",
   },
+]
+
+// ---------------------------------------------------------------------------
+// Seed Data: Login Attempt Failures (Improvement 01 & 08)
+// ---------------------------------------------------------------------------
+
+export const LOGIN_ATTEMPT_FAILURES: LoginAttemptFailure[] = [
   {
-    id: "as-4",
-    memberId: "m1",
-    academicYear: 2024,
-    finalScore: 2100,
-    finalRank: 2,
-    badgesEarned: null,
-    createdAt: "2024-09-01T00:00:00Z",
+    id: "laf-1",
+    email: "dawit.unknown@gmail.com",
+    googleId: "google-failed-001",
+    reason: "not_registered",
+    createdAt: "2026-08-01T10:15:00Z",
+  },
+  {
+    id: "laf-2",
+    email: "selamawit.k@gmail.com",
+    googleId: "google-failed-002",
+    reason: "not_registered",
+    createdAt: "2026-08-03T14:22:00Z",
+  },
+]
+
+// ---------------------------------------------------------------------------
+// Seed Data: Permission Grant History (Improvement 02)
+// ---------------------------------------------------------------------------
+
+export const PERMISSION_GRANT_HISTORY: PermissionGrantHistory[] = [
+  {
+    id: "pgh-1",
+    memberPermissionId: "p1",
+    memberId: "m5",
+    permissionKey: "cleaning_duty_coordinator",
+    scopeValue: "lab_cleaning:Development",
+    action: "granted",
+    actorId: "m1",
+    note: "Assigned semester cleaning duty coordination for Dev track.",
+    createdAt: "2026-02-01T10:00:00Z",
+  },
+  {
+    id: "pgh-2",
+    memberPermissionId: "p2",
+    memberId: "m6",
+    permissionKey: "social_media_manager",
+    scopeValue: "social_media",
+    action: "granted",
+    actorId: "m2",
+    note: "Assigned club-wide social media content management.",
+    createdAt: "2026-01-15T09:00:00Z",
   },
 ]
 
@@ -806,10 +784,6 @@ export const ANNUAL_SUMMARIES: AnnualSummary[] = [
 // Derived Helpers & Scoring Calculations
 // ---------------------------------------------------------------------------
 
-/**
- * Calculates current cycle score:
- * Base 50 points initial buffer + sum of approved point events in the academic year.
- */
 export function getMemberCycleScore(
   memberId: string,
   events: PointEvent[] = POINT_EVENTS,
@@ -822,9 +796,6 @@ export function getMemberCycleScore(
   return PLATFORM_SETTINGS.initialBuffer + approvedDelta
 }
 
-/**
- * Returns the capped score for display on the leaderboard (max 2,500).
- */
 export function getMemberDisplayScore(
   memberId: string,
   events: PointEvent[] = POINT_EVENTS,
@@ -835,11 +806,6 @@ export function getMemberDisplayScore(
   return Math.min(cycleScore, cap)
 }
 
-/**
- * Calculates career score:
- * Lifetime sum across all completed past annual summaries + current cycle score.
- * Never resets, never capped.
- */
 export function getMemberCareerScore(
   memberId: string,
   events: PointEvent[] = POINT_EVENTS,
@@ -853,10 +819,6 @@ export function getMemberCareerScore(
   return pastTotal + currentCycle
 }
 
-/**
- * Tier badge calculation when member reaches or exceeds the score cap.
- * Gold (>= 1.0x cap), Platinum (>= 1.5x cap), Diamond (>= 2.0x cap).
- */
 export function getMemberBadge(
   cycleScore: number,
   scoreCap: number = PLATFORM_SETTINGS.scoreCap,
@@ -921,9 +883,6 @@ export function getLeaderboard(
     .sort((a, b) => b.displayScore - a.displayScore || b.careerScore - a.careerScore)
 }
 
-/**
- * Historical leaderboard for past academic years from annual_summaries.
- */
 export function getHistoricalLeaderboard(
   academicYear: number,
   division?: Division,
@@ -939,9 +898,6 @@ export function getHistoricalLeaderboard(
     .sort((a, b) => b.finalScore - a.finalScore)
 }
 
-/**
- * Points trend for chart by week/period.
- */
 export function getPointsTrend(
   division?: Division,
   events: PointEvent[] = POINT_EVENTS,

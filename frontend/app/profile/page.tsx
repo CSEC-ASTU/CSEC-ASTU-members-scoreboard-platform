@@ -1,21 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import { Button } from "@/frontend/components/ui/button"
-import { Input } from "@/frontend/components/ui/input"
-import { Label } from "@/frontend/components/ui/label"
-import { Badge } from "@/frontend/components/ui/badge"
-import { MemberAvatar, TierBadge, ScoreCapProgress } from "@/frontend/components/csec/ui-bits"
-import { useCurrentUser } from "@/frontend/components/user-context"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { MemberAvatar, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
+import { useCurrentUser } from "@/components/user-context"
+import { membersService } from "@/lib/api/services/members"
+import { useDivisions, usePlatformSettings, useMemberSummaries, useUpdateMeMutation } from "@/lib/hooks/use-queries"
+import { ProfileSkeleton } from "@/components/csec/skeletons"
+import type { AnnualSummaryOut, BadgeTier, DivisionOut } from "@/lib/api/types"
 import {
-  getMemberCycleScore,
-  getMemberCareerScore,
   getMemberBadge,
-  getMemberAnnualSummaries,
   ROLE_LABELS,
   PLATFORM_SETTINGS,
 } from "@/lib/csec-data"
@@ -30,39 +31,86 @@ import {
   Award,
   History,
   ShieldCheck,
+  Loader2,
 } from "lucide-react"
 
 export default function ProfilePage() {
-  const { currentUser } = useCurrentUser()
+  const { currentUser, refetchUser } = useCurrentUser()
   const [department, setDepartment] = useState(currentUser.department)
   const [telegram, setTelegram] = useState(currentUser.telegramUsername ?? "")
   const [connected, setConnected] = useState(Boolean(currentUser.telegramUsername))
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  const cycleScore = getMemberCycleScore(currentUser.id)
-  const careerScore = getMemberCareerScore(currentUser.id)
-  const badge = getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
-  const annualSummaries = getMemberAnnualSummaries(currentUser.id)
+  const { data: divisionsData, isLoading: divsLoading } = useDivisions()
+  const { data: settingsData, isLoading: settingsLoading } = usePlatformSettings()
+  const { data: summariesData, isLoading: summariesLoading } = useMemberSummaries(currentUser.id)
+  const updateMeMutation = useUpdateMeMutation()
 
-  function handleSaveProfile(e: React.FormEvent) {
+  const divisions = divisionsData || []
+  const annualSummaries = summariesData?.items || []
+  const scoreCap = settingsData?.score_cap ?? PLATFORM_SETTINGS.scoreCap
+  const isLoading = divsLoading || settingsLoading || summariesLoading
+
+  useEffect(() => {
+    setDepartment(currentUser.department)
+  }, [currentUser.department])
+
+  const divisionsMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of divisions) {
+      map[d.id] = d.name
+    }
+    return map
+  }, [divisions])
+
+  const primaryDivisionName = currentUser.divisionId ? divisionsMap[currentUser.divisionId] || currentUser.division : currentUser.division
+  const secondaryDivisionName = currentUser.secondaryDivisionId ? divisionsMap[currentUser.secondaryDivisionId] || currentUser.secondaryDivision : null
+
+  const cycleScore = currentUser.cycleScore ?? 0
+  const careerScore = currentUser.careerScore ?? 0
+  const badge = getMemberBadge(cycleScore, scoreCap)
+
+  async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
-    toast.success("Profile updated successfully")
+    try {
+      setSaving(true)
+      await updateMeMutation.mutateAsync({ department: department.trim() })
+      await refetchUser()
+      toast.success("Profile updated successfully")
+    } catch (err) {
+      toast.error("Failed to update profile", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setAvatarUploading(true)
-    setTimeout(() => {
+    try {
+      setAvatarUploading(true)
+      await membersService.uploadProfilePicture(file)
+      await refetchUser()
+      toast.success("Profile photo uploaded successfully!")
+    } catch (err) {
+      toast.error("Failed to upload avatar", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
       setAvatarUploading(false)
-      toast.success("Profile photo uploaded to Google Drive storage successfully!")
-    }, 800)
+    }
   }
 
   return (
     <Layout>
-      <div className="space-y-6">
+      {isLoading && divisions.length === 0 ? (
+        <ProfileSkeleton />
+      ) : (
+        <div className="space-y-6">
         <PageHeader
           title="My Profile &amp; Settings"
           description="Manage your club details, view lifetime annual histories, and export your achievement card."
@@ -80,9 +128,9 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <MemberAvatar name={currentUser.name} size={68} />
+                <MemberAvatar name={currentUser.name} imageUrl={currentUser.profileImageUrl} size={68} />
                 <label className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900">
-                  <Upload className="h-3 w-3" />
+                  {avatarUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                   <input
                     type="file"
                     accept="image/*"
@@ -102,8 +150,15 @@ export default function ProfilePage() {
                   {badge && <TierBadge tier={badge} />}
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{currentUser.email}</p>
-                <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
-                  <span>{currentUser.division}</span>
+                <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-[11px] font-normal">
+                    {primaryDivisionName} (Primary)
+                  </Badge>
+                  {secondaryDivisionName && (
+                    <Badge variant="outline" className="text-[11px] font-normal">
+                      {secondaryDivisionName} (Secondary)
+                    </Badge>
+                  )}
                   <span>•</span>
                   <span>{currentUser.department}</span>
                 </div>
@@ -128,7 +183,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-            <ScoreCapProgress cycleScore={cycleScore} scoreCap={PLATFORM_SETTINGS.scoreCap} />
+            <ScoreCapProgress cycleScore={cycleScore} scoreCap={scoreCap} />
           </div>
         </div>
 
@@ -151,26 +206,37 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="division" className="text-xs">Division</Label>
-                  <Input id="division" value={currentUser.division} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
+                  <Label htmlFor="division" className="text-xs">Primary Division</Label>
+                  <Input id="division" value={primaryDivisionName} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="secondaryDivision" className="text-xs">Secondary Division</Label>
+                  <Input
+                    id="secondaryDivision"
+                    value={secondaryDivisionName ?? "None"}
+                    disabled
+                    className="bg-zinc-50 dark:bg-zinc-800/50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="joiningYear" className="text-xs">Joining Year</Label>
                   <Input id="joiningYear" value={String(currentUser.joiningYear)} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dept" className="text-xs">Department</Label>
+                  <Input
+                    id="dept"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="dept" className="text-xs">Department</Label>
-                <Input
-                  id="dept"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                />
-              </div>
-
-              <Button type="submit" size="sm">
-                Save Changes
+              <Button type="submit" size="sm" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
             </form>
           </div>
@@ -237,20 +303,22 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {annualSummaries.map((s) => (
+              {annualSummaries.map((s: AnnualSummaryOut) => (
                 <div key={s.id} className="py-3 flex items-center justify-between">
                   <div>
                     <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                      Academic Year {s.academicYear}
+                      Academic Year {s.academic_year}
                     </span>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Finished at Rank #{s.finalRank} club-wide
+                      Finished at Rank #{s.final_rank} club-wide
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {s.badgesEarned && <TierBadge tier={s.badgesEarned} />}
+                    {s.badges_earned && s.badges_earned.length > 0 && (
+                      <TierBadge tier={s.badges_earned[0] as BadgeTier} />
+                    )}
                     <span className="font-bold text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
-                      {s.finalScore} pts
+                      {s.final_score} pts
                     </span>
                   </div>
                 </div>
@@ -259,6 +327,7 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+      )}
     </Layout>
   )
 }

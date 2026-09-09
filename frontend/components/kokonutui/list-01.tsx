@@ -2,34 +2,42 @@
 
 import { cn } from "@/lib/utils"
 import { Trophy, Building2, Send, TrendingUp, Sparkles, Shield, AlertCircle } from "lucide-react"
-import { useCurrentUser } from "@/frontend/components/user-context"
-import {
-  getMemberCycleScore,
-  getMemberCareerScore,
-  getMemberBadge,
-  getMemberEvents,
-  getMemberWarnings,
-  TASK_CATEGORY_LABELS,
-  PLATFORM_SETTINGS,
-} from "@/lib/csec-data"
-import { TierBadge, ScoreCapProgress } from "@/frontend/components/csec/ui-bits"
-import { useState } from "react"
+import { useCurrentUser } from "@/components/user-context"
+import { TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
+import { PLATFORM_SETTINGS } from "@/lib/csec-data"
+import { useEffect, useState } from "react"
+import { authService, pointEventsService, type CurrentUserOut, type PointEventOut } from "@/lib/api"
 
 export default function List01({ className }: { className?: string }) {
-  const { currentUser } = useCurrentUser()
-  const [connected, setConnected] = useState(Boolean(currentUser.telegramUsername))
+  const { currentUser, isAuthenticated } = useCurrentUser()
+  const [userData, setUserData] = useState<CurrentUserOut | null>(null)
+  const [events, setEvents] = useState<PointEventOut[]>([])
+  const [connected, setConnected] = useState(false)
 
-  const cycleScore = getMemberCycleScore(currentUser.id)
-  const careerScore = getMemberCareerScore(currentUser.id)
-  const badge = getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
-  const events = getMemberEvents(currentUser.id)
-  const warnings = getMemberWarnings(currentUser.id)
+  useEffect(() => {
+    async function loadData() {
+      if (!isAuthenticated) return
+      try {
+        const [me, evts] = await Promise.all([
+          authService.getMe(),
+          pointEventsService.listEvents({ member_id: currentUser.id }),
+        ])
+        setUserData(me)
+        setEvents(evts.items || [])
+      } catch (err) {
+        console.error("Failed to load dashboard metrics:", err)
+      }
+    }
+    loadData()
+  }, [currentUser.id, isAuthenticated])
+
+  const cycleScore = userData?.cycle_score ?? 50
+  const careerScore = userData?.career_score ?? 50
+  const badge = userData?.badge ?? null
   const approvedCount = events.filter((e) => e.status === "approved").length
   const pendingCount = events.filter((e) => e.status === "pending").length
-
-  // Loss aversion buffer status: +50 starting buffer - warnings
-  const hasYellow = warnings.some((w) => w.level === "yellow")
-  const hasRed = warnings.some((w) => w.level === "red")
+  const hasYellow = events.some((e) => e.event_type === "yellow_warning")
+  const hasRed = events.some((e) => e.event_type === "red_warning")
 
   return (
     <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3", className)}>

@@ -15,12 +15,11 @@ import {
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { useCurrentUser } from "@/frontend/components/user-context"
+import { useCurrentUser } from "@/components/user-context"
 import { isOfficer, canManagePermissions } from "@/lib/permissions"
-import { getApprovableEvents } from "@/lib/permissions"
-import { POINT_EVENTS } from "@/lib/csec-data"
+import { useApprovals } from "@/lib/hooks/use-queries"
 
 export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -28,7 +27,9 @@ export default function Sidebar() {
   const { currentUser } = useCurrentUser()
 
   const officer = isOfficer(currentUser)
-  const pendingForMe = getApprovableEvents(currentUser, POINT_EVENTS).length
+  const { data: approvalsData } = useApprovals(officer)
+  const pendingForMe = approvalsData?.total ?? 0
+
 
   function handleNavigation() {
     setIsMobileMenuOpen(false)

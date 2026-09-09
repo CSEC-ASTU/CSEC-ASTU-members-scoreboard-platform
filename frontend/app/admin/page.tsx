@@ -1,16 +1,16 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import { Button } from "@/frontend/components/ui/button"
-import { Input } from "@/frontend/components/ui/input"
-import { Label } from "@/frontend/components/ui/label"
-import { Textarea } from "@/frontend/components/ui/textarea"
-import { Switch } from "@/frontend/components/ui/switch"
-import { Badge } from "@/frontend/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/frontend/components/ui/tabs"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/frontend/components/ui/table"
+} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/frontend/components/ui/dialog"
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,30 +37,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/frontend/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/frontend/components/ui/select"
-import { useCurrentUser } from "@/frontend/components/user-context"
+} from "@/components/ui/select"
+import { useCurrentUser } from "@/components/user-context"
 import { canManagePermissions, canManageSettings, canExecuteAnnualReset } from "@/lib/permissions"
 import {
-  TASKS,
   TASK_CATEGORY_LABELS,
-  POINT_EVENTS,
-  MEMBERS,
   PLATFORM_SETTINGS,
-  getMember,
-  getMemberCycleScore,
   type TaskDef,
   type TaskCategory,
   type PlatformSettings,
   type PointEvent,
+  type LoginAttemptFailure,
 } from "@/lib/csec-data"
-import { StatusPill, PointDelta, MemberAvatar, EventTypePill } from "@/frontend/components/csec/ui-bits"
+import { StatusPill, PointDelta, MemberAvatar, EventTypePill } from "@/components/csec/ui-bits"
 import {
   Lock,
   Plus,
@@ -72,11 +68,36 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Sparkles,
+  Upload,
+  UserX,
+  KeyRound,
+  CheckCircle2,
 } from "lucide-react"
+import {
+  adminService,
+  tasksService,
+  settingsService,
+  divisionsService,
+  type TaskOut,
+  type LoginFailureOut,
+  type PointEventOut,
+  type DivisionOut,
+} from "@/lib/api"
+import { AdminSkeleton } from "@/components/csec/skeletons"
+import {
+  useTasks,
+  useDivisions,
+  usePlatformSettings,
+  useAuditLog,
+  useLoginFailures,
+  useCreateTaskMutation,
+  useUpdateTaskMutation,
+} from "@/lib/hooks/use-queries"
+import { useQueryClient } from "@tanstack/react-query"
 
 const CATEGORIES = Object.keys(TASK_CATEGORY_LABELS) as TaskCategory[]
 
-type Draft = Omit<TaskDef, "id"> & { id?: string }
+type Draft = Omit<TaskDef, "id"> & { id?: string; division_id?: string | null }
 
 const EMPTY_DRAFT: Draft = {
   title: "",
@@ -84,18 +105,97 @@ const EMPTY_DRAFT: Draft = {
   points: 10,
   category: "division_session",
   active: true,
+  division_id: null,
 }
 
 export default function AdminPage() {
-  const { currentUser } = useCurrentUser()
-  const [tasks, setTasks] = useState<TaskDef[]>(TASKS)
+  const { currentUser, isAuthenticated } = useCurrentUser()
+  const queryClient = useQueryClient()
+
+  const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
+  const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
+  const { data: fetchedSettings, isLoading: settingsLoading } = usePlatformSettings()
+  const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures()
+  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog()
+
+  const createTaskMutation = useCreateTaskMutation()
+  const updateTaskMutation = useUpdateTaskMutation()
+
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [open, setOpen] = useState(false)
+  const [resetCompleted, setResetCompleted] = useState(false)
 
   // Platform Settings State
   const [settings, setSettings] = useState<PlatformSettings>(PLATFORM_SETTINGS)
-  const [resetCompleted, setResetCompleted] = useState(false)
-  const [resetEvents, setResetEvents] = useState<PointEvent[]>(POINT_EVENTS)
+
+  // Sync settings when loaded
+  useEffect(() => {
+    if (fetchedSettings) {
+      setSettings({
+        scoreCap: fetchedSettings.score_cap,
+        initialBuffer: fetchedSettings.initial_buffer,
+        currentAcademicYear: fetchedSettings.current_academic_year,
+        autoApproveClaimMaxPoints: 10,
+        badgeTierMultipliers: fetchedSettings.badge_tier_multipliers,
+      })
+    }
+  }, [fetchedSettings])
+
+  // CSV Import State (§13)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [dryRun, setDryRun] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    created: number
+    updated: number
+    skipped: number
+    errors: string[]
+  } | null>(null)
+
+  const divisions: DivisionOut[] = divisionsData || []
+
+  const tasks: TaskDef[] = useMemo(() => {
+    const taskList = Array.isArray(tasksData) ? tasksData : (tasksData as any)?.items ?? []
+    return taskList.map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      category: t.category as any,
+      points: t.base_points,
+      description: t.description || "",
+      active: t.active,
+      isPenalty: t.is_penalty,
+      division_id: t.division_id ?? null,
+    }))
+  }, [tasksData])
+
+  const auditEvents: PointEvent[] = useMemo(() => {
+    return (fetchedAudit?.items || []).map((e: PointEventOut) => ({
+      id: e.id,
+      memberId: e.member_id,
+      taskTitle: e.task_title || e.reason,
+      category: "division_session" as any,
+      eventType: e.event_type as any,
+      delta: e.points_delta,
+      status: e.status as any,
+      reason: e.reason,
+      decisionReason: e.decision_reason,
+      approverId: e.approved_by,
+      academicYear: e.academic_year,
+      createdAt: e.created_at,
+    }))
+  }, [fetchedAudit])
+
+  const loginFailures: LoginAttemptFailure[] = useMemo(() => {
+    return (fetchedFailures?.items || []).map((f: any) => ({
+      id: f.id,
+      email: f.email,
+      googleId: f.google_id,
+      reason: f.reason,
+      createdAt: f.created_at,
+    }))
+  }, [fetchedFailures])
+
+  const isLoading = tasksLoading || divisionsLoading || settingsLoading || failuresLoading || auditLoading
 
   const allowed = canManagePermissions(currentUser)
   const isPresident = canManageSettings(currentUser)
@@ -109,18 +209,35 @@ export default function AdminPage() {
     [tasks],
   )
 
-  // Annual Reset Preview calculations
+  const divisionMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of divisions) {
+      map[d.id] = d.name
+    }
+    return map
+  }, [divisions])
+
   const resetPreview = useMemo(() => {
-    return MEMBERS.filter((m) => m.isActive).map((m, idx) => {
-      const cycleScore = getMemberCycleScore(m.id, resetEvents, settings.currentAcademicYear)
-      return {
-        member: m,
-        academicYear: settings.currentAcademicYear,
-        finalScore: cycleScore,
-        projectedRank: idx + 1,
+    // Preview uses the live audit events to estimate final scores
+    const memberMap = new Map<string, { name: string; division: string; score: number }>()
+    for (const e of auditEvents) {
+      if (e.status === "approved") {
+        const existing = memberMap.get(e.memberId)
+        if (existing) {
+          existing.score += e.delta
+        } else {
+          memberMap.set(e.memberId, {
+            name: (e as any).member_name ?? e.memberId,
+            division: "—",
+            score: settings.initialBuffer + e.delta,
+          })
+        }
       }
-    }).sort((a, b) => b.finalScore - a.finalScore)
-  }, [resetEvents, settings.currentAcademicYear])
+    }
+    return Array.from(memberMap.entries())
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.score - a.score)
+  }, [auditEvents, settings.initialBuffer])
 
   if (!allowed) {
     return (
@@ -142,59 +259,134 @@ export default function AdminPage() {
   }
 
   function startEdit(t: TaskDef) {
-    setDraft({ ...t })
+    setDraft({
+      ...t,
+      division_id: t.division_id ?? null,
+    })
     setOpen(true)
   }
 
-  function saveTask() {
+  async function saveTask() {
     if (!draft.title.trim()) {
       toast.error("Task title is required.")
       return
     }
-    setTasks((prev) => {
-      if (draft.id) {
-        return prev.map((t) => (t.id === draft.id ? ({ ...draft, id: draft.id } as TaskDef) : t))
+    const taskPayload = {
+      title: draft.title.trim(),
+      description: draft.description?.trim() || null,
+      base_points: draft.points,
+      category: draft.category,
+      active: draft.active,
+      division_id: draft.division_id || null,
+    }
+    try {
+      if (draft.id && !draft.id.startsWith("local-")) {
+        await updateTaskMutation.mutateAsync({ id: draft.id, data: taskPayload })
+        toast.success("Task definition updated")
+      } else {
+        await createTaskMutation.mutateAsync(taskPayload)
+        toast.success("New task created")
       }
-      return [{ ...draft, id: `local-${Date.now()}` } as TaskDef, ...prev]
-    })
-    toast.success(draft.id ? "Task definition updated" : "New task created")
-    setOpen(false)
-    setDraft(EMPTY_DRAFT)
+      setOpen(false)
+      setDraft(EMPTY_DRAFT)
+    } catch (err: any) {
+      toast.error("Failed to save task", { description: err.message })
+    }
   }
 
-  function toggleActive(id: string, active: boolean) {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, active } : t)))
+  async function toggleActive(id: string, active: boolean) {
+    try {
+      if (!id.startsWith("local-")) {
+        await updateTaskMutation.mutateAsync({ id, data: { active } })
+      }
+      toast.success(`Task ${active ? "activated" : "deactivated"}`)
+    } catch (err: any) {
+      toast.error("Failed to update task status", { description: err.message })
+    }
   }
 
-  function savePlatformSettings(e: React.FormEvent) {
+  async function savePlatformSettings(e: React.FormEvent) {
     e.preventDefault()
-    toast.success("Platform settings updated successfully")
+    try {
+      await settingsService.updateSettings({
+        score_cap: settings.scoreCap,
+        initial_buffer: settings.initialBuffer,
+        current_academic_year: settings.currentAcademicYear,
+        badge_tier_multipliers: settings.badgeTierMultipliers,
+      })
+      queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
+      toast.success("Platform settings updated successfully")
+    } catch (err: any) {
+      toast.error("Failed to save settings", { description: err.message })
+    }
   }
 
-  function executeAnnualReset() {
-    setResetCompleted(true)
-    setSettings((prev) => ({
-      ...prev,
-      currentAcademicYear: prev.currentAcademicYear + 1,
-    }))
-    toast.success(`Annual reset executed successfully!`, {
-      description: `Academic year advanced to ${settings.currentAcademicYear + 1}. All members reset to +${settings.initialBuffer} buffer.`,
-    })
+  async function handleImportSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!importFile) {
+      toast.error("Please select a CSV file to import.")
+      return
+    }
+
+    setImporting(true)
+    try {
+      const res = await adminService.importMembersCsv(importFile, dryRun)
+      if (!dryRun) {
+        queryClient.invalidateQueries({ queryKey: ["members"] })
+      }
+      setImportResult({
+        created: res.created,
+        updated: res.updated,
+        skipped: res.errors.length,
+        errors: res.errors.map((e) => `Row ${e.row} (${e.email}): ${e.issue}`),
+      })
+      if (dryRun) {
+        toast.success(`Dry run complete: ${res.created} new, ${res.updated} updates.`)
+      } else {
+        toast.success(`Import complete: ${res.created} members created, ${res.updated} updated!`)
+      }
+    } catch (err: any) {
+      toast.error("CSV Import failed", { description: err.message })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  async function executeAnnualReset() {
+    try {
+      const res = await adminService.executeAnnualReset()
+      setResetCompleted(true)
+      setSettings((prev) => ({
+        ...prev,
+        currentAcademicYear: res.new_academic_year,
+      }))
+      queryClient.invalidateQueries()
+      toast.success(`Annual reset executed successfully!`, {
+        description: `Academic year advanced to ${res.new_academic_year}. All member scores archived.`,
+      })
+    } catch (err: any) {
+      toast.error("Annual reset failed", { description: err.message })
+    }
   }
 
   return (
     <Layout>
-      <div className="space-y-6">
+      {isLoading && tasks.length === 0 ? (
+        <AdminSkeleton />
+      ) : (
+        <div className="space-y-6">
         <PageHeader
           title="Club Administration &amp; Governance"
-          description="Manage the global task catalog, tune platform scoring parameters, audit the club-wide ledger, and execute annual resets."
+          description="Manage global tasks, tune platform scoring parameters, bulk-import member CSVs, audit the ledger, and inspect login failures."
         />
 
         <Tabs defaultValue="catalog" className="w-full">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full sm:w-auto">
             <TabsTrigger value="catalog">Task Catalog</TabsTrigger>
-            <TabsTrigger value="settings">Platform Settings</TabsTrigger>
-            <TabsTrigger value="audit">Club Audit Log</TabsTrigger>
+            <TabsTrigger value="import">CSV Import</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="audit">Audit Log</TabsTrigger>
+            <TabsTrigger value="failures">Login Failures</TabsTrigger>
             <TabsTrigger value="reset">Annual Reset</TabsTrigger>
           </TabsList>
 
@@ -241,8 +433,19 @@ export default function AdminPage() {
                       {group.items.map((t) => (
                         <TableRow key={t.id}>
                           <TableCell>
-                            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                              {t.title}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                {t.title}
+                              </span>
+                              {t.division_id && divisionMap[t.division_id] ? (
+                                <Badge variant="outline" className="text-[10px] font-medium border-primary/30 text-primary">
+                                  {divisionMap[t.division_id]}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[10px] font-normal text-zinc-500">
+                                  Club-Wide
+                                </Badge>
+                              )}
                             </div>
                             <div className="line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">
                               {t.description}
@@ -283,10 +486,95 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          {/* 2. Platform Settings Tab */}
+          {/* 2. CSV Member Import Tab (§13) */}
+          <TabsContent value="import" className="mt-4">
+            <div className="max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+                    Google Form CSV Member Import
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Import or upsert verified members from the club registration sheet before their first login.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleImportSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Select CSV Export File</Label>
+                  <div className="flex items-center justify-center w-full">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-6 h-6 mb-2 text-zinc-400" />
+                        <p className="mb-1 text-xs text-zinc-600 dark:text-zinc-300">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {importFile ? importFile.name : "CSV export with email, full_name, division, department"}
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                      Dry-Run Mode (Validation Only)
+                    </div>
+                    <div className="text-[11px] text-zinc-500">
+                      Validates headers and emails without modifying database rows.
+                    </div>
+                  </div>
+                  <Switch checked={dryRun} onCheckedChange={setDryRun} />
+                </div>
+
+                <Button type="submit" disabled={!importFile || importing} size="sm" className="w-full">
+                  {importing
+                    ? "Processing CSV..."
+                    : dryRun
+                      ? "Run Dry-Run Validation"
+                      : "Execute Member Import"}
+                </Button>
+              </form>
+
+              {importResult && (
+                <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 space-y-2 text-xs">
+                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Import Results Summary:
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                      <div className="text-zinc-400 text-[10px]">Created</div>
+                      <div className="font-bold text-emerald-600 dark:text-emerald-400">{importResult.created}</div>
+                    </div>
+                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                      <div className="text-zinc-400 text-[10px]">Updated</div>
+                      <div className="font-bold text-blue-600 dark:text-blue-400">{importResult.updated}</div>
+                    </div>
+                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                      <div className="text-zinc-400 text-[10px]">Validated / Skipped</div>
+                      <div className="font-bold text-zinc-600 dark:text-zinc-300">{importResult.skipped}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* 3. Platform Settings Tab */}
           <TabsContent value="settings" className="mt-4">
-            <div className="max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40">
-              <div className="flex items-center justify-between mb-4">
+            <div className="max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40 space-y-4">
+              <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                     <Sliders className="h-4 w-4" />
@@ -334,17 +622,33 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="curr-year" className="text-xs">Current Active Academic Year</Label>
-                  <Input
-                    id="curr-year"
-                    type="number"
-                    value={settings.currentAcademicYear}
-                    disabled={!isPresident}
-                    onChange={(e) =>
-                      setSettings({ ...settings, currentAcademicYear: Number(e.target.value) })
-                    }
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="curr-year" className="text-xs">Current Active Academic Year</Label>
+                    <Input
+                      id="curr-year"
+                      type="number"
+                      value={settings.currentAcademicYear}
+                      disabled={!isPresident}
+                      onChange={(e) =>
+                        setSettings({ ...settings, currentAcademicYear: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="auto-approve-cap" className="text-xs">Auto-Approve Threshold (pts)</Label>
+                    <Input
+                      id="auto-approve-cap"
+                      type="number"
+                      value={settings.autoApproveClaimMaxPoints}
+                      disabled={!isPresident}
+                      onChange={(e) =>
+                        setSettings({ ...settings, autoApproveClaimMaxPoints: Number(e.target.value) })
+                      }
+                    />
+                    <p className="text-[11px] text-zinc-500">Improvement 03: Routine claims ≤ threshold auto-clear.</p>
+                  </div>
                 </div>
 
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
@@ -376,14 +680,14 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          {/* 3. Club Audit Log Tab */}
+          {/* 4. Club Audit Log Tab (Improvement 02 & 05) */}
           <TabsContent value="audit" className="mt-4 space-y-4">
             <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                     <History className="h-4 w-4" />
-                    Unfiltered Club-Wide Audit Log ({POINT_EVENTS.length})
+                    Club-Wide Audit Log ({auditEvents.length})
                   </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Append-only ledger of all claims, adjustments, warnings, and officer actions across all divisions.
@@ -401,55 +705,119 @@ export default function AdminPage() {
                       <TableHead>Type</TableHead>
                       <TableHead className="text-right">Delta</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Approver / Officer</TableHead>
+                      <TableHead>Notes &amp; Decision</TableHead>
+                      <TableHead>Approver</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {POINT_EVENTS.map((e) => {
-                      const member = getMember(e.memberId)
-                      const approver = e.approverId ? getMember(e.approverId) : null
-                      return (
-                        <TableRow key={e.id} className="text-xs">
-                          <TableCell className="text-zinc-500 whitespace-nowrap">
-                            {new Date(e.createdAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-semibold text-zinc-900 dark:text-zinc-100">
-                              {member?.name}
+                    {auditEvents.map((e) => (
+                      <TableRow key={e.id} className="text-xs">
+                        <TableCell className="text-zinc-500 whitespace-nowrap">
+                          {new Date(e.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {(e as any).member_name ?? e.memberId}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100">{e.taskTitle}</div>
+                        </TableCell>
+                        <TableCell>
+                          <EventTypePill type={e.eventType ?? "claim"} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <PointDelta value={e.delta} />
+                        </TableCell>
+                        <TableCell>
+                          <StatusPill status={e.status} />
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <div className="text-[11px] text-zinc-700 dark:text-zinc-300 line-clamp-1">&ldquo;{e.reason}&rdquo;</div>
+                          {e.decisionReason && (
+                            <div className="text-[10px] text-zinc-500 italic line-clamp-1">
+                              Decision: {e.decisionReason}
                             </div>
-                            <div className="text-[11px] text-zinc-400">{member?.division}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-zinc-900 dark:text-zinc-100">{e.taskTitle}</div>
-                            <div className="text-[11px] text-zinc-400 line-clamp-1">{e.reason}</div>
-                          </TableCell>
-                          <TableCell>
-                            <EventTypePill type={e.eventType ?? "claim"} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <PointDelta value={e.delta} />
-                          </TableCell>
-                          <TableCell>
-                            <StatusPill status={e.status} />
-                          </TableCell>
-                          <TableCell className="text-zinc-600 dark:text-zinc-300">
-                            {approver ? approver.name : "—"}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                          )}
+                        </TableCell>
+                        <TableCell className="text-zinc-600 dark:text-zinc-300">
+                          {(e as any).approver_name ?? e.approverId ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
             </div>
           </TabsContent>
 
-          {/* 4. Annual Reset Tab */}
+          {/* 5. Login Failures Tab (Improvement 08) */}
+          <TabsContent value="failures" className="mt-4 space-y-4">
+            <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <UserX className="h-4 w-4 text-amber-500" />
+                    Unmatched Login Attempts Log ({loginFailures.length})
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Google OAuth attempts by emails not yet present in the verified members table (Improvement 01 &amp; 08).
+                  </p>
+                </div>
+              </div>
+
+              {loginFailures.length === 0 ? (
+                <div className="p-8 text-center text-xs text-zinc-500 border border-dashed rounded-lg">
+                  No failed login attempts recorded.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead>Attempted Email</TableHead>
+                        <TableHead>Google ID</TableHead>
+                        <TableHead>Failure Reason</TableHead>
+                        <TableHead className="text-right">Timestamp</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loginFailures.map((f) => (
+                        <TableRow key={f.id} className="text-xs">
+                          <TableCell className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                            {f.email}
+                          </TableCell>
+                          <TableCell className="font-mono text-zinc-500">
+                            {f.googleId || "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400">
+                              {f.reason}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-zinc-500">
+                            {new Date(f.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* 6. Annual Reset Tab */}
           <TabsContent value="reset" className="mt-4 space-y-4">
             <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40">
               <div className="flex items-center justify-between mb-4">
@@ -509,17 +877,17 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {resetPreview.map((item, idx) => (
-                        <TableRow key={item.member.id} className="text-xs">
+                       {resetPreview.map((item, idx) => (
+                        <TableRow key={item.id} className="text-xs">
                           <TableCell className="font-semibold tabular-nums text-zinc-500">
                             #{idx + 1}
                           </TableCell>
                           <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {item.member.name}
+                            {item.name}
                           </TableCell>
-                          <TableCell className="text-zinc-500">{item.member.division}</TableCell>
+                          <TableCell className="text-zinc-500">{item.division}</TableCell>
                           <TableCell className="text-right font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
-                            {item.finalScore} pts
+                            {item.score} pts
                           </TableCell>
                           <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">
                             +{settings.initialBuffer} pts
@@ -534,6 +902,7 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+      )}
 
       {/* Task Create/Edit Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -592,6 +961,28 @@ export default function AdminPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Division Scope</Label>
+              <Select
+                value={draft.division_id || "club_wide"}
+                onValueChange={(v) => setDraft({ ...draft, division_id: v === "club_wide" ? null : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select division" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="club_wide">Club-Wide (All Enrolled Members)</SelectItem>
+                  {divisions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name} Division
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Division tasks can only be claimed by members enrolled in that division.
+              </p>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
               <div>

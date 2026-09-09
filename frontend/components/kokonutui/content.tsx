@@ -1,16 +1,40 @@
 "use client"
 
+import { useMemo } from "react"
 import { LineChart, Receipt, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import List01 from "./list-01"
 import List02 from "./list-02"
 import List03 from "./list-03"
-import { useCurrentUser } from "@/frontend/components/user-context"
-import { getMemberEvents } from "@/lib/csec-data"
+import { useCurrentUser } from "@/components/user-context"
+import { useMemberEvents } from "@/lib/hooks/use-queries"
+import { DashboardSkeleton } from "@/components/csec/skeletons"
+import type { PointEvent } from "@/lib/csec-data"
 
 export default function Content() {
-  const { currentUser } = useCurrentUser()
-  const myEvents = getMemberEvents(currentUser.id).slice(0, 6)
+  const { currentUser, isAuthenticated } = useCurrentUser()
+  const { data: eventsData, isLoading } = useMemberEvents(isAuthenticated ? currentUser.id : null)
+
+  const events: PointEvent[] = useMemo(() => {
+    return (eventsData?.items || []).map((e) => ({
+      id: e.id,
+      memberId: e.member_id,
+      taskTitle: e.task_title || e.reason,
+      category: (e.task_id ? "division_session" : "external_activity") as any,
+      eventType: e.event_type as any,
+      delta: e.points_delta,
+      status: e.status as any,
+      reason: e.reason,
+      decisionReason: e.decision_reason,
+      approverId: e.approved_by,
+      academicYear: e.academic_year,
+      createdAt: e.created_at,
+    }))
+  }, [eventsData])
+
+  if (isLoading && events.length === 0) {
+    return <DashboardSkeleton />
+  }
 
   return (
     <div className="space-y-5">
@@ -58,7 +82,7 @@ export default function Content() {
             View full ledger <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <List02 events={myEvents} showMember={false} emptyLabel="You have no point events on record yet." />
+        <List02 events={events.slice(0, 6)} showMember={false} emptyLabel="You have no point events on record yet." />
       </div>
     </div>
   )

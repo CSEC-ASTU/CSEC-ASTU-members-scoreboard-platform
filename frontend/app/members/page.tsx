@@ -2,22 +2,17 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import { Input } from "@/frontend/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/frontend/components/ui/select"
-import { MemberAvatar, TierBadge, StatusPill } from "@/frontend/components/csec/ui-bits"
-import { Badge } from "@/frontend/components/ui/badge"
-import {
-  MEMBERS,
-  DIVISIONS,
-  ROLE_LABELS,
-  getMemberCycleScore,
-  getMemberCareerScore,
-  getMemberBadge,
-  type Role,
-} from "@/lib/csec-data"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
+import { MembersSkeleton } from "@/components/csec/skeletons"
+import { Badge } from "@/components/ui/badge"
+import { DIVISIONS, ROLE_LABELS, type Role } from "@/lib/csec-data"
 import { Search, ChevronRight, Users, ShieldAlert } from "lucide-react"
+import { type MemberOut, type DivisionOut } from "@/lib/api"
+import { useDivisions, useMembers } from "@/lib/hooks/use-queries"
 
 const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
@@ -29,38 +24,67 @@ export default function MembersPage() {
   const [role, setRole] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
 
-  const departments = useMemo(() => [...new Set(MEMBERS.map((m) => m.department))].sort(), [])
+  const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
+  const divisions: DivisionOut[] = divisionsData || []
+
+  const { data: membersData, isLoading: membersLoading } = useMembers({
+    division_id: division !== "all" ? division : undefined,
+    role: role !== "all" ? (role as Role) : undefined,
+    is_active: statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined,
+    search: q.trim() || undefined,
+  })
+
+  const members: MemberOut[] = membersData?.items || []
+  const isLoading = membersLoading || divisionsLoading
+
+  const divisionMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of divisions) {
+      map[d.id] = d.name
+    }
+    return map
+  }, [divisions])
+
+  const departments = useMemo(
+    () => [...new Set(members.map((m) => m.department).filter(Boolean) as string[])].sort(),
+    [members],
+  )
   const years = useMemo(
-    () => [...new Set(MEMBERS.map((m) => m.joiningYear))].sort((a, b) => b - a),
-    [],
+    () => [...new Set(members.map((m) => m.joining_year).filter(Boolean))].sort((a, b) => (b as number) - (a as number)),
+    [members],
   )
 
   const rows = useMemo(() => {
-    return MEMBERS.filter((m) => {
-      if (q && !`${m.name} ${m.email}`.toLowerCase().includes(q.toLowerCase())) return false
-      if (division !== "all" && m.division !== division) return false
-      if (department !== "all" && m.department !== department) return false
-      if (year !== "all" && String(m.joiningYear) !== year) return false
-      if (role !== "all" && m.role !== role) return false
-      if (statusFilter === "active" && !m.isActive) return false
-      if (statusFilter === "inactive" && m.isActive) return false
-      return true
+    return members.map((m) => {
+      const primary = (m.division_id ? divisionMap[m.division_id] : null) || "General"
+      const secondary = m.secondary_division_id ? divisionMap[m.secondary_division_id] : null
+      return {
+        id: m.id,
+        name: m.full_name,
+        email: m.email,
+        division: primary,
+        secondaryDivision: secondary,
+        divisionsText: secondary ? `${primary} + ${secondary}` : primary,
+        department: m.department || "Engineering",
+        joiningYear: m.joining_year || 2026,
+        role: m.role,
+        isActive: m.is_active,
+        cycleScore: m.cycle_score ?? 50,
+        careerScore: m.career_score ?? 50,
+        badge: m.badge ?? null,
+      }
     })
-      .map((m) => {
-        const cycleScore = getMemberCycleScore(m.id)
-        const careerScore = getMemberCareerScore(m.id)
-        const badge = getMemberBadge(cycleScore)
-        return { ...m, cycleScore, careerScore, badge }
-      })
-      .sort((a, b) => b.cycleScore - a.cycleScore)
-  }, [q, division, department, year, role, statusFilter])
+  }, [members, divisionMap])
 
   return (
     <Layout>
-      <div className="space-y-6">
+      {isLoading && members.length === 0 ? (
+        <MembersSkeleton />
+      ) : (
+        <div className="space-y-6">
         <PageHeader
           title="Members Directory"
-          description={`${MEMBERS.length} members registered across ${DIVISIONS.length} divisions.`}
+          description={`${members.length} members registered across ${DIVISIONS.length} divisions.`}
         />
 
         {/* Filters */}
@@ -74,7 +98,13 @@ export default function MembersPage() {
               className="pl-9"
             />
           </div>
-          <FilterSelect value={division} onChange={setDivision} placeholder="All divisions" options={DIVISIONS} />
+          <FilterSelect
+            value={division}
+            onChange={setDivision}
+            placeholder="All divisions"
+            options={divisions.map((d) => d.id)}
+            labels={divisionMap}
+          />
           <FilterSelect value={department} onChange={setDepartment} placeholder="All departments" options={departments} />
           <FilterSelect
             value={year}
@@ -125,7 +155,7 @@ export default function MembersPage() {
                   )}
                 </div>
                 <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  {m.division} · {m.department} · Joined {m.joiningYear}
+                  {m.divisionsText} · {m.department} · Joined {m.joiningYear}
                 </div>
               </div>
 
@@ -144,6 +174,7 @@ export default function MembersPage() {
           ))}
         </div>
       </div>
+      )}
     </Layout>
   )
 }

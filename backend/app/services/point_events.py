@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -23,10 +23,28 @@ async def create_claim(
     task_id: UUID,
     reason: str | None,
     settings: Settings,
+    division_id: UUID | None = None,
 ) -> PointEvent:
     task = await db.get(Task, task_id)
     if task is None or not task.active:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    member_divs = {d for d in [member.division_id, member.secondary_division_id] if d is not None}
+
+    # Division scoping rule
+    if task.division_id is not None:
+        if task.division_id not in member_divs:
+            raise HTTPException(
+                status_code=403,
+                detail="You must be an active member of this division to claim this task.",
+            )
+        event_division_id = task.division_id
+    else:
+        # Club-wide task: attribute to chosen division if valid, else primary division
+        if division_id and division_id in member_divs:
+            event_division_id = division_id
+        else:
+            event_division_id = member.division_id or member.secondary_division_id
 
     year = await get_current_academic_year(db)
     auto = abs(task.base_points) <= settings.auto_approve_claim_max_points and not task.is_penalty
@@ -34,6 +52,7 @@ async def create_claim(
     event = PointEvent(
         member_id=member.id,
         task_id=task.id,
+        division_id=event_division_id,
         event_type=PointEventType.CLAIM,
         points_delta=task.base_points,
         reason=reason or f"Claim: {task.title}",
@@ -58,6 +77,7 @@ async def create_officer_event(
     points_delta: int,
     reason: str,
     task_id: UUID | None,
+    division_id: UUID | None = None,
 ) -> PointEvent:
     if event_type == PointEventType.CLAIM:
         raise HTTPException(status_code=400, detail="Use claim shape for event_type claim")
@@ -68,22 +88,28 @@ async def create_officer_event(
     if target is None:
         raise HTTPException(status_code=404, detail="Member not found")
 
+    target_divs = {d for d in [target.division_id, target.secondary_division_id] if d is not None}
+
     # Scope check for division heads
     if officer.role == MemberRole.DIVISION_HEAD:
-        if target.division_id != officer.division_id:
-            raise HTTPException(status_code=403, detail="Outside your division")
+        if officer.division_id not in target_divs:
+            raise HTTPException(status_code=403, detail="Member is not enrolled in your division")
         if not has_permission(officer_perms, "approve_task", division_id=officer.division_id):
             raise HTTPException(status_code=403, detail="Missing approve_task permission")
+        event_division_id = officer.division_id
     elif not (
         is_club_wide_officer(officer)
         or has_permission(officer_perms, "approve_task")
     ):
         raise HTTPException(status_code=403, detail="Not permitted")
+    else:
+        event_division_id = division_id or target.division_id or target.secondary_division_id
 
     year = await get_current_academic_year(db)
     event = PointEvent(
         member_id=target.id,
         task_id=task_id,
+        division_id=event_division_id,
         event_type=event_type,
         points_delta=points_delta,
         reason=reason,
@@ -121,8 +147,18 @@ async def decide_event(
 
     # Scope: division head limited to their division
     if actor.role == MemberRole.DIVISION_HEAD:
-        if submitter.division_id != actor.division_id:
-            raise HTTPException(status_code=404, detail="Point event not found")
+        event_division = event.division_id
+        if not event_division and event.task_id:
+            task = await db.get(Task, event.task_id)
+            event_division = task.division_id if task else None
+
+        if event_division is not None and event_division != actor.division_id:
+            raise HTTPException(status_code=403, detail="Point event belongs to another division")
+
+        submitter_divs = {d for d in [submitter.division_id, submitter.secondary_division_id] if d is not None}
+        if actor.division_id not in submitter_divs:
+            raise HTTPException(status_code=403, detail="Submitter is not enrolled in your division")
+
         task = await db.get(Task, event.task_id) if event.task_id else None
         category = task.category if task else None
         if not (
@@ -157,8 +193,12 @@ async def visible_point_events_filter(query, actor: Member):
     if actor.role == MemberRole.PRESIDENT or actor.role == MemberRole.VICE_PRESIDENT:
         return query
     if actor.role == MemberRole.DIVISION_HEAD and actor.division_id:
-        # Join members to filter by division
-        return query.join(Member, Member.id == PointEvent.member_id).where(
-            Member.division_id == actor.division_id
+        # Division heads see events attributed to their division, OR for tasks scoped to their division
+        return query.outerjoin(Task, Task.id == PointEvent.task_id).where(
+            or_(
+                PointEvent.division_id == actor.division_id,
+                Task.division_id == actor.division_id,
+            )
         )
     return query.where(PointEvent.member_id == actor.id)
+

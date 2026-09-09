@@ -1,4 +1,4 @@
-import Dashboard from "@/frontend/components/kokonutui/dashboard"
+import Dashboard from "@/components/kokonutui/dashboard"
 
 export default function DashboardPage() {
   return <Dashboard />

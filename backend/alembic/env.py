@@ -15,7 +15,13 @@ target_metadata = Base.metadata
 
 settings = get_settings()
 # Alembic uses sync driver
-sync_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+sync_url = (
+    settings.database_url
+    .replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    .replace("ssl=require", "sslmode=require")
+    .replace("?ssl=", "?sslmode=")
+    .replace("&ssl=", "&sslmode=")
+)
 config.set_main_option("sqlalchemy.url", sync_url)
 
 

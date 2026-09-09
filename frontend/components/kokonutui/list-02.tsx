@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/frontend/components/ui/table"
-import { StatusPill, PointDelta, MemberAvatar, EventTypePill } from "@/frontend/components/csec/ui-bits"
+} from "@/components/ui/table"
+import { StatusPill, PointDelta, MemberAvatar, EventTypePill } from "@/components/csec/ui-bits"
 import { POINT_EVENTS, getMember, TASK_CATEGORY_LABELS, type PointEvent } from "@/lib/csec-data"
 
 interface List02Props {
@@ -51,7 +51,7 @@ export default function List02({
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Points</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="hidden md:table-cell">Reason</TableHead>
+            <TableHead className="hidden md:table-cell">Notes &amp; Decision</TableHead>
             <TableHead className="text-right">Date</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,8 +90,17 @@ export default function List02({
                 <TableCell>
                   <StatusPill status={e.status} />
                 </TableCell>
-                <TableCell className="hidden max-w-[280px] md:table-cell">
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-1">{e.reason}</span>
+                <TableCell className="hidden max-w-[300px] md:table-cell">
+                  <div className="space-y-0.5">
+                    <span className="text-xs text-zinc-700 dark:text-zinc-300 line-clamp-1">
+                      &ldquo;{e.reason}&rdquo;
+                    </span>
+                    {e.decisionReason && (
+                      <span className="inline-block text-[11px] text-zinc-500 dark:text-zinc-400 italic line-clamp-1">
+                        ↳ Decision: {e.decisionReason}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right text-xs text-zinc-500 dark:text-zinc-400">
                   {formatDate(e.createdAt)}

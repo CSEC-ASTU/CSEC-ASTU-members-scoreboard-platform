@@ -19,8 +19,6 @@ def build_google_login_url(settings: Settings, state: str) -> str:
         "redirect_uri": settings.google_redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
-        "access_type": "online",
-        "include_granted_scopes": "true",
         "prompt": "select_account",
         "state": state,
     }

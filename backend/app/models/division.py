@@ -19,5 +19,12 @@ class Division(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    members: Mapped[list["Member"]] = relationship(back_populates="division")  # noqa: F821
+    members: Mapped[list["Member"]] = relationship(
+        back_populates="division",
+        foreign_keys="Member.division_id",
+    )  # noqa: F821
+    secondary_members: Mapped[list["Member"]] = relationship(
+        back_populates="secondary_division",
+        foreign_keys="Member.secondary_division_id",
+    )  # noqa: F821
     tasks: Mapped[list["Task"]] = relationship(back_populates="division")  # noqa: F821

@@ -1,32 +1,51 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, notFound } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import Layout from "@/frontend/components/kokonutui/layout"
-import List02 from "@/frontend/components/kokonutui/list-02"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/frontend/components/ui/tabs"
-import { Input } from "@/frontend/components/ui/input"
-import { Button } from "@/frontend/components/ui/button"
-import { Badge } from "@/frontend/components/ui/badge"
-import { MemberAvatar, WarningPill, TierBadge, ScoreCapProgress } from "@/frontend/components/csec/ui-bits"
-import { IssueWarningDialog } from "@/frontend/components/csec/issue-warning-dialog"
-import { useCurrentUser } from "@/frontend/components/user-context"
-import { canIssueWarning } from "@/lib/permissions"
+import Layout from "@/components/kokonutui/layout"
+import List02 from "@/components/kokonutui/list-02"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
-  getMember,
-  getMemberCycleScore,
-  getMemberCareerScore,
-  getMemberBadge,
-  getMemberEvents,
-  getMemberWarnings,
-  getMemberAnnualSummaries,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { MemberAvatar, WarningPill, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
+import { PageSkeletonWrapper, MemberDetailSkeleton } from "@/components/csec/skeletons"
+import { IssueWarningDialog } from "@/components/csec/issue-warning-dialog"
+import { useCurrentUser } from "@/components/user-context"
+import { canIssueWarning, canManagePermissions } from "@/lib/permissions"
+import {
   ROLE_LABELS,
   PLATFORM_SETTINGS,
   type PointEvent,
   type Warning,
+  type Member,
+  type Role,
 } from "@/lib/csec-data"
+import {
+  membersService,
+  divisionsService,
+  type MemberDetailOut,
+  type DivisionOut,
+  type PointEventOut,
+} from "@/lib/api"
 import {
   Send,
   Trophy,
@@ -39,48 +58,180 @@ import {
   Sparkles,
   History,
   AlertTriangle,
+  Pencil,
+  Loader2,
 } from "lucide-react"
+
+import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation } from "@/lib/hooks/use-queries"
+import { useQueryClient } from "@tanstack/react-query"
+
+const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
 export default function MemberProfilePage() {
   const params = useParams<{ id: string }>()
   const { currentUser } = useCurrentUser()
-  const member = getMember(params.id)
+  const queryClient = useQueryClient()
 
-  const [localEvents, setLocalEvents] = useState<PointEvent[]>([])
-  const [localWarnings, setLocalWarnings] = useState<Warning[]>([])
+  const { data: memberData, isLoading: memberLoading, isError: memberError } = useMemberDetail(params.id)
+  const { data: evtsData, isLoading: evtsLoading } = useMemberDetailEvents(params.id)
+  const { data: divisionsData, isLoading: divsLoading } = useDivisions()
+  const updateMemberMutation = useUpdateMemberRoleOrDeptMutation()
+
+  const divisions = divisionsData || []
+  const isLoading = memberLoading || evtsLoading || divsLoading
+  const hasError = memberError
+
   const [warningDialogOpen, setWarningDialogOpen] = useState(false)
-  const [telegram, setTelegram] = useState(member?.telegramUsername ?? "")
-  const [connected, setConnected] = useState(Boolean(member?.telegramUsername))
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editRole, setEditRole] = useState<Role>("member")
+  const [editDivisionId, setEditDivisionId] = useState<string>("")
+  const [editSecondaryDivisionId, setEditSecondaryDivisionId] = useState<string>("none")
+  const [editDept, setEditDept] = useState<string>("")
+  const [savingEdit, setSavingEdit] = useState(false)
 
-  if (!member) return notFound()
+  // Initialize edit form when memberData loads
+  useEffect(() => {
+    if (memberData) {
+      setEditRole(memberData.role)
+      setEditDivisionId(memberData.division_id || "")
+      setEditSecondaryDivisionId(memberData.secondary_division_id || "none")
+      setEditDept(memberData.department || "")
+    }
+  }, [memberData])
 
-  const events = useMemo(
-    () => [...localEvents, ...getMemberEvents(member.id)],
-    [localEvents, member.id],
-  )
-  const warnings = useMemo(
-    () => [...localWarnings, ...getMemberWarnings(member.id)],
-    [localWarnings, member.id],
-  )
-  const annualSummaries = useMemo(() => getMemberAnnualSummaries(member.id), [member.id])
+  const events: PointEvent[] = useMemo(() => {
+    return (evtsData?.items || []).map((e: PointEventOut) => ({
+      id: e.id,
+      memberId: e.member_id,
+      taskTitle: e.task_title || e.reason,
+      category: "division_session" as any,
+      eventType: e.event_type as any,
+      delta: e.points_delta,
+      status: e.status as any,
+      reason: e.reason,
+      decisionReason: e.decision_reason,
+      approverId: e.approved_by,
+      academicYear: e.academic_year,
+      createdAt: e.created_at,
+    }))
+  }, [evtsData])
 
-  const cycleScore = getMemberCycleScore(member.id, events)
-  const careerScore = getMemberCareerScore(member.id, events)
-  const badge = getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
+  const primaryDivisionName = useMemo(() => {
+    if (!memberData) return "General"
+    if (memberData.division_name) return memberData.division_name
+    const found = divisions.find((d) => d.id === memberData.division_id)
+    return found ? found.name : "General"
+  }, [memberData, divisions])
 
-  const isSelf = currentUser.id === member.id
-  const officerCanWarn = canIssueWarning(currentUser, member)
+  const secondaryDivisionName = useMemo(() => {
+    if (!memberData?.secondary_division_id) return null
+    const found = divisions.find((d) => d.id === memberData.secondary_division_id)
+    return found ? found.name : null
+  }, [memberData, divisions])
+
+  const adaptedMember = useMemo<Member | null>(() => {
+    if (!memberData) return null
+    return {
+      id: memberData.id,
+      name: memberData.full_name,
+      email: memberData.email,
+      avatar: memberData.profile_image_url ?? undefined,
+      division: primaryDivisionName as any,
+      department: memberData.department || "Engineering",
+      joiningYear: memberData.joining_year || 2024,
+      role: memberData.role,
+      isActive: memberData.is_active,
+      onboarded: true,
+      permissions: [],
+    }
+  }, [memberData, primaryDivisionName])
+
+  const warnings = useMemo(() => {
+    return events
+      .filter((e) => e.eventType === "yellow_warning" || e.eventType === "red_warning")
+      .map((e) => ({
+        id: e.id,
+        memberId: e.memberId,
+        level: (e.eventType === "yellow_warning" ? "yellow" : "red") as "yellow" | "red",
+        reason: e.reason,
+        issuedBy: e.approverId || "Officer",
+        academicYear: e.academicYear,
+        createdAt: e.createdAt,
+      }))
+  }, [events])
+
+  const cycleScore = memberData?.scores?.cycle_score ?? memberData?.cycle_score ?? 50
+  const careerScore = memberData?.scores?.career_score ?? memberData?.career_score ?? 50
+  const badge = memberData?.scores?.badge ?? memberData?.badge ?? null
+  const annualSummaries: any[] = []
+
+  const isSelf = currentUser.id === memberData?.id
+  const officerCanWarn = adaptedMember ? canIssueWarning(currentUser, adaptedMember) : false
 
   const redCount = warnings.filter((w) => w.level === "red").length
   const yellowCount = warnings.filter((w) => w.level === "yellow").length
   const ladderStage = redCount > 0 ? 2 : yellowCount > 0 ? 1 : 0
 
-  function handleWarningSuccess(newEvent: PointEvent, newWarning?: Warning) {
-    setLocalEvents((prev) => [newEvent, ...prev])
-    if (newWarning) {
-      setLocalWarnings((prev) => [newWarning, ...prev])
+  const canEditMember = canManagePermissions(currentUser)
+
+  function openEditDialog() {
+    if (!memberData) return
+    setEditRole(memberData.role)
+    setEditDivisionId(memberData.division_id || (divisions[0]?.id ?? ""))
+    setEditSecondaryDivisionId(memberData.secondary_division_id || "none")
+    setEditDept(memberData.department || "")
+    setEditDialogOpen(true)
+  }
+
+  async function handleSaveMemberAdmin(e: React.FormEvent) {
+    e.preventDefault()
+    if (!memberData) return
+    if (!editDivisionId) {
+      toast.error("Primary division is required.")
+      return
+    }
+    if (editSecondaryDivisionId !== "none" && editSecondaryDivisionId === editDivisionId) {
+      toast.error("Secondary division cannot be the same as primary division.")
+      return
+    }
+    setSavingEdit(true)
+    try {
+      await updateMemberMutation.mutateAsync({
+        id: memberData.id,
+        data: {
+          role: editRole,
+          division_id: editDivisionId,
+          secondary_division_id: editSecondaryDivisionId === "none" ? null : editSecondaryDivisionId,
+          department: editDept.trim() || undefined,
+        },
+      })
+      toast.success("Member details updated successfully")
+      setEditDialogOpen(false)
+    } catch (err: any) {
+      toast.error("Failed to update member", { description: err.message })
+    } finally {
+      setSavingEdit(false)
     }
   }
+
+  function handleWarningSuccess() {
+    queryClient.invalidateQueries({ queryKey: ["member", params.id] })
+    queryClient.invalidateQueries({ queryKey: ["member-events", params.id] })
+  }
+
+  if (isLoading && !adaptedMember) {
+    return (
+      <Layout>
+        <MemberDetailSkeleton />
+      </Layout>
+    )
+  }
+
+  if (hasError || !memberData || !adaptedMember) {
+    return notFound()
+  }
+
+  const member = adaptedMember
 
   return (
     <Layout>
@@ -105,7 +256,13 @@ export default function MemberProfilePage() {
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{member.email}</p>
                 <div className="mt-1 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  <span>{member.division}</span>
+                  <span className="font-medium text-zinc-800 dark:text-zinc-200">{primaryDivisionName}</span>
+                  {secondaryDivisionName && (
+                    <>
+                      <span>•</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">{secondaryDivisionName} (2nd)</span>
+                    </>
+                  )}
                   <span>•</span>
                   <span>{member.department}</span>
                   <span>•</span>
@@ -121,6 +278,12 @@ export default function MemberProfilePage() {
                   <Award className="mr-1.5 h-4 w-4" /> Achievement Card
                 </Button>
               </Link>
+
+              {canEditMember && (
+                <Button variant="outline" size="sm" onClick={openEditDialog}>
+                  <Pencil className="mr-1.5 h-4 w-4" /> Edit Role &amp; Divisions
+                </Button>
+              )}
 
               {officerCanWarn && (
                 <Button
@@ -156,10 +319,11 @@ export default function MemberProfilePage() {
 
             <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Building2 className="h-3 w-3 text-zinc-500" /> Division
+                <Building2 className="h-3 w-3 text-zinc-500" /> Divisions
               </div>
-              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">
-                {member.division}
+              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate" title={secondaryDivisionName ? `${primaryDivisionName} & ${secondaryDivisionName}` : primaryDivisionName}>
+                {primaryDivisionName}
+                {secondaryDivisionName ? ` + ${secondaryDivisionName}` : ""}
               </div>
             </div>
 
@@ -255,7 +419,7 @@ export default function MemberProfilePage() {
                     <WarningPill level={w.level} />
                     <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{w.reason}</p>
                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Issued by {getMember(w.issuedBy)?.name ?? "Officer"} · Academic Year {w.academicYear}
+                      Academic Year {w.academicYear}
                     </p>
                   </div>
                   <span className="whitespace-nowrap text-xs text-zinc-400">
@@ -284,7 +448,7 @@ export default function MemberProfilePage() {
                       </Badge>
                     </div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      Granted by {getMember(p.grantedBy)?.name ?? "Officer"}
+                      Granted by {p.grantedBy ?? "Officer"}
                       {p.expiresAt && ` · expires ${new Date(p.expiresAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`}
                     </div>
                   </div>
@@ -333,6 +497,98 @@ export default function MemberProfilePage() {
         onOpenChange={setWarningDialogOpen}
         onSuccess={handleWarningSuccess}
       />
+
+      {/* Edit Member Admin Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Member Profile</DialogTitle>
+            <DialogDescription>
+              Update member role, department, and division memberships (capped at 2 divisions).
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveMemberAdmin} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="member-name" className="text-xs">Member Name</Label>
+              <Input id="member-name" value={member.name} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Platform Role</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as Role)}>
+                <SelectTrigger className="text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r} value={r} className="text-xs">
+                      {ROLE_LABELS[r]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Primary Division</Label>
+                <Select value={editDivisionId} onValueChange={setEditDivisionId}>
+                  <SelectTrigger className="text-xs">
+                    <SelectValue placeholder="Select primary" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divisions.map((d) => (
+                      <SelectItem key={d.id} value={d.id} className="text-xs">
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Secondary Division</Label>
+                <Select value={editSecondaryDivisionId} onValueChange={setEditSecondaryDivisionId}>
+                  <SelectTrigger className="text-xs">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">None (1 division only)</SelectItem>
+                    {divisions
+                      .filter((d) => d.id !== editDivisionId)
+                      .map((d) => (
+                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-dept" className="text-xs">Department</Label>
+              <Input
+                id="edit-dept"
+                value={editDept}
+                onChange={(e) => setEditDept(e.target.value)}
+                placeholder="e.g. Software Engineering"
+                className="text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={savingEdit}>
+                {savingEdit && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   )
 }

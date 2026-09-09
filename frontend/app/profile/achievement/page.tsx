@@ -1,9 +1,9 @@
 "use client"
 
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import { AchievementCard } from "@/frontend/components/csec/achievement-card"
-import { useCurrentUser } from "@/frontend/components/user-context"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import { AchievementCard } from "@/components/csec/achievement-card"
+import { useCurrentUser } from "@/components/user-context"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 

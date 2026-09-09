@@ -51,11 +51,19 @@ async def list_members(
 
     # Server-side scope
     if user.member.role == MemberRole.DIVISION_HEAD:
-        q = q.where(Member.division_id == user.member.division_id)
-        count_q = count_q.where(Member.division_id == user.member.division_id)
+        div_filter = or_(
+            Member.division_id == user.member.division_id,
+            Member.secondary_division_id == user.member.division_id,
+        )
+        q = q.where(div_filter)
+        count_q = count_q.where(div_filter)
     elif division_id is not None:
-        q = q.where(Member.division_id == division_id)
-        count_q = count_q.where(Member.division_id == division_id)
+        div_filter = or_(
+            Member.division_id == division_id,
+            Member.secondary_division_id == division_id,
+        )
+        q = q.where(div_filter)
+        count_q = count_q.where(div_filter)
 
     if role is not None:
         q = q.where(Member.role == role)
@@ -180,8 +188,10 @@ async def update_member(
 
     if body.role is not None:
         target.role = body.role
-    if body.division_id is not None:
+    if "division_id" in body.model_fields_set:
         target.division_id = body.division_id
+    if "secondary_division_id" in body.model_fields_set:
+        target.secondary_division_id = body.secondary_division_id
     if body.department is not None:
         target.department = body.department
     await db.flush()
@@ -271,14 +281,21 @@ async def achievement_card(member_id: UUID, db: DbSession, user: RequireUser) ->
     if m.division_id:
         div = await db.get(Division, m.division_id)
         div_name = div.name if div else None
+    sec_div_name = None
+    if m.secondary_division_id:
+        sec_div = await db.get(Division, m.secondary_division_id)
+        sec_div_name = sec_div.name if sec_div else None
     return AchievementCardOut(
         full_name=m.full_name,
         joining_year=m.joining_year,
         division_id=m.division_id,
         division_name=div_name,
+        secondary_division_id=m.secondary_division_id,
+        secondary_division_name=sec_div_name,
         career_score=scores["career_score"],
         cycle_score=scores["cycle_score"],
         display_score=scores["display_score"],
         badges=[badge] if badge else [],
         profile_image_url=m.profile_image_url,
     )
+

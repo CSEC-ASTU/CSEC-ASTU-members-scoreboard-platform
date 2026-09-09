@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Award, Sparkles, Share2, Copy, Check, ShieldCheck, Trophy, Calendar } from "lucide-react"
-import { Button } from "@/frontend/components/ui/button"
-import { MemberAvatar, TierBadge } from "@/frontend/components/csec/ui-bits"
+import { Button } from "@/components/ui/button"
+import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 import {
   type Member,
   getMemberCareerScore,

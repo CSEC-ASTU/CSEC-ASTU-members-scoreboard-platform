@@ -31,6 +31,7 @@ class MeOut(BaseModel):
     email: EmailStr
     profile_image_url: str | None
     division_id: UUID | None
+    secondary_division_id: UUID | None = None
     role: MemberRole
     department: str | None
     joining_year: int | None
@@ -52,6 +53,7 @@ class MemberListItem(BaseModel):
     email: EmailStr
     profile_image_url: str | None
     division_id: UUID | None
+    secondary_division_id: UUID | None = None
     role: MemberRole
     department: str | None
     joining_year: int | None
@@ -75,6 +77,7 @@ class MemberSelfUpdate(BaseModel):
 class MemberAdminUpdate(BaseModel):
     role: MemberRole | None = None
     division_id: UUID | None = None
+    secondary_division_id: UUID | None = None
     department: str | None = None
 
 
@@ -106,6 +109,8 @@ class AchievementCardOut(BaseModel):
     joining_year: int | None
     division_id: UUID | None
     division_name: str | None
+    secondary_division_id: UUID | None = None
+    secondary_division_name: str | None = None
     career_score: int
     cycle_score: int
     display_score: int
@@ -139,20 +144,25 @@ class DivisionOut(BaseModel):
 # ---- Leaderboard ----
 
 
-class LeaderboardItem(BaseModel):
+class LeaderboardItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     rank: int
     member_id: UUID
     full_name: str
     division_id: UUID | None
+    division_name: str | None
+    cycle_score: int
     display_score: int
     career_score: int
     badge: str | None
 
 
 class LeaderboardOut(BaseModel):
-    academic_year: int
+    items: list[LeaderboardItemOut]
     score_cap: int
-    items: list[LeaderboardItem]
+    current_academic_year: int
+    cycle_mode: str = "open"
 
 
 # ---- Tasks ----
@@ -173,7 +183,7 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     division_id: UUID | None = None
-    category: str | None = None
+    category: str | None = Field(default=None, min_length=1, max_length=100)
     base_points: int | None = None
     is_repeatable: bool | None = None
     is_penalty: bool | None = None
@@ -202,6 +212,7 @@ class TaskOut(BaseModel):
 class ClaimCreate(BaseModel):
     task_id: UUID
     reason: str | None = None
+    division_id: UUID | None = None
 
 
 class OfficerPointEventCreate(BaseModel):
@@ -210,6 +221,7 @@ class OfficerPointEventCreate(BaseModel):
     points_delta: int
     reason: str = Field(min_length=1)
     task_id: UUID | None = None
+    division_id: UUID | None = None
 
 
 class PointEventOut(BaseModel):
@@ -218,6 +230,7 @@ class PointEventOut(BaseModel):
     id: UUID
     member_id: UUID
     task_id: UUID | None
+    division_id: UUID | None = None
     event_type: PointEventType
     points_delta: int
     reason: str
@@ -327,3 +340,23 @@ class HealthOut(BaseModel):
     status: str
     database: str
     academic_year: int | None = None
+
+
+# ---- Leaderboard ----
+
+
+class LeaderboardItem(BaseModel):
+    rank: int
+    member_id: UUID
+    full_name: str
+    division_id: UUID | None = None
+    display_score: int
+    career_score: int
+    badge: str | None = None
+
+
+class LeaderboardOut(BaseModel):
+    academic_year: int
+    score_cap: int
+    items: list[LeaderboardItem]
+

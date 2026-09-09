@@ -20,6 +20,9 @@ class Member(Base):
     division_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
     )
+    secondary_division_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+    )
     role: Mapped[MemberRole] = mapped_column(
         Enum(MemberRole, name="member_role", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -45,7 +48,10 @@ class Member(Base):
     telegram_connect_token: Mapped[str | None] = mapped_column(String(255))
     telegram_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    division: Mapped["Division | None"] = relationship(back_populates="members")  # noqa: F821
+    division: Mapped["Division | None"] = relationship(foreign_keys=[division_id], back_populates="members")  # noqa: F821
+    secondary_division: Mapped["Division | None"] = relationship(
+        foreign_keys=[secondary_division_id], back_populates="secondary_members"
+    )  # noqa: F821
     permissions: Mapped[list["MemberPermission"]] = relationship(  # noqa: F821
         back_populates="member",
         foreign_keys="MemberPermission.member_id",

@@ -2,7 +2,7 @@
 
 import { LogOut, Trophy, Building2, GraduationCap, Send, Award, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useCurrentUser } from "@/frontend/components/user-context"
+import { useCurrentUser } from "@/components/user-context"
 import {
   getMemberCycleScore,
   getMemberCareerScore,
@@ -10,7 +10,7 @@ import {
   ROLE_LABELS,
   PLATFORM_SETTINGS,
 } from "@/lib/csec-data"
-import { MemberAvatar, TierBadge } from "@/frontend/components/csec/ui-bits"
+import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 
 export default function Profile01() {
   const { currentUser } = useCurrentUser()

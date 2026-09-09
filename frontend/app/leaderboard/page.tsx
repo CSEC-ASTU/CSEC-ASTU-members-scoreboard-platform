@@ -2,49 +2,70 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import { MemberAvatar, TierBadge } from "@/frontend/components/csec/ui-bits"
-import { Badge } from "@/frontend/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/frontend/components/ui/select"
-import { useCurrentUser } from "@/frontend/components/user-context"
-import {
-  DIVISIONS,
-  ROLE_LABELS,
-  getLeaderboard,
-  getHistoricalLeaderboard,
-  PLATFORM_SETTINGS,
-  type Division,
-} from "@/lib/csec-data"
-import { Trophy, Crown, Medal, Sparkles, Calendar } from "lucide-react"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useCurrentUser } from "@/components/user-context"
+import { DIVISIONS, ROLE_LABELS } from "@/lib/csec-data"
+import { Trophy, Crown, Medal, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { leaderboardService, type LeaderboardItemOut, type DivisionOut } from "@/lib/api"
+import { LeaderboardSkeleton } from "@/components/csec/skeletons"
+import { useDivisions } from "@/lib/hooks/use-queries"
+import { useQuery } from "@tanstack/react-query"
 
 export default function LeaderboardPage() {
   const { currentUser } = useCurrentUser()
-  const [division, setDivision] = useState<Division | "all">("all")
-  const [academicYear, setAcademicYear] = useState<string>(String(PLATFORM_SETTINGS.currentAcademicYear))
+  const [selectedDivision, setSelectedDivision] = useState<string>("all")
+  const [academicYear, setAcademicYear] = useState<string>("2026")
 
-  const isCurrentYear = Number(academicYear) === PLATFORM_SETTINGS.currentAcademicYear
+  const isCurrentYear = academicYear === "2026"
 
-  const currentRows = useMemo(
-    () => getLeaderboard(division === "all" ? undefined : division, Number(academicYear)),
-    [division, academicYear],
-  )
+  const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
+  const divisions: DivisionOut[] = divisionsData || []
 
-  const historicalRows = useMemo(
-    () =>
+  const divId = selectedDivision === "all" ? undefined : selectedDivision
+  const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery({
+    queryKey: ["leaderboard", academicYear, divId],
+    queryFn: () =>
       isCurrentYear
-        ? []
-        : getHistoricalLeaderboard(Number(academicYear), division === "all" ? undefined : division),
-    [isCurrentYear, academicYear, division],
-  )
+        ? leaderboardService.getLeaderboard(divId)
+        : leaderboardService.getLeaderboardHistory(Number(academicYear), divId),
+    staleTime: 60 * 1000,
+  })
+
+  const items = leaderboardData?.items || []
+  const isLoading = leaderboardLoading || divisionsLoading
+
+  const divisionMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const d of divisions) {
+      map[d.id] = d.name
+    }
+    return map
+  }, [divisions])
+
+  const currentRows = useMemo(() => items.map((item) => ({
+    id: item.member_id,
+    name: item.full_name,
+    division: (item.division_id ? divisionMap[item.division_id] : null) || item.division_name || "General",
+    displayScore: item.display_score,
+    careerScore: item.career_score,
+    badge: item.badge,
+    rank: item.rank,
+  })), [items, divisionMap])
 
   const podium = currentRows.slice(0, 3)
   const rest = currentRows.slice(3)
 
   return (
     <Layout>
-      <div className="space-y-6">
+      {isLoading && items.length === 0 ? (
+        <LeaderboardSkeleton />
+      ) : (
+        <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <PageHeader
             title="Leaderboard &amp; Standings"
@@ -75,20 +96,26 @@ export default function LeaderboardPage() {
 
         {/* Division filter chips */}
         <div className="flex flex-wrap gap-2">
-          <FilterChip label="All divisions" active={division === "all"} onClick={() => setDivision("all")} />
-          {DIVISIONS.map((d) => (
-            <FilterChip key={d} label={d} active={division === d} onClick={() => setDivision(d)} />
-          ))}
+          <FilterChip label="All divisions" active={selectedDivision === "all"} onClick={() => setSelectedDivision("all")} />
+          {divisions.length > 0
+            ? divisions.map((d) => (
+                <FilterChip key={d.id} label={d.name} active={selectedDivision === d.id} onClick={() => setSelectedDivision(d.id)} />
+              ))
+            : DIVISIONS.map((d) => (
+                <FilterChip key={d} label={d} active={selectedDivision === d} onClick={() => setSelectedDivision(d)} />
+              ))}
         </div>
 
-        {isCurrentYear ? (
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">Loading rankings…</div>
+        ) : isCurrentYear ? (
           <>
             {/* Podium */}
-            {podium.length === 3 && (
+            {podium.length >= 3 && (
               <div className="grid grid-cols-3 gap-3 pt-2">
                 {[podium[1], podium[0], podium[2]].map((m, idx) => {
                   const rank = idx === 0 ? 2 : idx === 1 ? 1 : 3
-                  const heights = { 1: "pt-2", 2: "pt-6", 3: "pt-8" }
+                  const heights: Record<number, string> = { 1: "pt-2", 2: "pt-6", 3: "pt-8" }
                   const tone =
                     rank === 1
                       ? "text-amber-500"
@@ -96,7 +123,7 @@ export default function LeaderboardPage() {
                         ? "text-zinc-400"
                         : "text-orange-700 dark:text-orange-400"
                   return (
-                    <div key={m.id} className={cn("flex flex-col items-center", heights[rank as 1 | 2 | 3])}>
+                    <div key={m.id} className={cn("flex flex-col items-center", heights[rank])}>
                       <div className="relative">
                         <MemberAvatar name={m.name} size={rank === 1 ? 72 : 56} />
                         {rank === 1 ? (
@@ -159,7 +186,7 @@ export default function LeaderboardPage() {
                         {m.badge && <TierBadge tier={m.badge} />}
                       </div>
                       <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        {m.division} · {ROLE_LABELS[m.role]}
+                        {m.division}
                       </div>
                     </div>
 
@@ -188,35 +215,35 @@ export default function LeaderboardPage() {
             <div className="border-b border-zinc-100 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
               Archived Standings for Academic Year {academicYear}
             </div>
-            {historicalRows.map((s, i) => (
+            {currentRows.map((m, i) => (
               <div
-                key={s.id}
+                key={m.id}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3",
                   i !== 0 && "border-t border-zinc-100 dark:border-zinc-800",
                 )}
               >
                 <span className="w-6 text-center text-sm font-semibold tabular-nums text-zinc-500 dark:text-zinc-400">
-                  #{s.finalRank}
+                  #{m.rank}
                 </span>
-                <MemberAvatar name={s.member?.name ?? "Unknown"} size={36} />
+                <MemberAvatar name={m.name} size={36} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {s.member?.name}
+                      {m.name}
                     </span>
-                    {s.badgesEarned && <TierBadge tier={s.badgesEarned} />}
+                    {m.badge && <TierBadge tier={m.badge} />}
                   </div>
                   <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                    {s.member?.division}
+                    {m.division}
                   </div>
                 </div>
                 <div className="text-right font-bold text-sm tabular-nums text-zinc-900 dark:text-zinc-50">
-                  {s.finalScore} pts
+                  {m.displayScore} pts
                 </div>
               </div>
             ))}
-            {historicalRows.length === 0 && (
+            {currentRows.length === 0 && (
               <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                 No archived records found for academic year {academicYear}.
               </div>
@@ -224,6 +251,7 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
+      )}
     </Layout>
   )
 }

@@ -218,14 +218,35 @@ const AVATAR_TONES = [
 
 export function MemberAvatar({
   name,
+  imageUrl,
   size = 36,
   className,
 }: {
   name: string
+  imageUrl?: string | null
   size?: number
   className?: string
 }) {
   const tone = AVATAR_TONES[name.length % AVATAR_TONES.length]
+
+  if (imageUrl) {
+    return (
+      <div
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded-full border border-zinc-200 dark:border-zinc-800",
+          className,
+        )}
+        style={{ width: size, height: size }}
+      >
+        <img
+          src={imageUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(

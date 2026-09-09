@@ -2,30 +2,44 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import Layout from "@/frontend/components/kokonutui/layout"
-import { PageHeader } from "@/frontend/components/csec/page-header"
-import List02 from "@/frontend/components/kokonutui/list-02"
-import { Button } from "@/frontend/components/ui/button"
-import { StatusPill } from "@/frontend/components/csec/ui-bits"
-import { useCurrentUser } from "@/frontend/components/user-context"
-import {
-  getMemberEvents,
-  getMemberCycleScore,
-  getMemberCareerScore,
-  type ClaimStatus,
-} from "@/lib/csec-data"
+import Layout from "@/components/kokonutui/layout"
+import { PageHeader } from "@/components/csec/page-header"
+import List02 from "@/components/kokonutui/list-02"
+import { Button } from "@/components/ui/button"
+import { useCurrentUser } from "@/components/user-context"
 import { Plus, History, Trophy, Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ClaimsSkeleton } from "@/components/csec/skeletons"
+import { useMemberEvents } from "@/lib/hooks/use-queries"
+import type { PointEvent } from "@/lib/csec-data"
 
 type FilterTab = "all" | "approved" | "pending" | "rejected" | "warnings"
 
 export default function ClaimsHistoryPage() {
-  const { currentUser } = useCurrentUser()
+  const { currentUser, isAuthenticated } = useCurrentUser()
   const [filter, setFilter] = useState<FilterTab>("all")
 
-  const allEvents = useMemo(() => getMemberEvents(currentUser.id), [currentUser.id])
-  const cycleScore = getMemberCycleScore(currentUser.id)
-  const careerScore = getMemberCareerScore(currentUser.id)
+  const { data: eventsData, isLoading } = useMemberEvents(isAuthenticated ? currentUser.id : null)
+
+  const allEvents: PointEvent[] = useMemo(() => {
+    return (eventsData?.items || []).map((e) => ({
+      id: e.id,
+      memberId: e.member_id,
+      taskTitle: e.task_title || e.reason,
+      category: (e.task_id ? "division_session" : "external_activity") as any,
+      eventType: e.event_type as any,
+      delta: e.points_delta,
+      status: e.status as any,
+      reason: e.reason,
+      decisionReason: e.decision_reason,
+      approverId: e.approved_by,
+      academicYear: e.academic_year,
+      createdAt: e.created_at,
+    }))
+  }, [eventsData])
+
+  const cycleScore = currentUser?.cycleScore ?? 50
+  const careerScore = currentUser?.careerScore ?? 50
 
   const filtered = useMemo(() => {
     if (filter === "all") return allEvents
@@ -46,7 +60,10 @@ export default function ClaimsHistoryPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      {isLoading && allEvents.length === 0 ? (
+        <ClaimsSkeleton />
+      ) : (
+        <div className="space-y-6">
         <PageHeader
           title="My Point Ledger &amp; History"
           description="Append-only record of all your task claims, duty completions, and officer accountability events."
@@ -147,6 +164,7 @@ export default function ClaimsHistoryPage() {
           <List02 events={filtered} showMember={false} emptyLabel="No point events found for this filter." />
         </div>
       </div>
+      )}
     </Layout>
   )
 }

@@ -1,0 +1,324 @@
+// API Data Transfer Objects (DTOs) matching the FastAPI Pydantic schemas (/api/v1)
+
+export type Role = "member" | "division_head" | "vice_president" | "president"
+export type ClaimStatus = "pending" | "approved" | "rejected"
+export type WarningLevel = "yellow" | "red"
+export type EventType = "claim" | "yellow_warning" | "red_warning" | "manual_adjustment" | "layoff"
+export type BadgeTier = "gold" | "platinum" | "diamond"
+export type PermissionAction = "granted" | "enabled" | "disabled" | "revoked"
+
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+// Auth & Member models
+export interface MemberOut {
+  id: string
+  google_id?: string | null
+  full_name: string
+  email: string
+  profile_image_url: string | null
+  division_id: string | null
+  secondary_division_id?: string | null
+  role: Role
+  department: string | null
+  joining_year: number | null
+  is_active: boolean
+  first_login_at?: string | null
+  created_at?: string
+  updated_at?: string
+  cycle_score?: number | null
+  display_score?: number | null
+  career_score?: number | null
+  badge?: BadgeTier | null
+}
+
+export interface MemberScoresOut {
+  member_id: string
+  academic_year: number
+  cycle_score: number
+  display_score: number
+  career_score: number
+  badge: BadgeTier | null
+}
+
+export interface MemberDetailOut extends MemberOut {
+  scores?: MemberScoresOut
+  division_name?: string | null
+  secondary_division_name?: string | null
+  permissions?: string[]
+  joined_at?: string
+  google_claimed?: boolean
+}
+
+export interface CurrentUserOut {
+  id: string
+  full_name: string
+  email: string
+  profile_image_url: string | null
+  division_id: string | null
+  secondary_division_id?: string | null
+  role: Role
+  department: string | null
+  joining_year: number
+  onboarded: boolean
+  cycle_score: number
+  display_score: number
+  career_score: number
+  badge: BadgeTier | null
+  permissions: string[]
+}
+
+export interface AchievementCardOut {
+  member_id: string
+  full_name: string
+  division_name: string | null
+  secondary_division_name?: string | null
+  joining_year: number
+  career_score: number
+  current_cycle_score: number
+  current_display_score: number
+  current_badge: BadgeTier | null
+  academic_year: number
+  score_cap: number
+}
+
+// Division
+export interface DivisionOut {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
+export interface DivisionCreateIn {
+  name: string
+  description?: string | null
+}
+
+export interface DivisionUpdateIn {
+  name?: string | null
+  description?: string | null
+}
+
+// Tasks
+export interface TaskOut {
+  id: string
+  title: string
+  description: string | null
+  division_id: string | null
+  category: string
+  base_points: number
+  is_repeatable: boolean
+  is_penalty: boolean
+  active: boolean
+  created_at: string
+}
+
+export interface TaskCreateIn {
+  title: string
+  description?: string | null
+  division_id?: string | null
+  category: string
+  base_points: number
+  is_repeatable?: boolean
+  is_penalty?: boolean
+  active?: boolean
+}
+
+export interface TaskUpdateIn {
+  title?: string | null
+  description?: string | null
+  division_id?: string | null
+  category?: string | null
+  base_points?: number | null
+  is_repeatable?: boolean | null
+  is_penalty?: boolean | null
+  active?: boolean | null
+}
+
+// Point Events
+export interface PointEventOut {
+  id: string
+  member_id: string
+  task_id: string | null
+  division_id?: string | null
+  points_delta: number
+  reason: string
+  decision_reason: string | null
+  approved_by: string | null
+  status: ClaimStatus
+  event_type: EventType
+  academic_year: number
+  decided_at: string | null
+  created_at: string
+  task_title?: string | null
+  member_name?: string | null
+  approver_name?: string | null
+}
+
+export interface ClaimCreateIn {
+  task_id: string
+  reason?: string | null
+  division_id?: string | null
+}
+
+export interface OfficerAdjustmentIn {
+  member_id: string
+  event_type: EventType
+  points_delta: number
+  reason: string
+  task_id?: string | null
+  division_id?: string | null
+}
+
+export interface RejectIn {
+  reason: string
+}
+
+export interface BulkApproveIn {
+  event_ids: string[]
+}
+
+export interface BulkRejectIn {
+  event_ids: string[]
+  reason: string
+}
+
+export interface BulkResult {
+  succeeded: string[]
+  failed: { event_id: string; detail: string }[]
+}
+
+// Permissions & Delegations
+export interface PermissionCatalogOut {
+  key: string
+  description: string
+  scope_type: "club" | "division" | "task_category"
+}
+
+export interface MemberPermissionOut {
+  id: string
+  member_id: string
+  permission_key: string
+  scope_value: string | null
+  granted_by: string
+  is_enabled: boolean
+  granted_at?: string
+  created_at?: string
+  updated_at: string
+}
+
+export interface MemberPermissionCreateIn {
+  member_id: string
+  permission_key: string
+  scope_value?: string | null
+}
+
+export interface PermissionGrantHistoryOut {
+  id: string
+  member_permission_id: string | null
+  member_id: string
+  permission_key: string
+  scope_value: string | null
+  action: PermissionAction
+  actor_id: string
+  note: string | null
+  created_at: string
+  member_name?: string | null
+  actor_name?: string | null
+}
+
+// Leaderboard
+export interface LeaderboardItemOut {
+  rank: number
+  member_id: string
+  full_name: string
+  division_id: string | null
+  division_name: string | null
+  cycle_score: number
+  display_score: number
+  career_score: number
+  badge: BadgeTier | null
+}
+
+export interface LeaderboardOut {
+  academic_year: number
+  score_cap: number
+  items: LeaderboardItemOut[]
+}
+
+// Platform Settings
+export interface PlatformSettingsOut {
+  score_cap: number
+  initial_buffer: number
+  current_academic_year: number
+  badge_tier_multipliers: {
+    gold: number
+    platinum: number
+    diamond: number
+  }
+}
+
+// Admin / Import / Reset / Login Failures
+export interface ImportErrorRow {
+  row: number
+  email: string
+  issue: string
+}
+
+export interface ImportUnmatchedDivision {
+  row: number
+  email: string
+  division_name: string
+}
+
+export interface ImportResult {
+  created: number
+  updated: number
+  errors: ImportErrorRow[]
+  unmatched_divisions?: ImportUnmatchedDivision[]
+  skipped?: number
+}
+
+export interface LoginFailureOut {
+  id: string
+  email: string
+  google_id: string | null
+  reason: string
+  created_at: string
+}
+
+export interface AnnualResetPreview {
+  current_academic_year: number
+  next_academic_year: number
+  member_count: number
+  preview: {
+    member_id: string
+    full_name: string
+    division_name: string | null
+    final_score: number
+    final_rank: number
+    badges_earned: string | null
+  }[]
+}
+
+export interface AnnualResetResult {
+  closed_academic_year: number
+  new_academic_year: number
+  summaries_created: number
+  events_archived: number
+}
+
+export interface AnnualSummaryOut {
+  id: string
+  member_id: string
+  academic_year: number
+  final_score: number
+  final_rank: number
+  badges_earned: string[]
+}
+

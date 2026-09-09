@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, Lock, ShieldCheck, Sparkles } from "lucide-react"
+import { authService } from "@/lib/api"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,9 +12,7 @@ export default function LoginPage() {
 
   function handleGoogleLogin() {
     setLoading(true)
-    setTimeout(() => {
-      router.push("/dashboard")
-    }, 650)
+    window.location.href = authService.getGoogleLoginUrl()
   }
 
   return (

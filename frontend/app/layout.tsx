@@ -1,8 +1,9 @@
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/frontend/components/theme-provider"
-import { UserProvider } from "@/frontend/components/user-context"
-import { Toaster } from "@/frontend/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider"
+import { QueryProvider } from "@/components/providers/query-provider"
+import { UserProvider } from "@/components/user-context"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -20,9 +21,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <UserProvider>{children}</UserProvider>
+          <QueryProvider>
+            <UserProvider>{children}</UserProvider>
+          </QueryProvider>
           <Toaster />
         </ThemeProvider>
       </body>
