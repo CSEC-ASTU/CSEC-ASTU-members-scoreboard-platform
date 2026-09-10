@@ -97,6 +97,12 @@ def _compose_message(
     name = member.full_name.split()[0] if member.full_name else "there"
     reason = event.reason.strip()
 
+    if event.event_type == PointEventType.NORMAL_WARNING:
+        return NotificationType.NORMAL_WARNING, (
+            f"Hi {name}, a standard warning has been logged on your CSEC ASTU record "
+            f"({event.points_delta:+d} points).\n\nReason: {reason}\n\n"
+            "This penalty has been recorded in the ledger. Please ensure you remain aligned with club responsibilities."
+        )
     if event.event_type == PointEventType.YELLOW_WARNING:
         return NotificationType.YELLOW_WARNING, (
             f"Hi {name}, a yellow warning has been logged on your CSEC ASTU record "
@@ -137,6 +143,7 @@ def should_notify_for_event(event: PointEvent, task: Task | None, settings: Sett
     if event.status != PointEventStatus.APPROVED:
         return False
     if event.event_type in {
+        PointEventType.NORMAL_WARNING,
         PointEventType.YELLOW_WARNING,
         PointEventType.RED_WARNING,
         PointEventType.LAYOFF,

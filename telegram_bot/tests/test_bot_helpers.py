@@ -10,13 +10,21 @@ def test_normalize_username():
 
 def test_should_notify_warnings():
     settings = Settings(telegram_motivational_min_points=40)
-    event = SimpleNamespace(
+    event_yellow = SimpleNamespace(
         status=PointEventStatus.APPROVED,
         event_type=PointEventType.YELLOW_WARNING,
         points_delta=-25,
         reason="x",
     )
-    assert should_notify_for_event(event, None, settings) is True
+    assert should_notify_for_event(event_yellow, None, settings) is True
+
+    event_normal = SimpleNamespace(
+        status=PointEventStatus.APPROVED,
+        event_type=PointEventType.NORMAL_WARNING,
+        points_delta=-15,
+        reason="Missed task update",
+    )
+    assert should_notify_for_event(event_normal, None, settings) is True
 
 
 def test_format_admin_digest():
