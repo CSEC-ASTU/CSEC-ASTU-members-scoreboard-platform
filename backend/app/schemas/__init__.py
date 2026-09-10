@@ -31,10 +31,16 @@ class MeOut(BaseModel):
     email: EmailStr
     profile_image_url: str | None
     division_id: UUID | None
+    division_name: str | None = None
     secondary_division_id: UUID | None = None
+    secondary_division_name: str | None = None
     role: MemberRole
     department: str | None
     joining_year: int | None
+    student_id: str | None = None
+    phone_number: str | None = None
+    github_url: str | None = None
+    telegram_username: str | None = None
     onboarded: bool
     cycle_score: int
     display_score: int
@@ -57,6 +63,10 @@ class MemberListItem(BaseModel):
     role: MemberRole
     department: str | None
     joining_year: int | None
+    student_id: str | None = None
+    phone_number: str | None = None
+    github_url: str | None = None
+    telegram_username: str | None = None
     is_active: bool
     cycle_score: int | None = None
     display_score: int | None = None
@@ -72,6 +82,9 @@ class MemberDetail(MemberListItem):
 class MemberSelfUpdate(BaseModel):
     department: str | None = None
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    phone_number: str | None = None
+    github_url: str | None = None
+    telegram_username: str | None = None
 
 
 class MemberAdminUpdate(BaseModel):
@@ -79,6 +92,10 @@ class MemberAdminUpdate(BaseModel):
     division_id: UUID | None = None
     secondary_division_id: UUID | None = None
     department: str | None = None
+    student_id: str | None = None
+    phone_number: str | None = None
+    github_url: str | None = None
+    telegram_username: str | None = None
 
 
 class LayoffRequest(BaseModel):
@@ -225,6 +242,15 @@ class OfficerPointEventCreate(BaseModel):
     division_id: UUID | None = None
 
 
+class BatchOfficerEventCreate(BaseModel):
+    member_ids: list[UUID] = Field(min_length=1)
+    event_type: PointEventType
+    points_delta: int
+    reason: str = Field(min_length=1)
+    task_id: UUID | None = None
+    division_id: UUID | None = None
+
+
 class PointEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -242,6 +268,9 @@ class PointEventOut(BaseModel):
     created_at: datetime
     decided_at: datetime | None
     decision_reason: str | None = None
+    task_title: str | None = None
+    member_name: str | None = None
+    approver_name: str | None = None
 
 
 class RejectRequest(BaseModel):

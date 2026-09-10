@@ -19,6 +19,7 @@ export default function Content() {
     return (eventsData?.items || []).map((e) => ({
       id: e.id,
       memberId: e.member_id,
+      memberName: e.member_name,
       taskTitle: e.task_title || e.reason,
       category: (e.task_id ? "division_session" : "external_activity") as any,
       eventType: e.event_type as any,
@@ -27,6 +28,7 @@ export default function Content() {
       reason: e.reason,
       decisionReason: e.decision_reason,
       approverId: e.approved_by,
+      approverName: e.approver_name,
       academicYear: e.academic_year,
       createdAt: e.created_at,
     }))

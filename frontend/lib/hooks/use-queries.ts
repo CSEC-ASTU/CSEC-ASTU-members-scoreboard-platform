@@ -13,6 +13,7 @@ import {
   attendanceService,
   type ClaimCreateIn,
   type OfficerAdjustmentIn,
+  type BatchOfficerEventCreateIn,
   type MemberPermissionCreateIn,
   type Role,
   type TaskCreateIn,
@@ -102,6 +103,21 @@ export function useSubmitOfficerAdjustmentMutation() {
       queryClient.invalidateQueries({ queryKey: ["point-events"] })
       queryClient.invalidateQueries({ queryKey: ["approvals"] })
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] })
+      queryClient.invalidateQueries({ queryKey: ["member"] })
+      queryClient.invalidateQueries({ queryKey: ["member-events"] })
+    },
+  })
+}
+
+export function useBatchOfficerEventsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: BatchOfficerEventCreateIn) => pointEventsService.batchOfficerEvents(data),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["point-events"] })
+      queryClient.invalidateQueries({ queryKey: ["approvals"] })
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] })
+      queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["member"] })
       queryClient.invalidateQueries({ queryKey: ["member-events"] })
     },

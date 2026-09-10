@@ -17,6 +17,7 @@ class PointEventStatus(str, enum.Enum):
 class PointEventType(str, enum.Enum):
     CLAIM = "claim"
     MANUAL_ADJUSTMENT = "manual_adjustment"
+    NORMAL_WARNING = "normal_warning"
     YELLOW_WARNING = "yellow_warning"
     RED_WARNING = "red_warning"
     LAYOFF = "layoff"
@@ -29,6 +30,7 @@ class PermissionScopeType(str, enum.Enum):
 
 
 class NotificationType(str, enum.Enum):
+    NORMAL_WARNING = "normal_warning"
     YELLOW_WARNING = "yellow_warning"
     RED_WARNING = "red_warning"
     LAYOFF = "layoff"

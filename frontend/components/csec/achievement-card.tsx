@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Award, Sparkles, Share2, Copy, Check, ShieldCheck, Trophy, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
+import { useDivisions } from "@/lib/hooks/use-queries"
 import {
   type Member,
   getMemberCareerScore,
@@ -22,6 +23,13 @@ export function AchievementCard({
   className?: string
 }) {
   const [copied, setCopied] = useState(false)
+  const { data: divisions = [] } = useDivisions()
+
+  const resolvedDivision =
+    divisions.find((d) => d.id === member.division || d.name.toLowerCase() === member.division?.toLowerCase())?.name ||
+    (member.division && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(member.division)
+      ? member.division
+      : "General")
 
   const careerScore = getMemberCareerScore(member.id)
   const cycleScore = getMemberCycleScore(member.id)
@@ -73,7 +81,7 @@ export function AchievementCard({
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{ROLE_LABELS[member.role]}</p>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-300">
-              <span>{member.division}</span>
+              <span>{resolvedDivision}</span>
               <span>•</span>
               <span>{member.department}</span>
               <span>•</span>

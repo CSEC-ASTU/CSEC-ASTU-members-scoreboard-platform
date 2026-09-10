@@ -96,9 +96,14 @@ async def list_members(
                 email=m.email,
                 profile_image_url=m.profile_image_url,
                 division_id=m.division_id,
+                secondary_division_id=m.secondary_division_id,
                 role=m.role,
                 department=m.department,
                 joining_year=m.joining_year,
+                student_id=m.student_id,
+                phone_number=m.phone_number,
+                github_url=m.github_url,
+                telegram_username=m.telegram_username,
                 is_active=m.is_active,
                 **scores,
             )
@@ -120,9 +125,14 @@ async def get_member(member_id: UUID, db: DbSession, user: RequireUser) -> Membe
         email=m.email,
         profile_image_url=m.profile_image_url,
         division_id=m.division_id,
+        secondary_division_id=m.secondary_division_id,
         role=m.role,
         department=m.department,
         joining_year=m.joining_year,
+        student_id=m.student_id,
+        phone_number=m.phone_number,
+        github_url=m.github_url,
+        telegram_username=m.telegram_username,
         is_active=m.is_active,
         first_login_at=m.first_login_at,
         joined_at=m.joined_at,
@@ -138,6 +148,12 @@ async def update_me(body: MemberSelfUpdate, db: DbSession, user: RequireUser) ->
         m.department = body.department
     if body.full_name is not None:
         m.full_name = body.full_name
+    if body.phone_number is not None:
+        m.phone_number = body.phone_number
+    if body.github_url is not None:
+        m.github_url = body.github_url
+    if body.telegram_username is not None:
+        m.telegram_username = body.telegram_username
     await db.flush()
     return await get_member(m.id, db, user)
 
@@ -194,6 +210,14 @@ async def update_member(
         target.secondary_division_id = body.secondary_division_id
     if body.department is not None:
         target.department = body.department
+    if body.student_id is not None:
+        target.student_id = body.student_id
+    if body.phone_number is not None:
+        target.phone_number = body.phone_number
+    if body.github_url is not None:
+        target.github_url = body.github_url
+    if body.telegram_username is not None:
+        target.telegram_username = body.telegram_username
     await db.flush()
     return await get_member(member_id, db, user)
 

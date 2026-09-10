@@ -4,11 +4,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload
 
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas import (
+    BatchOfficerEventCreate,
     BulkApproveRequest,
     BulkRejectRequest,
     BulkResult,
@@ -63,6 +65,11 @@ async def list_point_events(
     # Count via subquery
     count_q = select(func.count()).select_from(q.order_by(None).subquery())
     total = int((await db.execute(count_q)).scalar() or 0)
+    q = q.options(
+        selectinload(PointEvent.member),
+        selectinload(PointEvent.task),
+        selectinload(PointEvent.approver),
+    )
     rows = (
         await db.execute(
             q.order_by(PointEvent.created_at.desc())
@@ -70,8 +77,44 @@ async def list_point_events(
             .limit(page_size)
         )
     ).scalars().all()
+
+    items: list[PointEventOut] = []
+    for r in rows:
+        app_name = None
+        if r.approved_by:
+            if r.approved_by == r.member_id:
+                app_name = "Auto-Approved (System)"
+            elif r.approver:
+                app_name = r.approver.full_name
+            else:
+                app_name = "Officer"
+        elif r.status == PointEventStatus.PENDING:
+            app_name = "Pending Review"
+
+        items.append(
+            PointEventOut(
+                id=r.id,
+                member_id=r.member_id,
+                task_id=r.task_id,
+                division_id=r.division_id,
+                attendance_session_id=r.attendance_session_id,
+                event_type=r.event_type,
+                points_delta=r.points_delta,
+                reason=r.reason,
+                status=r.status,
+                approved_by=r.approved_by,
+                academic_year=r.academic_year,
+                created_at=r.created_at,
+                decided_at=r.decided_at,
+                decision_reason=r.decision_reason,
+                task_title=r.task.title if r.task else None,
+                member_name=r.member.full_name if r.member else None,
+                approver_name=app_name,
+            )
+        )
+
     return Paginated(
-        items=[PointEventOut.model_validate(r) for r in rows],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -192,3 +235,32 @@ async def bulk_reject(body: BulkRejectRequest, db: DbSession, user: RequireUser)
         except HTTPException as exc:
             failed.append({"event_id": str(eid), "detail": exc.detail})
     return BulkResult(succeeded=succeeded, failed=failed)
+
+
+@router.post("/batch-officer", response_model=BulkResult)
+async def batch_officer_events(
+    body: BatchOfficerEventCreate,
+    db: DbSession,
+    user: RequireUser,
+) -> BulkResult:
+    succeeded: list[UUID] = []
+    failed: list[dict] = []
+    for mid in body.member_ids:
+        try:
+            event = await create_officer_event(
+                db,
+                officer=user.member,
+                officer_perms=user.permissions,
+                member_id=mid,
+                event_type=body.event_type,
+                points_delta=body.points_delta,
+                reason=body.reason,
+                task_id=body.task_id,
+                division_id=body.division_id,
+            )
+            succeeded.append(event.id)
+        except HTTPException as exc:
+            failed.append({"member_id": str(mid), "detail": exc.detail})
+    await db.commit()
+    return BulkResult(succeeded=succeeded, failed=failed)
+
