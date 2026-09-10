@@ -9,12 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCurrentUser } from "@/components/user-context"
 import { DIVISIONS, ROLE_LABELS } from "@/lib/csec-data"
-import { Trophy, Crown, Medal, Calendar } from "lucide-react"
+import { Trophy, Crown, Medal, Calendar, Download } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { leaderboardService, type LeaderboardItemOut, type DivisionOut } from "@/lib/api"
 import { LeaderboardSkeleton } from "@/components/csec/skeletons"
 import { useDivisions } from "@/lib/hooks/use-queries"
 import { useQuery } from "@tanstack/react-query"
+import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 
 export default function LeaderboardPage() {
   const { currentUser } = useCurrentUser()
@@ -60,6 +62,24 @@ export default function LeaderboardPage() {
   const podium = currentRows.slice(0, 3)
   const rest = currentRows.slice(3)
 
+  function handleExportCsv() {
+    const columns: CsvColumn<LeaderboardItemOut>[] = [
+      { key: "rank", label: "Rank" },
+      { key: "full_name", label: "Full Name" },
+      {
+        key: (item) =>
+          (item.division_id ? divisionMap[item.division_id] : null) ||
+          item.division_name ||
+          "General",
+        label: "Division",
+      },
+      { key: "display_score", label: "Cycle Score" },
+      { key: "career_score", label: "Career Score" },
+      { key: (item) => item.badge || "None", label: "Tier Badge" },
+    ]
+    exportToCsv(`csec_leaderboard_${academicYear}`, columns, items)
+  }
+
   return (
     <Layout>
       {isLoading && items.length === 0 ? (
@@ -72,25 +92,38 @@ export default function LeaderboardPage() {
             description="Official member rankings by cycle score (capped at 2,500 pts). Graduate to tier badges beyond the ceiling."
           />
 
-          {/* Academic Year Selector */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Calendar className="h-4 w-4 text-zinc-500" />
-            <Select value={academicYear} onValueChange={setAcademicYear}>
-              <SelectTrigger className="w-[160px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2026" className="text-xs">
-                  2026 (Active Cycle)
-                </SelectItem>
-                <SelectItem value="2025" className="text-xs">
-                  2025 (Past Year)
-                </SelectItem>
-                <SelectItem value="2024" className="text-xs">
-                  2024 (Past Year)
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={items.length === 0}
+              className="h-9 gap-1.5 text-xs border-zinc-200 dark:border-zinc-800"
+            >
+              <Download className="h-3.5 w-3.5 text-zinc-500" />
+              Export Standings (CSV)
+            </Button>
+
+            {/* Academic Year Selector */}
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-zinc-500" />
+              <Select value={academicYear} onValueChange={setAcademicYear}>
+                <SelectTrigger className="w-[160px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2026" className="text-xs">
+                    2026 (Active Cycle)
+                  </SelectItem>
+                  <SelectItem value="2025" className="text-xs">
+                    2025 (Past Year)
+                  </SelectItem>
+                  <SelectItem value="2024" className="text-xs">
+                    2024 (Past Year)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

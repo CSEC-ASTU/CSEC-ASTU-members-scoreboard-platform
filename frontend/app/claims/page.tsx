@@ -25,6 +25,7 @@ export default function ClaimsHistoryPage() {
     return (eventsData?.items || []).map((e) => ({
       id: e.id,
       memberId: e.member_id,
+      memberName: e.member_name,
       taskTitle: e.task_title || e.reason,
       category: (e.task_id ? "division_session" : "external_activity") as any,
       eventType: e.event_type as any,
@@ -33,6 +34,7 @@ export default function ClaimsHistoryPage() {
       reason: e.reason,
       decisionReason: e.decision_reason,
       approverId: e.approved_by,
+      approverName: e.approver_name,
       academicYear: e.academic_year,
       createdAt: e.created_at,
     }))
@@ -46,7 +48,14 @@ export default function ClaimsHistoryPage() {
     if (filter === "approved") return allEvents.filter((e) => e.status === "approved" && e.eventType === "claim")
     if (filter === "pending") return allEvents.filter((e) => e.status === "pending")
     if (filter === "rejected") return allEvents.filter((e) => e.status === "rejected")
-    if (filter === "warnings") return allEvents.filter((e) => e.eventType === "yellow_warning" || e.eventType === "red_warning" || e.delta < 0)
+    if (filter === "warnings")
+      return allEvents.filter(
+        (e) =>
+          e.eventType === "normal_warning" ||
+          e.eventType === "yellow_warning" ||
+          e.eventType === "red_warning" ||
+          e.delta < 0,
+      )
     return allEvents
   }, [allEvents, filter])
 
@@ -55,7 +64,13 @@ export default function ClaimsHistoryPage() {
     approved: allEvents.filter((e) => e.status === "approved" && e.eventType === "claim").length,
     pending: allEvents.filter((e) => e.status === "pending").length,
     rejected: allEvents.filter((e) => e.status === "rejected").length,
-    warnings: allEvents.filter((e) => e.eventType === "yellow_warning" || e.eventType === "red_warning" || e.delta < 0).length,
+    warnings: allEvents.filter(
+      (e) =>
+        e.eventType === "normal_warning" ||
+        e.eventType === "yellow_warning" ||
+        e.eventType === "red_warning" ||
+        e.delta < 0,
+    ).length,
   }
 
   return (

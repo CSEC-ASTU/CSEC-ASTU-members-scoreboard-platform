@@ -2,8 +2,8 @@
 
 export type Role = "member" | "division_head" | "vice_president" | "president"
 export type ClaimStatus = "pending" | "approved" | "rejected"
-export type WarningLevel = "yellow" | "red"
-export type EventType = "claim" | "yellow_warning" | "red_warning" | "manual_adjustment" | "layoff"
+export type WarningLevel = "normal" | "yellow" | "red"
+export type EventType = "claim" | "normal_warning" | "yellow_warning" | "red_warning" | "manual_adjustment" | "layoff"
 export type BadgeTier = "gold" | "platinum" | "diamond"
 export type PermissionAction = "granted" | "enabled" | "disabled" | "revoked"
 
@@ -23,9 +23,15 @@ export interface MemberOut {
   profile_image_url: string | null
   division_id: string | null
   secondary_division_id?: string | null
+  division_name?: string | null
+  secondary_division_name?: string | null
   role: Role
   department: string | null
   joining_year: number | null
+  student_id?: string | null
+  phone_number?: string | null
+  github_url?: string | null
+  telegram_username?: string | null
   is_active: boolean
   first_login_at?: string | null
   created_at?: string
@@ -60,10 +66,16 @@ export interface CurrentUserOut {
   email: string
   profile_image_url: string | null
   division_id: string | null
+  division_name?: string | null
   secondary_division_id?: string | null
+  secondary_division_name?: string | null
   role: Role
   department: string | null
   joining_year: number
+  student_id?: string | null
+  phone_number?: string | null
+  github_url?: string | null
+  telegram_username?: string | null
   onboarded: boolean
   cycle_score: number
   display_score: number
@@ -196,6 +208,15 @@ export interface OfficerAdjustmentIn {
   division_id?: string | null
 }
 
+export interface BatchOfficerEventCreateIn {
+  member_ids: string[]
+  event_type: EventType
+  points_delta: number
+  reason: string
+  task_id?: string | null
+  division_id?: string | null
+}
+
 export interface RejectIn {
   reason: string
 }
@@ -211,7 +232,7 @@ export interface BulkRejectIn {
 
 export interface BulkResult {
   succeeded: string[]
-  failed: { event_id: string; detail: string }[]
+  failed: { event_id?: string; member_id?: string; detail: string }[]
 }
 
 // Permissions & Delegations

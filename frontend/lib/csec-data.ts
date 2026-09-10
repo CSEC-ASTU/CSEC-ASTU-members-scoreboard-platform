@@ -57,10 +57,11 @@ export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
 }
 
 export type ClaimStatus = "pending" | "approved" | "rejected"
-export type WarningLevel = "yellow" | "red"
+export type WarningLevel = "normal" | "yellow" | "red"
 
 export type EventType =
   | "claim"
+  | "normal_warning"
   | "yellow_warning"
   | "red_warning"
   | "manual_adjustment"
@@ -158,6 +159,8 @@ export interface PointEvent {
   reason: string
   decisionReason?: string | null // Improvement 05
   approverId?: string | null
+  approverName?: string | null
+  memberName?: string | null
   academicYear: number
   createdAt: string // ISO UTC
 }

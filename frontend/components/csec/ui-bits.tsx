@@ -33,8 +33,14 @@ export function StatusPill({
 
 export function WarningPill({ level, className }: { level: WarningLevel; className?: string }) {
   const styles: Record<WarningLevel, string> = {
+    normal: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
     yellow: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     red: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  }
+  const labels: Record<WarningLevel, string> = {
+    normal: "Normal Warning (-15 pts)",
+    yellow: "Yellow Warning (-25 pts)",
+    red: "Red Warning (-50 pts)",
   }
   return (
     <span
@@ -45,7 +51,7 @@ export function WarningPill({ level, className }: { level: WarningLevel; classNa
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {level === "yellow" ? "Yellow Warning" : "Red Warning"}
+      {labels[level] || "Warning"}
     </span>
   )
 }
@@ -61,6 +67,10 @@ export function EventTypePill({
     claim: {
       label: "Claim",
       style: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    },
+    normal_warning: {
+      label: "Normal Warning",
+      style: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
     },
     yellow_warning: {
       label: "Yellow Warning",

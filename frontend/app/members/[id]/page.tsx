@@ -148,13 +148,22 @@ export default function MemberProfilePage() {
 
   const warnings = useMemo(() => {
     return events
-      .filter((e) => e.eventType === "yellow_warning" || e.eventType === "red_warning")
+      .filter(
+        (e) =>
+          e.eventType === "normal_warning" ||
+          e.eventType === "yellow_warning" ||
+          e.eventType === "red_warning",
+      )
       .map((e) => ({
         id: e.id,
         memberId: e.memberId,
-        level: (e.eventType === "yellow_warning" ? "yellow" : "red") as "yellow" | "red",
+        level: (e.eventType === "normal_warning"
+          ? "normal"
+          : e.eventType === "yellow_warning"
+            ? "yellow"
+            : "red") as "normal" | "yellow" | "red",
         reason: e.reason,
-        issuedBy: e.approverId || "Officer",
+        issuedBy: e.approverName || e.approverId || "Officer",
         academicYear: e.academicYear,
         createdAt: e.createdAt,
       }))
@@ -170,6 +179,7 @@ export default function MemberProfilePage() {
 
   const redCount = warnings.filter((w) => w.level === "red").length
   const yellowCount = warnings.filter((w) => w.level === "yellow").length
+  const normalCount = warnings.filter((w) => w.level === "normal").length
   const ladderStage = redCount > 0 ? 2 : yellowCount > 0 ? 1 : 0
 
   const canEditMember = canManagePermissions(currentUser)
@@ -351,6 +361,7 @@ export default function MemberProfilePage() {
             </h2>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               Base Buffer: +{PLATFORM_SETTINGS.initialBuffer} pts
+              {normalCount > 0 && ` · ${normalCount} Normal Warning${normalCount > 1 ? "s" : ""} (-${normalCount * 15} pts)`}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-2">

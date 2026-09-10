@@ -17,7 +17,7 @@ from app.core.security import (
     rotate_refresh_token,
 )
 from app.dependencies import AppSettings, DbSession, RequireUser
-from app.models import LoginAttemptFailure, Member
+from app.models import Division, LoginAttemptFailure, Member
 from app.schemas import MeOut
 from app.services.google_oauth import (
     build_google_login_url,
@@ -175,16 +175,35 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
     scores = await fetch_member_scores(db, user.id)
     perms = await get_effective_permissions(db, user.member)
     m = user.member
+
+    div_name = None
+    if m.division_id:
+        div = await db.get(Division, m.division_id)
+        if div:
+            div_name = div.name
+
+    sec_div_name = None
+    if m.secondary_division_id:
+        sec_div = await db.get(Division, m.secondary_division_id)
+        if sec_div:
+            sec_div_name = sec_div.name
+
     return MeOut(
         id=m.id,
         full_name=m.full_name,
         email=m.email,
         profile_image_url=m.profile_image_url,
         division_id=m.division_id,
+        division_name=div_name,
         secondary_division_id=m.secondary_division_id,
+        secondary_division_name=sec_div_name,
         role=m.role,
         department=m.department,
         joining_year=m.joining_year,
+        student_id=m.student_id,
+        phone_number=m.phone_number,
+        github_url=m.github_url,
+        telegram_username=m.telegram_username,
         onboarded=m.first_login_at is not None,
         cycle_score=scores["cycle_score"],
         display_score=scores["display_score"],

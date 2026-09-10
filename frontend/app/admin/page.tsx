@@ -72,6 +72,7 @@ import {
   UserX,
   KeyRound,
   CheckCircle2,
+  Download,
 } from "lucide-react"
 import {
   adminService,
@@ -87,6 +88,7 @@ import { AdminSkeleton } from "@/components/csec/skeletons"
 import {
   useTasks,
   useDivisions,
+  useMembers,
   usePlatformSettings,
   useAuditLog,
   useLoginFailures,
@@ -94,6 +96,8 @@ import {
   useUpdateTaskMutation,
 } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
+import { CsvImportWizard } from "@/components/csec/csv-import-wizard"
+import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 
 const CATEGORIES = Object.keys(TASK_CATEGORY_LABELS) as TaskCategory[]
 
@@ -117,6 +121,7 @@ export default function AdminPage() {
   const { data: fetchedSettings, isLoading: settingsLoading } = usePlatformSettings()
   const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures()
   const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog()
+  const { data: membersData } = useMembers({ page_size: 100 })
 
   const createTaskMutation = useCreateTaskMutation()
   const updateTaskMutation = useUpdateTaskMutation()
@@ -154,6 +159,11 @@ export default function AdminPage() {
 
   const divisions: DivisionOut[] = divisionsData || []
 
+  const memberMap = useMemo(
+    () => new Map((membersData?.items || []).map((m) => [m.id, m.full_name])),
+    [membersData]
+  )
+
   const tasks: TaskDef[] = useMemo(() => {
     const taskList = Array.isArray(tasksData) ? tasksData : (tasksData as any)?.items ?? []
     return taskList.map((t: any) => ({
@@ -169,21 +179,44 @@ export default function AdminPage() {
   }, [tasksData])
 
   const auditEvents: PointEvent[] = useMemo(() => {
-    return (fetchedAudit?.items || []).map((e: PointEventOut) => ({
-      id: e.id,
-      memberId: e.member_id,
-      taskTitle: e.task_title || e.reason,
-      category: "division_session" as any,
-      eventType: e.event_type as any,
-      delta: e.points_delta,
-      status: e.status as any,
-      reason: e.reason,
-      decisionReason: e.decision_reason,
-      approverId: e.approved_by,
-      academicYear: e.academic_year,
-      createdAt: e.created_at,
-    }))
-  }, [fetchedAudit])
+    return (fetchedAudit?.items || []).map((e: PointEventOut) => {
+      const memberName = e.member_name || memberMap.get(e.member_id) || "Club Member"
+
+      let approverName = e.approver_name
+      if (!approverName) {
+        if (e.approved_by) {
+          if (e.approved_by === e.member_id) {
+            approverName = "Auto-Approved (System)"
+          } else {
+            approverName = memberMap.get(e.approved_by) || "Officer"
+          }
+        } else if (e.status === "pending") {
+          approverName = "Pending Review"
+        } else if (e.status === "approved") {
+          approverName = "Auto-Approved"
+        } else {
+          approverName = "—"
+        }
+      }
+
+      return {
+        id: e.id,
+        memberId: e.member_id,
+        memberName,
+        taskTitle: e.task_title || e.reason,
+        category: "division_session" as any,
+        eventType: e.event_type as any,
+        delta: e.points_delta,
+        status: e.status as any,
+        reason: e.reason,
+        decisionReason: e.decision_reason,
+        approverId: e.approved_by,
+        approverName,
+        academicYear: e.academic_year,
+        createdAt: e.created_at,
+      }
+    })
+  }, [fetchedAudit, memberMap])
 
   const loginFailures: LoginAttemptFailure[] = useMemo(() => {
     return (fetchedFailures?.items || []).map((f: any) => ({
@@ -488,86 +521,20 @@ export default function AdminPage() {
 
           {/* 2. CSV Member Import Tab (§13) */}
           <TabsContent value="import" className="mt-4">
-            <div className="max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40 space-y-5">
+            <div className="max-w-4xl rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40 space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-                    Google Form CSV Member Import
+                    Google Form CSV Member Import &amp; Auto-Mapper
                   </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Import or upsert verified members from the club registration sheet before their first login.
+                    Pre-flight validate, auto-map headers, and upsert verified club members directly from Google Form CSV spreadsheets.
                   </p>
                 </div>
               </div>
 
-              <form onSubmit={handleImportSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Select CSV Export File</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-6 h-6 mb-2 text-zinc-400" />
-                        <p className="mb-1 text-xs text-zinc-600 dark:text-zinc-300">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                          {importFile ? importFile.name : "CSV export with email, full_name, division, department"}
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        accept=".csv"
-                        className="hidden"
-                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                      Dry-Run Mode (Validation Only)
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Validates headers and emails without modifying database rows.
-                    </div>
-                  </div>
-                  <Switch checked={dryRun} onCheckedChange={setDryRun} />
-                </div>
-
-                <Button type="submit" disabled={!importFile || importing} size="sm" className="w-full">
-                  {importing
-                    ? "Processing CSV..."
-                    : dryRun
-                      ? "Run Dry-Run Validation"
-                      : "Execute Member Import"}
-                </Button>
-              </form>
-
-              {importResult && (
-                <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 space-y-2 text-xs">
-                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    Import Results Summary:
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                      <div className="text-zinc-400 text-[10px]">Created</div>
-                      <div className="font-bold text-emerald-600 dark:text-emerald-400">{importResult.created}</div>
-                    </div>
-                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                      <div className="text-zinc-400 text-[10px]">Updated</div>
-                      <div className="font-bold text-blue-600 dark:text-blue-400">{importResult.updated}</div>
-                    </div>
-                    <div className="p-2 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                      <div className="text-zinc-400 text-[10px]">Validated / Skipped</div>
-                      <div className="font-bold text-zinc-600 dark:text-zinc-300">{importResult.skipped}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <CsvImportWizard divisions={divisions} />
             </div>
           </TabsContent>
 
@@ -683,7 +650,7 @@ export default function AdminPage() {
           {/* 4. Club Audit Log Tab (Improvement 02 & 05) */}
           <TabsContent value="audit" className="mt-4 space-y-4">
             <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                     <History className="h-4 w-4" />
@@ -693,6 +660,29 @@ export default function AdminPage() {
                     Append-only ledger of all claims, adjustments, warnings, and officer actions across all divisions.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const columns: CsvColumn<PointEvent>[] = [
+                      { key: "id", label: "Event ID" },
+                      { key: "createdAt", label: "Timestamp" },
+                      { key: (e) => e.memberName || "Member", label: "Member" },
+                      { key: "taskTitle", label: "Task / Event" },
+                      { key: "eventType", label: "Type" },
+                      { key: "delta", label: "Points Delta" },
+                      { key: "status", label: "Status" },
+                      { key: "reason", label: "Reason / Notes" },
+                      { key: (e) => e.approverName || (e.approverId ? "Officer" : "—"), label: "Approver" },
+                    ]
+                    exportToCsv("csec_club_audit_log", columns, auditEvents)
+                  }}
+                  disabled={auditEvents.length === 0}
+                  className="h-8 text-xs gap-1.5 border-zinc-200 dark:border-zinc-800"
+                >
+                  <Download className="h-3.5 w-3.5 text-zinc-500" />
+                  Export Audit Trail (CSV)
+                </Button>
               </div>
 
               <div className="overflow-x-auto">
@@ -722,7 +712,7 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>
                           <div className="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {(e as any).member_name ?? e.memberId}
+                            {e.memberName || "Club Member"}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -746,7 +736,9 @@ export default function AdminPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-zinc-600 dark:text-zinc-300">
-                          {(e as any).approver_name ?? e.approverId ?? "—"}
+                          <span className="text-xs font-medium">
+                            {e.approverName || (e.approverId ? "Officer" : "—")}
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}

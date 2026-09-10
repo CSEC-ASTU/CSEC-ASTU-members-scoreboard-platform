@@ -46,6 +46,7 @@ export function IssueWarningDialog({
   const [submitting, setSubmitting] = useState(false)
 
   const defaultDeltas: Record<EventType, number> = {
+    normal_warning: -15,
     yellow_warning: -25,
     red_warning: -50,
     manual_adjustment: customDelta,
@@ -75,11 +76,13 @@ export function IssueWarningDialog({
         id: `adj-${Date.now()}`,
         memberId: member.id,
         taskTitle:
-          eventType === "yellow_warning"
-            ? "Yellow Warning"
-            : eventType === "red_warning"
-              ? "Red Warning"
-              : "Officer Manual Adjustment",
+          eventType === "normal_warning"
+            ? "Normal Warning"
+            : eventType === "yellow_warning"
+              ? "Yellow Warning"
+              : eventType === "red_warning"
+                ? "Red Warning"
+                : "Officer Manual Adjustment",
         category: "division_session",
         eventType,
         delta,
@@ -91,11 +94,11 @@ export function IssueWarningDialog({
       }
 
       let newWarning: Warning | undefined = undefined
-      if (eventType === "yellow_warning" || eventType === "red_warning") {
+      if (eventType === "normal_warning" || eventType === "yellow_warning" || eventType === "red_warning") {
         newWarning = {
           id: `w-${Date.now()}`,
           memberId: member.id,
-          level: eventType === "yellow_warning" ? "yellow" : "red",
+          level: eventType === "normal_warning" ? "normal" : eventType === "yellow_warning" ? "yellow" : "red",
           reason: reason.trim(),
           issuedBy: officer.id,
           academicYear: 2026,
@@ -105,11 +108,13 @@ export function IssueWarningDialog({
 
       onSuccess(newEvent, newWarning)
       toast.success(
-        eventType === "yellow_warning"
-          ? `Yellow Warning (-25 pts) issued to ${member.name}`
-          : eventType === "red_warning"
-            ? `Red Warning (-50 pts) issued to ${member.name}`
-            : `Manual point adjustment (${delta >= 0 ? "+" : ""}${delta} pts) applied to ${member.name}`,
+        eventType === "normal_warning"
+          ? `Normal Warning (-15 pts) issued to ${member.name}`
+          : eventType === "yellow_warning"
+            ? `Yellow Warning (-25 pts) issued to ${member.name}`
+            : eventType === "red_warning"
+              ? `Red Warning (-50 pts) issued to ${member.name}`
+              : `Manual point adjustment (${delta >= 0 ? "+" : ""}${delta} pts) applied to ${member.name}`,
       )
 
       setReason("")
@@ -146,6 +151,9 @@ export function IssueWarningDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="normal_warning">
+                  ⚠️ Normal Warning (-15 pts) · Standard penalty log
+                </SelectItem>
                 <SelectItem value="yellow_warning">
                   🟡 Yellow Warning (-25 pts) · 1st pattern alert
                 </SelectItem>

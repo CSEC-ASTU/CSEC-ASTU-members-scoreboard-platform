@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+import uuid
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -48,6 +49,55 @@ async def create_claim(
             event_division_id = division_id
         else:
             event_division_id = member.division_id or member.secondary_division_id
+
+    # Duplicate Claim Prevention Engine for non-session tasks
+    # (Session attendance duplicate prevention is enforced via attendance_session_id below)
+    if task.category != "division_session":
+        # 1. Pending Claim Guard: prevent duplicate pending claims for the same task
+        existing_pending = await db.scalar(
+            select(PointEvent).where(
+                PointEvent.member_id == member.id,
+                PointEvent.task_id == task.id,
+                PointEvent.status == PointEventStatus.PENDING,
+            )
+        )
+        if existing_pending:
+            raise HTTPException(
+                status_code=400,
+                detail="You already have a pending claim for this task awaiting officer review.",
+            )
+
+        # 2. Non-Repeatable Task Guard: prevent claiming non-repeatable tasks multiple times
+        if not task.is_repeatable:
+            existing_approved = await db.scalar(
+                select(PointEvent).where(
+                    PointEvent.member_id == member.id,
+                    PointEvent.task_id == task.id,
+                    PointEvent.status == PointEventStatus.APPROVED,
+                )
+            )
+            if existing_approved:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This task is non-repeatable and has already been approved for your account.",
+                )
+
+        # 3. Repeatable Task Cooldown Guard: 24-hour rate limit for same repeatable task
+        if task.is_repeatable:
+            cooldown_threshold = datetime.now(UTC) - timedelta(hours=24)
+            recent_claim = await db.scalar(
+                select(PointEvent).where(
+                    PointEvent.member_id == member.id,
+                    PointEvent.task_id == task.id,
+                    PointEvent.status == PointEventStatus.APPROVED,
+                    PointEvent.created_at >= cooldown_threshold,
+                )
+            )
+            if recent_claim:
+                raise HTTPException(
+                    status_code=400,
+                    detail="You have already claimed this task in the last 24 hours. Please wait before submitting another claim.",
+                )
 
     # Session code verification
     attendance_session: AttendanceSession | None = None
@@ -173,6 +223,7 @@ async def create_officer_event(
 
     year = await get_current_academic_year(db)
     event = PointEvent(
+        id=uuid.uuid4(),
         member_id=target.id,
         task_id=task_id,
         division_id=event_division_id,

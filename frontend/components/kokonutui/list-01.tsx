@@ -5,8 +5,9 @@ import { Trophy, Building2, Send, TrendingUp, Sparkles, Shield, AlertCircle } fr
 import { useCurrentUser } from "@/components/user-context"
 import { TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
 import { PLATFORM_SETTINGS } from "@/lib/csec-data"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { authService, pointEventsService, type CurrentUserOut, type PointEventOut } from "@/lib/api"
+import { useDivisions } from "@/lib/hooks/use-queries"
 
 export default function List01({ className }: { className?: string }) {
   const { currentUser, isAuthenticated } = useCurrentUser()
@@ -30,6 +31,29 @@ export default function List01({ className }: { className?: string }) {
     }
     loadData()
   }, [currentUser.id, isAuthenticated])
+
+  const { data: divisions } = useDivisions()
+
+  const resolvedDivision = useMemo(() => {
+    if (userData?.division_name) return userData.division_name
+    const divId = userData?.division_id || (currentUser as any).divisionId
+    if (divId && divisions) {
+      const found = divisions.find((d) => d.id === divId)
+      if (found) return found.name
+    }
+    const currDiv = currentUser?.division
+    if (
+      currDiv &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currDiv)
+    ) {
+      return currDiv
+    }
+    if (divisions && currDiv) {
+      const found = divisions.find((d) => d.id === currDiv)
+      if (found) return found.name
+    }
+    return "General"
+  }, [userData, divisions, currentUser])
 
   const cycleScore = userData?.cycle_score ?? 50
   const careerScore = userData?.career_score ?? 50
@@ -85,7 +109,7 @@ export default function List01({ className }: { className?: string }) {
         </div>
 
         <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-          {currentUser.division} · Joined {currentUser.joiningYear}
+          {resolvedDivision} · Joined {currentUser.joiningYear}
         </div>
 
         {/* Accountability standing */}

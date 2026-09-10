@@ -20,12 +20,13 @@ import { Empty } from "@/components/ui/empty"
 import { MemberAvatar, PointDelta, EventTypePill } from "@/components/csec/ui-bits"
 import { useCurrentUser } from "@/components/user-context"
 import { TASK_CATEGORY_LABELS } from "@/lib/csec-data"
-import { Check, X, Inbox, ShieldCheck } from "lucide-react"
+import { Check, X, Inbox, ShieldCheck, Download, Filter } from "lucide-react"
 import { pointEventsService, membersService, tasksService, divisionsService, type PointEventOut, type MemberOut, type TaskOut, type DivisionOut } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { ApprovalsSkeleton } from "@/components/csec/skeletons"
 import { useApprovals, useMembers, useTasks, useDivisions, useApproveClaimsMutation } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
+import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 
 export default function ApprovalsPage() {
   const { isAuthenticated } = useCurrentUser()
@@ -68,8 +69,20 @@ export default function ApprovalsPage() {
     return dObj
   }, [divisionsData])
 
+  const [selectedDiv, setSelectedDiv] = useState<string>("all")
+
+  const filteredQueue = useMemo(() => {
+    if (selectedDiv === "all") return queue
+    return queue.filter((e) => {
+      const task = e.task_id ? taskMap[e.task_id] : null
+      const divId = e.division_id || task?.division_id
+      return divId === selectedDiv
+    })
+  }, [queue, selectedDiv, taskMap])
+
   const selectedIds = useMemo(() => Array.from(selected), [selected])
-  const allSelected = queue.length > 0 && selectedIds.length === queue.length
+  const allFilteredSelected =
+    filteredQueue.length > 0 && filteredQueue.every((e) => selected.has(e.id))
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -79,8 +92,56 @@ export default function ApprovalsPage() {
     })
   }
 
-  function toggleAll() {
-    setSelected((prev) => (allSelected ? new Set() : new Set(queue.map((e) => e.id))))
+  function toggleAllFiltered() {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) {
+        for (const e of filteredQueue) {
+          next.delete(e.id)
+        }
+      } else {
+        for (const e of filteredQueue) {
+          next.add(e.id)
+        }
+      }
+      return next
+    })
+  }
+
+  function handleExportCsv() {
+    const columns: CsvColumn<PointEventOut>[] = [
+      { key: "id", label: "Event ID" },
+      {
+        key: (e) =>
+          memberMap[e.member_id]?.full_name || e.member_name || "Unknown",
+        label: "Submitter Name",
+      },
+      {
+        key: (e) => memberMap[e.member_id]?.email || "N/A",
+        label: "Submitter Email",
+      },
+      {
+        key: (e) =>
+          (e.task_id ? taskMap[e.task_id]?.title : null) ||
+          e.task_title ||
+          "Claim Duty",
+        label: "Task Title",
+      },
+      {
+        key: (e) => {
+          const task = e.task_id ? taskMap[e.task_id] : null
+          const divId = e.division_id || task?.division_id
+          return (divId && divisionsMap[divId]) || "Club-Wide"
+        },
+        label: "Division",
+      },
+      { key: "points_delta", label: "Points" },
+      { key: "event_type", label: "Event Type" },
+      { key: "status", label: "Status" },
+      { key: "reason", label: "Claim Reason" },
+      { key: "created_at", label: "Submitted At" },
+    ]
+    exportToCsv("csec_pending_approvals_audit", columns, queue)
   }
 
   async function approve(ids: string[]) {
@@ -136,6 +197,18 @@ export default function ApprovalsPage() {
           <PageHeader
             title="Officer Approval Queue"
             description="Pending claims scoped to your division or delegated governance authority. Review and bulk-action items."
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={queue.length === 0}
+                className="h-9 gap-1.5 text-xs border-zinc-200 dark:border-zinc-800"
+              >
+                <Download className="h-3.5 w-3.5 text-zinc-500" />
+                Export Queue (CSV)
+              </Button>
+            }
           />
 
         {queue.length === 0 ? (
@@ -152,14 +225,48 @@ export default function ApprovalsPage() {
           </Empty>
         ) : (
           <div className="space-y-3">
+            {/* Division Filter Chips */}
+            {divisionsData && divisionsData.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <Button
+                  variant={selectedDiv === "all" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedDiv("all")}
+                  className="h-7 text-xs px-2.5"
+                >
+                  All Divisions ({queue.length})
+                </Button>
+                {divisionsData.map((div) => {
+                  const count = queue.filter((e) => {
+                    const task = e.task_id ? taskMap[e.task_id] : null
+                    return (e.division_id || task?.division_id) === div.id
+                  }).length
+                  if (count === 0) return null
+                  return (
+                    <Button
+                      key={div.id}
+                      variant={selectedDiv === div.id ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setSelectedDiv(div.id)}
+                      className="h-7 text-xs px-2.5"
+                    >
+                      {div.name} ({count})
+                    </Button>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Bulk Action Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/40">
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
                 <Checkbox
-                  checked={queue.length > 0 && selected.size === queue.length}
-                  onCheckedChange={toggleAll}
+                  checked={allFilteredSelected}
+                  onCheckedChange={toggleAllFiltered}
                 />
-                {selectedIds.length > 0 ? `${selectedIds.length} of ${queue.length} selected` : "Select all pending"}
+                {selectedIds.length > 0
+                  ? `${selectedIds.length} of ${filteredQueue.length} selected`
+                  : `Select all filtered (${filteredQueue.length})`}
               </label>
               <div className="flex gap-2">
                 <Button
@@ -178,7 +285,7 @@ export default function ApprovalsPage() {
 
             {/* Claim list cards */}
             <div className="space-y-2">
-              {queue.map((e) => {
+              {filteredQueue.map((e) => {
                 const isSelected = selected.has(e.id)
                 const submitter = memberMap[e.member_id]
                 const submitterName = submitter?.full_name || e.member_name || "Club Member"

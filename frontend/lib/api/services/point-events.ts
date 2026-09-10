@@ -3,6 +3,7 @@ import type {
   PointEventOut,
   ClaimCreateIn,
   OfficerAdjustmentIn,
+  BatchOfficerEventCreateIn,
   Paginated,
   ClaimStatus,
   EventType,
@@ -94,4 +95,12 @@ export const pointEventsService = {
       body: JSON.stringify({ event_ids, reason }),
     })
   },
+
+  batchOfficerEvents: async (data: BatchOfficerEventCreateIn): Promise<BulkResult> => {
+    return apiFetch<BulkResult>("/point-events/batch-officer", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
 }
+

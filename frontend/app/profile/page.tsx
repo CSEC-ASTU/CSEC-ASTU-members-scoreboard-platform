@@ -64,8 +64,37 @@ export default function ProfilePage() {
     return map
   }, [divisions])
 
-  const primaryDivisionName = currentUser.divisionId ? divisionsMap[currentUser.divisionId] || currentUser.division : currentUser.division
-  const secondaryDivisionName = currentUser.secondaryDivisionId ? divisionsMap[currentUser.secondaryDivisionId] || currentUser.secondaryDivision : null
+  const primaryDivisionName = useMemo(() => {
+    if (currentUser.divisionId && divisionsMap[currentUser.divisionId]) {
+      return divisionsMap[currentUser.divisionId]
+    }
+    if (currentUser.division && divisionsMap[currentUser.division]) {
+      return divisionsMap[currentUser.division]
+    }
+    if (
+      currentUser.division &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.division)
+    ) {
+      return currentUser.division
+    }
+    return "General"
+  }, [currentUser, divisionsMap])
+
+  const secondaryDivisionName = useMemo(() => {
+    if (currentUser.secondaryDivisionId && divisionsMap[currentUser.secondaryDivisionId]) {
+      return divisionsMap[currentUser.secondaryDivisionId]
+    }
+    if (currentUser.secondaryDivision && divisionsMap[currentUser.secondaryDivision]) {
+      return divisionsMap[currentUser.secondaryDivision]
+    }
+    if (
+      currentUser.secondaryDivision &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.secondaryDivision)
+    ) {
+      return currentUser.secondaryDivision
+    }
+    return null
+  }, [currentUser, divisionsMap])
 
   const cycleScore = currentUser.cycleScore ?? 0
   const careerScore = currentUser.careerScore ?? 0

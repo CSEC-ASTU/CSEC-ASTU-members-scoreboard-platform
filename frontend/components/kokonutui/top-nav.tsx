@@ -22,7 +22,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   admin: "Admin",
   profile: "My Profile",
   achievement: "Achievement Card",
-  onboarding: "Onboarding",
   login: "Login",
 }
 

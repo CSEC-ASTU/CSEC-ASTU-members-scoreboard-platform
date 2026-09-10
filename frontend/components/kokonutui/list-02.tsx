@@ -63,14 +63,16 @@ export default function List02({
                 {showMember && (
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <MemberAvatar name={member?.name ?? "?"} size={30} />
+                      <MemberAvatar name={e.memberName || member?.name || "?"} size={30} />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {member?.name ?? "Unknown"}
+                          {e.memberName || member?.name || "Member"}
                         </div>
-                        <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                          {member?.division}
-                        </div>
+                        {member?.division && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(member.division) && (
+                          <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                            {member.division}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </TableCell>
