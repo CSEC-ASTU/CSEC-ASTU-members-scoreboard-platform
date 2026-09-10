@@ -30,9 +30,10 @@ router = APIRouter()
 
 
 def _set_auth_cookies(response: Response, settings, access: str, refresh: str) -> None:
+    is_secure = settings.cookie_secure or settings.app_env in ("production", "staging")
     common = {
         "httponly": True,
-        "secure": settings.cookie_secure,
+        "secure": is_secure,
         "samesite": settings.cookie_samesite,
         "path": "/",
     }
@@ -55,11 +56,48 @@ def _clear_auth_cookies(response: Response, settings) -> None:
     response.delete_cookie(settings.refresh_cookie_name, path="/")
 
 
+import hashlib
+import hmac
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
+
+def generate_signed_state(secret: str) -> str:
+    """Generate a tamper-proof time-bounded OAuth state parameter."""
+    nonce = secrets.token_urlsafe(16)
+    timestamp = str(int(time.time()))
+    payload = f"{nonce}:{timestamp}"
+    signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}:{signature}"
+
+
+def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> bool:
+    """Verify the HMAC signature and timestamp of an OAuth state parameter."""
+    try:
+        parts = state.split(":")
+        if len(parts) != 3:
+            return False
+        nonce, timestamp_str, signature = parts
+        payload = f"{nonce}:{timestamp_str}"
+        expected_sig = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected_sig):
+            return False
+        timestamp = int(timestamp_str)
+        now = int(time.time())
+        if (now - timestamp) > max_age_seconds or (timestamp - now) > 60:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 @router.get("/google/login")
 async def google_login(settings: AppSettings) -> RedirectResponse:
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
-    state = secrets.token_urlsafe(24)
+    state = generate_signed_state(settings.jwt_secret_key)
     url = build_google_login_url(settings, state)
     response = RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
@@ -72,10 +110,6 @@ async def google_login(settings: AppSettings) -> RedirectResponse:
         path="/",
     )
     return response
-
-
-import logging
-logger = logging.getLogger(__name__)
 
 
 @router.get("/google/callback")
@@ -93,19 +127,25 @@ async def google_callback(
         return RedirectResponse(f"{frontend}/login?error={error}")
 
     expected = request.cookies.get("oauth_state")
+    signed_valid = verify_signed_state(state or "", settings.jwt_secret_key)
+    cookie_valid = bool(expected and state and hmac.compare_digest(state, expected))
+    state_valid = signed_valid or cookie_valid
+
     logger.info(
-        "google_callback hit: code_present=%s, state=%s, expected_cookie=%s, cookies=%s",
+        "google_callback hit: code_present=%s, state=%s, signed_valid=%s, cookie_valid=%s, cookies=%s",
         bool(code),
         state,
-        expected,
+        signed_valid,
+        cookie_valid,
         list(request.cookies.keys()),
     )
-    if not code or not state or not expected or state != expected:
+    if not code or not state or not state_valid:
         logger.warning(
-            "google_callback invalid_state: code_present=%s, state=%s, expected=%s",
+            "google_callback invalid_state: code_present=%s, state=%s, signed_valid=%s, cookie_valid=%s",
             bool(code),
             state,
-            expected,
+            signed_valid,
+            cookie_valid,
         )
         return RedirectResponse(f"{frontend}/login?error=invalid_state")
 
