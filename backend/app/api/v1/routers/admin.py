@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.permissions import has_permission
-from app.dependencies import DbSession, RequireUser
-from app.models import LoginAttemptFailure, PointEvent
+from app.dependencies import AppSettings, DbSession, RequireUser
+from app.models import LoginAttemptFailure, Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas import (
     AnnualResetPreview,
@@ -17,9 +17,12 @@ from app.schemas import (
     ImportResult,
     Paginated,
     PointEventOut,
+    TelegramGapMember,
+    TelegramReportOut,
 )
 from app.services.annual_reset import execute_annual_reset, preview_annual_reset
 from app.services.import_members import import_members_csv
+from app.services.telegram_notify import trigger_admin_digest
 
 router = APIRouter()
 
@@ -177,3 +180,54 @@ async def list_login_failures(
         "page": page,
         "page_size": page_size,
     }
+
+
+@router.get("/telegram/report", response_model=TelegramReportOut)
+async def telegram_connection_report(db: DbSession, user: RequireUser) -> TelegramReportOut:
+    """On-demand missing-handshake report (president)."""
+    if user.member.role != MemberRole.PRESIDENT:
+        raise HTTPException(status_code=403, detail="President only")
+
+    result = await db.execute(
+        select(Member).where(Member.is_active.is_(True), Member.google_id.is_not(None))
+    )
+    members = list(result.scalars())
+    no_username: list[TelegramGapMember] = []
+    pending: list[TelegramGapMember] = []
+
+    for m in members:
+        row = TelegramGapMember(
+            member_id=m.id,
+            full_name=m.full_name,
+            email=m.email,
+            division_id=m.division_id,
+            telegram_username=m.telegram_username,
+        )
+        if not m.telegram_username:
+            no_username.append(row)
+        elif not m.telegram_chat_id:
+            pending.append(row)
+
+    return TelegramReportOut(
+        no_username=no_username,
+        pending_handshake=pending,
+        totals={
+            "no_username": len(no_username),
+            "pending_handshake": len(pending),
+            "active_claimed_members": len(members),
+        },
+    )
+
+
+@router.post("/telegram/digest")
+async def telegram_admin_digest(
+    user: RequireUser,
+    settings: AppSettings,
+) -> dict:
+    """Ask the bot service to push the connection digest to admin chats."""
+    if user.member.role != MemberRole.PRESIDENT:
+        raise HTTPException(status_code=403, detail="President only")
+    result = await trigger_admin_digest(settings)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("detail") or "Bot digest failed")
+    return result

@@ -1,0 +1,6 @@
+# Ignore local env files used with docker compose
+.env
+.env.compose
+.env.local
+**/.env
+!**/.env.example

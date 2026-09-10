@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import UTC, datetime
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.core.permissions import get_effective_permissions
+from app.core.rate_limit import require_rate_limit
 from app.core.security import (
     create_access_token,
     issue_refresh_token,
@@ -27,6 +29,7 @@ from app.services.google_oauth import (
 from app.services.settings import fetch_member_scores
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _set_auth_cookies(response: Response, settings, access: str, refresh: str) -> None:
@@ -55,7 +58,11 @@ def _clear_auth_cookies(response: Response, settings) -> None:
     response.delete_cookie(settings.refresh_cookie_name, path="/")
 
 
-@router.get("/google/login")
+@router.get(
+    "/google/login",
+    response_class=RedirectResponse,
+    dependencies=[Depends(require_rate_limit("auth"))],
+)
 async def google_login(settings: AppSettings) -> RedirectResponse:
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
@@ -74,11 +81,11 @@ async def google_login(settings: AppSettings) -> RedirectResponse:
     return response
 
 
-import logging
-logger = logging.getLogger(__name__)
-
-
-@router.get("/google/callback")
+@router.get(
+    "/google/callback",
+    response_class=RedirectResponse,
+    dependencies=[Depends(require_rate_limit("auth"))],
+)
 async def google_callback(
     request: Request,
     db: DbSession,
@@ -169,7 +176,7 @@ async def google_callback(
     return response
 
 
-@router.post("/refresh")
+@router.post("/refresh", dependencies=[Depends(require_rate_limit("auth"))])
 async def refresh(request: Request, response: Response, db: DbSession, settings: AppSettings) -> dict:
     raw = request.cookies.get(settings.refresh_cookie_name)
     if not raw:
@@ -234,6 +241,7 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
         phone_number=m.phone_number,
         github_url=m.github_url,
         telegram_username=m.telegram_username,
+        telegram_linked=bool(m.telegram_chat_id),
         onboarded=m.first_login_at is not None,
         cycle_score=scores["cycle_score"],
         display_score=scores["display_score"],

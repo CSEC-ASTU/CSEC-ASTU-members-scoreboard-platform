@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Typed as Any so empty .env values are not JSON-decoded by pydantic-settings
     telegram_admin_chat_ids: Any = Field(default_factory=list)
 
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.0
+
     @field_validator("telegram_admin_chat_ids", mode="before")
     @classmethod
     def parse_admin_chats(cls, value: object) -> list[str]:

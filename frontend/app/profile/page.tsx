@@ -38,7 +38,9 @@ export default function ProfilePage() {
   const { currentUser, refetchUser } = useCurrentUser()
   const [department, setDepartment] = useState(currentUser.department)
   const [telegram, setTelegram] = useState(currentUser.telegramUsername ?? "")
-  const [connected, setConnected] = useState(Boolean(currentUser.telegramUsername))
+  const [connected, setConnected] = useState(Boolean(currentUser.telegramLinked))
+  const [deepLink, setDeepLink] = useState<string | null>(null)
+  const [telegramBusy, setTelegramBusy] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -55,6 +57,35 @@ export default function ProfilePage() {
   useEffect(() => {
     setDepartment(currentUser.department)
   }, [currentUser.department])
+
+  useEffect(() => {
+    setTelegram(currentUser.telegramUsername ?? "")
+    setConnected(Boolean(currentUser.telegramLinked))
+  }, [currentUser.telegramUsername, currentUser.telegramLinked])
+
+  const handleTelegramConnect = useCallback(async () => {
+    const handle = telegram.trim()
+    if (!handle) {
+      toast.error("Enter your Telegram username first")
+      return
+    }
+    setTelegramBusy(true)
+    try {
+      const result = await membersService.connectTelegram(handle)
+      setTelegram(`@${result.telegram_username}`)
+      setConnected(result.telegram_linked)
+      setDeepLink(result.deep_link)
+      toast.success(result.detail)
+      await refetchUser()
+      if (result.deep_link && !result.telegram_linked) {
+        window.open(result.deep_link, "_blank", "noopener,noreferrer")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to start Telegram connect")
+    } finally {
+      setTelegramBusy(false)
+    }
+  }, [telegram, refetchUser])
 
   const divisionsMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -293,22 +324,35 @@ export default function ProfilePage() {
                   placeholder="@username"
                 />
                 <Button
-                  onClick={() => {
-                    setConnected(Boolean(telegram.trim()))
-                    toast.success(telegram.trim() ? "Telegram connected" : "Telegram disconnected")
-                  }}
+                  onClick={handleTelegramConnect}
                   size="sm"
                   variant="outline"
+                  disabled={telegramBusy}
                 >
-                  {connected ? "Update" : "Connect"}
+                  {telegramBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : connected ? "Re-link" : "Connect"}
                 </Button>
               </div>
             </div>
 
-            {connected && (
+            {deepLink && (
+              <a
+                href={deepLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-xs text-blue-600 underline dark:text-blue-400"
+              >
+                Open Telegram bot link
+              </a>
+            )}
+
+            {connected ? (
               <div className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
-                Bot webhook handshake active. Chat ID mapped.
+                Telegram chat linked. You will receive warnings and recognition alerts here.
+              </div>
+            ) : (
+              <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                Save your username, then press Start in Telegram to finish the handshake. Linking is not complete until the bot confirms.
               </div>
             )}
           </div>

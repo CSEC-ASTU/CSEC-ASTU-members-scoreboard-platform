@@ -76,12 +76,22 @@ export interface CurrentUserOut {
   phone_number?: string | null
   github_url?: string | null
   telegram_username?: string | null
+  telegram_linked?: boolean
   onboarded: boolean
   cycle_score: number
   display_score: number
   career_score: number
   badge: BadgeTier | null
   permissions: string[]
+}
+
+export interface TelegramConnectOut {
+  telegram_username: string
+  telegram_linked: boolean
+  deep_link: string | null
+  expires_at: string | null
+  bot_username: string | null
+  detail: string
 }
 
 export interface AchievementCardOut {
