@@ -37,10 +37,24 @@ export const membersService = {
     return apiFetch<MemberDetailOut>(`/members/${id}`)
   },
 
-  updateMe: async (data: { department?: string; joining_year?: number }): Promise<MemberOut> => {
+  updateMe: async (data: {
+    department?: string
+    joining_year?: number
+    telegram_username?: string
+    phone_number?: string
+    github_url?: string
+    full_name?: string
+  }): Promise<MemberOut> => {
     return apiFetch<MemberOut>("/members/me", {
       method: "PATCH",
       body: JSON.stringify(data),
+    })
+  },
+
+  connectTelegram: async (telegram_username: string): Promise<import("../types").TelegramConnectOut> => {
+    return apiFetch("/members/me/telegram", {
+      method: "POST",
+      body: JSON.stringify({ telegram_username }),
     })
   },
 

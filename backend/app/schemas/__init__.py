@@ -41,11 +41,39 @@ class MeOut(BaseModel):
     phone_number: str | None = None
     github_url: str | None = None
     telegram_username: str | None = None
+    telegram_linked: bool = False
     onboarded: bool
     cycle_score: int
     display_score: int
     career_score: int
     permissions: list[str]
+
+
+class TelegramConnectRequest(BaseModel):
+    telegram_username: str = Field(min_length=1, max_length=255)
+
+
+class TelegramConnectOut(BaseModel):
+    telegram_username: str
+    telegram_linked: bool
+    deep_link: str | None = None
+    expires_at: datetime | None = None
+    bot_username: str | None = None
+    detail: str
+
+
+class TelegramGapMember(BaseModel):
+    member_id: UUID
+    full_name: str
+    email: EmailStr
+    division_id: UUID | None = None
+    telegram_username: str | None = None
+
+
+class TelegramReportOut(BaseModel):
+    no_username: list[TelegramGapMember]
+    pending_handshake: list[TelegramGapMember]
+    totals: dict[str, int]
 
 
 # ---- Members ----

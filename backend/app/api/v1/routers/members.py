@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+import secrets
 from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 from sqlalchemy import func, or_, select
 
 from app.core.permissions import can_see_member, has_permission, is_club_wide_officer, is_officer
@@ -19,6 +20,8 @@ from app.schemas import (
     MemberSelfUpdate,
     Paginated,
     PointEventOut,
+    TelegramConnectOut,
+    TelegramConnectRequest,
 )
 from app.services.drive import delete_drive_file_from_url, upload_profile_picture
 from app.services.settings import (
@@ -28,8 +31,23 @@ from app.services.settings import (
     get_current_academic_year,
     get_score_cap,
 )
+from app.services.telegram_notify import schedule_point_event_notify
 
 router = APIRouter()
+
+
+def _normalize_telegram_username(raw: str) -> str:
+    value = raw.strip()
+    if value.startswith("@"):
+        value = value[1:]
+    # Accept pasted t.me links
+    lowered = value.lower()
+    for marker in ("t.me/", "telegram.me/"):
+        if marker in lowered:
+            value = value.split(marker, 1)[-1]
+            break
+    value = value.split("?")[0].split("/")[0].strip()
+    return value.lower()
 
 
 @router.get("", response_model=Paginated[MemberListItem])
@@ -153,9 +171,59 @@ async def update_me(body: MemberSelfUpdate, db: DbSession, user: RequireUser) ->
     if body.github_url is not None:
         m.github_url = body.github_url
     if body.telegram_username is not None:
-        m.telegram_username = body.telegram_username
+        m.telegram_username = _normalize_telegram_username(body.telegram_username) or None
     await db.flush()
     return await get_member(m.id, db, user)
+
+
+@router.post("/me/telegram", response_model=TelegramConnectOut)
+async def connect_telegram(
+    body: TelegramConnectRequest,
+    db: DbSession,
+    user: RequireUser,
+    settings: AppSettings,
+) -> TelegramConnectOut:
+    """Generate a one-time connect token and t.me deep link for bot handshake."""
+    username = _normalize_telegram_username(body.telegram_username)
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="Invalid Telegram username")
+
+    m = user.member
+    # Changing username clears prior chat binding so the new account must re-handshake
+    if m.telegram_username and m.telegram_username != username:
+        m.telegram_chat_id = None
+
+    m.telegram_username = username
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(UTC) + timedelta(hours=settings.telegram_connect_token_ttl_hours)
+    m.telegram_connect_token = token
+    m.telegram_token_expires_at = expires
+    await db.flush()
+
+    bot_username = (settings.telegram_bot_username or "").lstrip("@")
+    deep_link = f"https://t.me/{bot_username}?start={token}" if bot_username else None
+    linked = bool(m.telegram_chat_id)
+
+    if not bot_username:
+        detail = (
+            "Username saved, but TELEGRAM_BOT_USERNAME is not configured on the backend. "
+            "Ask an admin to set it so a Connect link can be generated."
+        )
+    elif linked:
+        detail = (
+            "Username updated. Open the link below if you need to re-link your Telegram chat."
+        )
+    else:
+        detail = "Open the link below in Telegram and press Start to finish linking."
+
+    return TelegramConnectOut(
+        telegram_username=username,
+        telegram_linked=linked,
+        deep_link=deep_link,
+        expires_at=expires,
+        bot_username=bot_username or None,
+        detail=detail,
+    )
 
 
 @router.post("/me/profile-picture")
@@ -226,8 +294,10 @@ async def update_member(
 async def layoff_member(
     member_id: UUID,
     body: LayoffRequest,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     user: RequireUser,
+    settings: AppSettings,
 ) -> PointEventOut:
     if user.member.role != MemberRole.PRESIDENT:
         raise HTTPException(status_code=403, detail="President only")
@@ -251,6 +321,7 @@ async def layoff_member(
     )
     db.add(event)
     await db.flush()
+    schedule_point_event_notify(background_tasks, settings, event.id)
     return PointEventOut.model_validate(event)
 
 

@@ -39,6 +39,11 @@ For local testing, expose port 8001 with ngrok/cloudflared.
 
 ## Backend wiring
 
-The main API keeps member-facing routes (`POST /api/v1/members/me/telegram`, admin report)
-and calls this service over HTTP when a ledger event should notify someone.
-See `docs/improvements/09-telegram-phase2.md`.
+The main API:
+1. Issues connect tokens via `POST /api/v1/members/me/telegram`
+2. After approved ledger writes, POSTs `http://<bot>/internal/notify` with
+   header `X-Internal-Secret` (must match this service)
+3. Presidents can pull `GET /api/v1/admin/telegram/report` or trigger
+   `POST /api/v1/admin/telegram/digest`
+
+Local full stack: from the repo root run `docker compose up --build`.

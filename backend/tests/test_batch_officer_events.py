@@ -2,12 +2,12 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
 
-from app.models import Division, Member, PointEvent, Task
-from app.models.enums import MemberRole, PointEventStatus, PointEventType
-from app.schemas import BatchOfficerEventCreate
 from app.api.v1.routers.point_events import batch_officer_events
+from app.config import Settings
+from app.models import Member
+from app.models.enums import MemberRole, PointEventType
+from app.schemas import BatchOfficerEventCreate
 
 
 @pytest.fixture
@@ -25,24 +25,31 @@ def president_user():
     return user
 
 
+@pytest.fixture
+def notify_settings():
+    # Unconfigured → schedule_point_event_notify is a no-op (no httpx)
+    return Settings(telegram_bot_base_url="", internal_api_secret="")
+
+
 @pytest.mark.asyncio
-async def test_batch_officer_events_success(president_user):
+async def test_batch_officer_events_success(president_user, notify_settings):
     db = AsyncMock()
-    
+    background_tasks = MagicMock()
+
     m1_id = uuid.uuid4()
     m2_id = uuid.uuid4()
-    
-    # Mock members
+
     m1 = Member(id=m1_id, email="m1@astu.edu.et", full_name="M1", role=MemberRole.MEMBER)
     m2 = Member(id=m2_id, email="m2@astu.edu.et", full_name="M2", role=MemberRole.MEMBER)
-    
-    def mock_get(model, entity_id):
+
+    async def mock_get(model, entity_id):
         if entity_id == m1_id:
             return m1
         if entity_id == m2_id:
             return m2
         return None
-        
+
+    db.get.side_effect = mock_get
     mock_setting = MagicMock()
     mock_setting.value = 2026
     mock_res = MagicMock()
@@ -56,7 +63,13 @@ async def test_batch_officer_events_success(president_user):
         reason="Game Night participation award",
     )
 
-    res = await batch_officer_events(payload, db=db, user=president_user)
+    res = await batch_officer_events(
+        payload,
+        background_tasks=background_tasks,
+        db=db,
+        user=president_user,
+        settings=notify_settings,
+    )
 
     assert len(res.succeeded) == 2
     assert len(res.failed) == 0
@@ -64,12 +77,13 @@ async def test_batch_officer_events_success(president_user):
 
 
 @pytest.mark.asyncio
-async def test_batch_officer_events_normal_warning(president_user):
+async def test_batch_officer_events_normal_warning(president_user, notify_settings):
     db = AsyncMock()
+    background_tasks = MagicMock()
     m_id = uuid.uuid4()
     m = Member(id=m_id, email="warned@astu.edu.et", full_name="Warned Member", role=MemberRole.MEMBER)
 
-    def mock_get(model, entity_id):
+    async def mock_get(model, entity_id):
         if entity_id == m_id:
             return m
         return None
@@ -88,9 +102,14 @@ async def test_batch_officer_events_normal_warning(president_user):
         reason="Minor infraction: Late to division sprint review",
     )
 
-    res = await batch_officer_events(payload, db=db, user=president_user)
+    res = await batch_officer_events(
+        payload,
+        background_tasks=background_tasks,
+        db=db,
+        user=president_user,
+        settings=notify_settings,
+    )
 
     assert len(res.succeeded) == 1
     assert isinstance(res.succeeded[0], uuid.UUID)
     assert db.commit.called
-
