@@ -74,6 +74,10 @@ async def google_login(settings: AppSettings) -> RedirectResponse:
     return response
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 @router.get("/google/callback")
 async def google_callback(
     request: Request,
@@ -85,27 +89,45 @@ async def google_callback(
 ) -> RedirectResponse:
     frontend = settings.frontend_url.rstrip("/")
     if error:
+        logger.warning("google_callback received oauth error param: %s", error)
         return RedirectResponse(f"{frontend}/login?error={error}")
 
     expected = request.cookies.get("oauth_state")
+    logger.info(
+        "google_callback hit: code_present=%s, state=%s, expected_cookie=%s, cookies=%s",
+        bool(code),
+        state,
+        expected,
+        list(request.cookies.keys()),
+    )
     if not code or not state or not expected or state != expected:
+        logger.warning(
+            "google_callback invalid_state: code_present=%s, state=%s, expected=%s",
+            bool(code),
+            state,
+            expected,
+        )
         return RedirectResponse(f"{frontend}/login?error=invalid_state")
 
     try:
         tokens = await exchange_code_for_tokens(settings, code)
         info = await fetch_google_userinfo(tokens["access_token"])
-    except Exception:
+    except Exception as exc:
+        logger.exception("google_callback exchange/userinfo failed: %s", exc)
         return RedirectResponse(f"{frontend}/login?error=oauth_failed")
 
     email = (info.get("email") or "").lower().strip()
     google_id = info.get("sub")
+    logger.info("google_callback profile fetched: email=%s, google_id=%s", email, google_id)
     if not email or not google_id:
+        logger.warning("google_callback missing profile fields: email=%s, google_id=%s", email, google_id)
         return RedirectResponse(f"{frontend}/login?error=missing_profile")
 
     result = await db.execute(select(Member).where(Member.email == email))
     member = result.scalar_one_or_none()
 
     if member is None:
+        logger.warning("google_callback member not found: %s", email)
         db.add(
             LoginAttemptFailure(
                 email=email,
@@ -119,6 +141,7 @@ async def google_callback(
         return RedirectResponse(f"{frontend}/not-registered?{urlencode({'email': email})}")
 
     if not member.is_active:
+        logger.warning("google_callback member is inactive: %s", email)
         return RedirectResponse(f"{frontend}/login?error=inactive")
 
     if member.google_id is None:
@@ -127,12 +150,19 @@ async def google_callback(
         if info.get("name"):
             member.full_name = info["name"]
     elif member.google_id != google_id:
+        logger.warning(
+            "google_callback google_id mismatch: email=%s, db=%s, incoming=%s",
+            email,
+            member.google_id,
+            google_id,
+        )
         return RedirectResponse(f"{frontend}/login?error=google_mismatch")
 
     access = create_access_token(member.id, settings)
     refresh = await issue_refresh_token(db, member.id, settings)
     await db.flush()
 
+    logger.info("google_callback login success for %s! Redirecting to %s/dashboard", email, frontend)
     response = RedirectResponse(f"{frontend}/dashboard", status_code=status.HTTP_302_FOUND)
     _set_auth_cookies(response, settings, access, refresh)
     response.delete_cookie("oauth_state", path="/")

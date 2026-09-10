@@ -1,19 +1,31 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Lock, Sparkles } from "lucide-react"
+import { AlertCircle, Lock, Sparkles } from "lucide-react"
 import { authService } from "@/lib/api"
 
-export default function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_state: "Security state verification failed. This occurs if session cookies are blocked or domain mismatch.",
+  oauth_failed: "Google token exchange failed. Check that GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI match exactly.",
+  missing_profile: "Google did not return an email or profile for your account.",
+  inactive: "Your membership account has been deactivated. Please contact an officer.",
+  google_mismatch: "The Google account does not match the Google ID linked to this member profile.",
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const errorParam = searchParams.get("error")
   const [loading, setLoading] = useState(false)
 
   function handleGoogleLogin() {
     setLoading(true)
     window.location.href = authService.getGoogleLoginUrl()
   }
+
+  const errorMessage = errorParam ? (ERROR_MESSAGES[errorParam] || `Authentication failed (${errorParam})`) : null
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-between items-center bg-[#09090B] text-zinc-100 selection:bg-zinc-800 selection:text-white font-sans p-6 sm:p-10 relative overflow-hidden">
@@ -43,7 +55,7 @@ export default function LoginPage() {
       </header>
 
       {/* Centered Notion/Linear-Style Login Card */}
-      <main className="w-full max-w-[400px] z-10 my-auto py-10 space-y-8">
+      <main className="w-full max-w-[400px] z-10 my-auto py-10 space-y-6">
         {/* Header Branding */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner mb-1">
@@ -56,6 +68,17 @@ export default function LoginPage() {
             Sign in with your university Google account to access your points ledger and division tasks.
           </p>
         </div>
+
+        {/* Error Alert if redirected with error */}
+        {errorMessage && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 flex items-start gap-3 text-left">
+            <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-red-300">Login Error</p>
+              <p className="text-xs text-red-200/80 leading-relaxed">{errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* OAuth Box */}
         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-5">
@@ -111,5 +134,13 @@ export default function LoginPage() {
         <p>Adama Science and Technology University · Computer Science &amp; Engineering Club</p>
       </footer>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }
