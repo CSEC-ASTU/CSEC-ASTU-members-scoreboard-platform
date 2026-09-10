@@ -20,5 +20,6 @@ Each file describes one improvement: why it was added, what changed (schema / AP
 | [12](12-member-contact-fields-and-personal-email-auth.md) | Member contact fields & personal email OAuth auth | shipped |
 | [13](13-officer-productivity-and-export-suite.md) | Batch adjustments, Inactivity Radar & CSV export | shipped |
 | [14](14-google-form-csv-import-auto-mapper.md) | Google Form CSV import auto-mapper & pre-flight wizard | shipped |
+| [15](15-standalone-telegram-bot-service.md) | Standalone Telegram bot service & push notification engine | shipped |
 
 Phase 2 items (Telegram bot, rate limiting) are tracked in [`PROJECT_ANALYSIS_AND_ROADMAP.md`](../PROJECT_ANALYSIS_AND_ROADMAP.md).
