@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowRight, Lock, ShieldCheck, Sparkles } from "lucide-react"
+import { Lock, Sparkles } from "lucide-react"
 import { authService } from "@/lib/api"
 
 export default function LoginPage() {
@@ -39,13 +39,6 @@ export default function LoginPage() {
           <span className="text-sm font-semibold tracking-tight text-white">
             CSEC ASTU
           </span>
-        </Link>
-
-        <Link
-          href="/onboarding"
-          className="text-xs text-zinc-400 hover:text-white transition-colors inline-flex items-center gap-1 font-medium"
-        >
-          First time? Onboarding <ArrowRight className="h-3 w-3" />
         </Link>
       </header>
 
@@ -108,13 +101,7 @@ export default function LoginPage() {
         {/* Bottom Helper Info */}
         <div className="text-center space-y-2">
           <p className="text-xs text-zinc-500">
-            New to the platform?{" "}
-            <Link
-              href="/onboarding"
-              className="text-zinc-300 hover:text-white underline underline-offset-4 transition-colors font-medium"
-            >
-              Complete onboarding
-            </Link>
+            Having trouble signing in? Reach out to your division lead or club admin.
           </p>
         </div>
       </main>
