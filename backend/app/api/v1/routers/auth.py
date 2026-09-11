@@ -74,10 +74,10 @@ def generate_signed_state(secret: str, redirect: str | None = None) -> str:
     """Generate a tamper-proof time-bounded OAuth state parameter including optional redirect path."""
     nonce = secrets.token_urlsafe(16)
     timestamp = str(int(time.time()))
-    redirect_b64 = ""
+    redirect_hex = ""
     if redirect and redirect.startswith("/") and not redirect.startswith("//"):
-        redirect_b64 = base64.urlsafe_b64encode(redirect.encode("utf-8")).decode("ascii")
-    payload = f"{nonce}:{timestamp}:{redirect_b64}"
+        redirect_hex = redirect.encode("utf-8").hex()
+    payload = f"{nonce}:{timestamp}:{redirect_hex}"
     signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
     return f"{payload}:{signature}"
 
@@ -88,10 +88,14 @@ def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> 
         parts = state.split(":")
         redirect_path = None
         if len(parts) == 4:
-            nonce, timestamp_str, redirect_b64, signature = parts
-            payload = f"{nonce}:{timestamp_str}:{redirect_b64}"
-            if redirect_b64:
-                decoded = base64.urlsafe_b64decode(redirect_b64.encode("ascii")).decode("utf-8")
+            nonce, timestamp_str, redirect_encoded, signature = parts
+            payload = f"{nonce}:{timestamp_str}:{redirect_encoded}"
+            if redirect_encoded:
+                try:
+                    decoded = bytes.fromhex(redirect_encoded).decode("utf-8")
+                except ValueError:
+                    padded = redirect_encoded + "=" * (-len(redirect_encoded) % 4)
+                    decoded = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
                 if decoded.startswith("/") and not decoded.startswith("//"):
                     redirect_path = decoded
         elif len(parts) == 3:

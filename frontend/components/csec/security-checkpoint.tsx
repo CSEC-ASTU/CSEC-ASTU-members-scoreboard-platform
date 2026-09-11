@@ -14,6 +14,11 @@ export function SecurityCheckpoint({ memberId }: SecurityCheckpointProps) {
   const handleAuthenticate = () => {
     setLoading(true)
     const redirectPath = `/members/${memberId}`
+    try {
+      localStorage.setItem("csec_post_login_redirect", redirectPath)
+    } catch {
+      // ignore
+    }
     window.location.href = authService.getGoogleLoginUrl(redirectPath)
   }
 

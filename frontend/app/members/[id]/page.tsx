@@ -58,17 +58,13 @@ import {
   ShieldAlert,
   Award,
   Sparkles,
-  History,
   AlertTriangle,
   Pencil,
   Loader2,
   Github,
   Phone,
-  ShieldCheck,
   Mail,
-  Lock,
   QrCode,
-  CheckCircle2,
 } from "lucide-react"
 
 import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation } from "@/lib/hooks/use-queries"

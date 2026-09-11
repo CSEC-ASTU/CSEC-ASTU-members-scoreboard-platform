@@ -24,7 +24,7 @@ const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
 export default function MembersPage() {
   const { currentUser } = useCurrentUser()
-  const officer = isOfficer(currentUser)
+  const officer = currentUser.role !== "member" && isOfficer(currentUser)
   const [q, setQ] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
   const [division, setDivision] = useState("all")
@@ -113,6 +113,7 @@ export default function MembersPage() {
   }, [members, divisionMap, department, year])
 
   function handleExportCsv() {
+    if (!officer) return
     const columns: CsvColumn<MemberOut>[] = [
       { key: "full_name", label: "Full Name" },
       { key: "email", label: "Personal Email" },

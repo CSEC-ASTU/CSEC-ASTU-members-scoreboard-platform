@@ -40,6 +40,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const user = await authService.getMe()
       if (user) {
         setLiveUser(user)
+        try {
+          const pendingRedirect = localStorage.getItem("csec_post_login_redirect")
+          if (pendingRedirect && pendingRedirect.startsWith("/") && !pendingRedirect.startsWith("//")) {
+            localStorage.removeItem("csec_post_login_redirect")
+            if (typeof window !== "undefined") {
+              const currentPath = window.location.pathname
+              if (currentPath === "/dashboard" || currentPath === "/") {
+                window.location.replace(pendingRedirect)
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
       }
     } catch {
       // Not logged in or dev mode

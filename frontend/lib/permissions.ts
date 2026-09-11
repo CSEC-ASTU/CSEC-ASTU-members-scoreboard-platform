@@ -15,11 +15,29 @@ const ROLE_HIERARCHY: Record<string, number> = {
   president: 4,
 }
 
+const OFFICER_DELEGATED_PERMISSIONS = new Set([
+  "approve_task",
+  "manage_tasks",
+  "assign_permission",
+  "import_members",
+  "view_division_members",
+  "override_approval",
+  "execute_layoff",
+  "manage_settings",
+  "manage_divisions",
+  "view_audit_log",
+  "run_annual_reset",
+])
+
 /**
  * Checks if the member has officer privileges (either via role or enabled delegated permissions).
  */
 export function isOfficer(member: Member): boolean {
-  return OFFICER_ROLES.includes(member.role) || member.permissions.some((p) => p.isEnabled)
+  if (!member) return false
+  if (OFFICER_ROLES.includes(member.role)) return true
+  return (member.permissions || []).some(
+    (p) => p.isEnabled && OFFICER_DELEGATED_PERMISSIONS.has(p.permissionKey || p.label)
+  )
 }
 
 /**
