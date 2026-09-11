@@ -52,7 +52,10 @@ export default function TasksPage() {
     }))
   }, [eventsData])
 
-  const isLoading = tasksLoading || eventsLoading || divisionsLoading
+  const isInitialLoading =
+    (tasksLoading && !tasksData) ||
+    (eventsLoading && !eventsData) ||
+    (divisionsLoading && !divisionsData)
 
   const divisionsMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -144,7 +147,7 @@ export default function TasksPage() {
 
   return (
     <Layout>
-      {isLoading && tasks.length === 0 ? (
+      {isInitialLoading ? (
         <TasksSkeleton />
       ) : (
         <div className="space-y-6">

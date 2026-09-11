@@ -20,6 +20,7 @@ export default function ClaimsHistoryPage() {
   const [filter, setFilter] = useState<FilterTab>("all")
 
   const { data: eventsData, isLoading } = useMemberEvents(isAuthenticated ? currentUser.id : null)
+  const isInitialLoading = isLoading && !eventsData
 
   const allEvents: PointEvent[] = useMemo(() => {
     return (eventsData?.items || []).map((e) => ({
@@ -75,7 +76,7 @@ export default function ClaimsHistoryPage() {
 
   return (
     <Layout>
-      {isLoading && allEvents.length === 0 ? (
+      {isInitialLoading ? (
         <ClaimsSkeleton />
       ) : (
         <div className="space-y-8">

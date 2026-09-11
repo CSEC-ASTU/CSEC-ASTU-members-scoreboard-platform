@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import type { ClaimStatus, WarningLevel, EventType, BadgeTier } from "@/lib/csec-data"
 import { Sparkles, Shield, Award, Gem } from "lucide-react"
@@ -181,6 +184,25 @@ function initials(name: string): string {
     .toUpperCase()
 }
 
+function formatAvatarUrl(url?: string | null): string | null {
+  if (!url) return null
+  const trimmed = url.trim()
+  if (!trimmed) return null
+
+  // Format Google Drive links into direct CDN image endpoints
+  const driveIdMatch =
+    trimmed.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) ||
+    trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+    trimmed.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/)
+
+  if (driveIdMatch && driveIdMatch[1]) {
+    const fileId = driveIdMatch[1]
+    return `https://lh3.googleusercontent.com/d/${fileId}`
+  }
+
+  return trimmed
+}
+
 export function MemberAvatar({
   name,
   imageUrl,
@@ -192,19 +214,29 @@ export function MemberAvatar({
   size?: number
   className?: string
 }) {
-  if (imageUrl) {
+  const [hasError, setHasError] = useState(false)
+  const resolvedUrl = useMemo(() => formatAvatarUrl(imageUrl), [imageUrl])
+
+  // Reset error state if the imageUrl changes (e.g. after uploading a new photo)
+  useEffect(() => {
+    setHasError(false)
+  }, [imageUrl])
+
+  if (resolvedUrl && !hasError) {
     return (
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-full border border-zinc-200 dark:border-white/10",
+          "relative shrink-0 overflow-hidden rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-zinc-800",
           className,
         )}
         style={{ width: size, height: size }}
       >
         <img
-          src={imageUrl}
+          src={resolvedUrl}
           alt={name}
           className="h-full w-full object-cover"
+          onError={() => setHasError(true)}
+          referrerPolicy="no-referrer"
         />
       </div>
     )
@@ -213,7 +245,7 @@ export function MemberAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/10",
+        "flex shrink-0 items-center justify-center rounded-full font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/10 select-none",
         className,
       )}
       style={{ width: size, height: size, fontSize: size * 0.38 }}

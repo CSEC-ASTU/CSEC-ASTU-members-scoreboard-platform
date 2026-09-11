@@ -151,11 +151,21 @@ def has_permission(
 
 
 def can_see_member(viewer: Member, target: Member, effective: list[str]) -> bool:
+    """All authenticated club members can view members directory and public profile."""
+    return True
+
+
+def can_view_sensitive_info(viewer: Member, target: Member, effective: list[str]) -> bool:
+    """Check if viewer has officer/admin authority to see private contact details (phone, telegram, student ID)."""
     if viewer.id == target.id:
         return True
     if viewer.role == MemberRole.PRESIDENT or is_club_wide_officer(viewer):
         return True
-    if viewer.role == MemberRole.DIVISION_HEAD and viewer.division_id and viewer.division_id == target.division_id:
+    if viewer.role == MemberRole.DIVISION_HEAD and viewer.division_id and (
+        viewer.division_id == target.division_id or viewer.division_id == target.secondary_division_id
+    ):
+        return True
+    if has_permission(effective, "view_division_members"):
         return True
     if target.division_id and has_permission(effective, "view_division_members", division_id=target.division_id):
         return True

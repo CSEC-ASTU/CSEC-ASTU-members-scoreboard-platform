@@ -78,7 +78,11 @@ export default function TopNav() {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none rounded-full ring-2 ring-gray-200 dark:ring-[#2B2B30]">
-            <MemberAvatar name={currentUser.name} size={32} />
+            <MemberAvatar
+              name={currentUser.name}
+              imageUrl={currentUser.profileImageUrl || currentUser.avatar}
+              size={32}
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"

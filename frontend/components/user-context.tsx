@@ -12,9 +12,13 @@ interface UserContextValue {
     cycleScore?: number
     displayScore?: number
     careerScore?: number
+    badge?: string | null
     profileImageUrl?: string
     rawPermissions?: string[]
     telegramConnected?: boolean
+    phoneNumber?: string | null
+    githubUrl?: string | null
+    studentId?: string | null
   }
   liveUser: CurrentUserOut | null
   setCurrentUserId: (id: string) => void
@@ -90,8 +94,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         cycleScore: liveUser.cycle_score,
         displayScore: liveUser.display_score,
         careerScore: liveUser.career_score,
+        badge: (liveUser.badge as any) ?? null,
         telegramUsername: liveUser.telegram_username ?? undefined,
         telegramConnected: Boolean(liveUser.telegram_connected),
+        phoneNumber: liveUser.phone_number ?? undefined,
+        githubUrl: liveUser.github_url ?? undefined,
+        studentId: liveUser.student_id ?? undefined,
       }
     }
     return {
@@ -111,7 +119,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       cycleScore: 50,
       displayScore: 50,
       careerScore: 50,
+      badge: null,
       telegramConnected: false,
+      phoneNumber: undefined,
+      githubUrl: undefined,
+      studentId: undefined,
     }
   }, [liveUser])
 

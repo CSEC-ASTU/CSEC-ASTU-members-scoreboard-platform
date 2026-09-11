@@ -20,7 +20,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/components/user-context"
-import { isOfficer, canManagePermissions } from "@/lib/permissions"
+import { isOfficer, canManagePermissions, canAccessAdmin } from "@/lib/permissions"
 import { useApprovals } from "@/lib/hooks/use-queries"
 
 interface SidebarProps {
@@ -174,7 +174,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               <div>
                 <SectionLabel>Directory</SectionLabel>
                 <div className="space-y-1">
-                  <NavItem href="/members" icon={Users2}>Members</NavItem>
                   <NavItem href="/claims" icon={History}>My History</NavItem>
                 </div>
               </div>
@@ -184,12 +183,15 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <div>
                   <SectionLabel>Administration</SectionLabel>
                   <div className="space-y-1">
-                    <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                    <NavItem href="/members" icon={Users2}>Members</NavItem>
                     {canManagePermissions(currentUser) && (
                       <NavItem href="/permissions" icon={KeyRound}>Permissions</NavItem>
                     )}
-                    {canManagePermissions(currentUser) && (
-                      <NavItem href="/admin" icon={Settings}>Settings</NavItem>
+                    {canAccessAdmin(currentUser) && (
+                      <div>
+                      <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                      <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
+                      </div>
                     )}
                   </div>
                 </div>

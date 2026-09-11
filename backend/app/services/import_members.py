@@ -188,6 +188,76 @@ def extract_github_url(raw: str) -> str:
     return f"https://github.com/{cleaned}"
 
 
+def normalize_drive_image_url(raw: str) -> str:
+    cleaned = raw.strip()
+    if not cleaned:
+        return ""
+    import re
+    m = re.search(r"drive\.google\.com/(?:open\?id=|file/d/|uc\?.*id=)([a-zA-Z0-9_-]+)", cleaned)
+    if m:
+        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
+    return cleaned
+
+
+DIVISION_ALIASES: dict[str, str] = {
+    # Form export division names mapped to internal canonical names
+    "competitive programming division": "competitive programming",
+    "competitive programming": "competitive programming",
+    "development division": "development",
+    "development": "development",
+    "cybersecurity division": "cybersecurity",
+    "cybersecurity": "cybersecurity",
+    "cyber security division": "cybersecurity",
+    "cyber security": "cybersecurity",
+    "data science division": "data science",
+    "data science": "data science",
+    "social media division": "social media",
+    "social media": "social media",
+    "blockchain team": "blockchain team",
+    "blockchain division": "blockchain team",
+    "blockchain": "blockchain team",
+    "capacity building division": "capacity building",
+    "capacity building": "capacity building",
+    "cbd": "capacity building",
+    "cp": "competitive programming",
+    "dev": "development",
+}
+
+
+def resolve_division(raw_name: str, divisions_by_name: dict[str, Division]) -> Division | None:
+    if not raw_name:
+        return None
+    cleaned = " ".join(raw_name.strip().lower().split())
+    if not cleaned:
+        return None
+
+    # 1. Exact match in DB
+    if cleaned in divisions_by_name:
+        return divisions_by_name[cleaned]
+
+    # 2. Known alias mapping
+    canonical = DIVISION_ALIASES.get(cleaned)
+    if canonical and canonical in divisions_by_name:
+        return divisions_by_name[canonical]
+
+    # 3. Strip trailing suffix like ' division', ' team', ' track'
+    stripped = cleaned
+    for suffix in (" division", " team", " track"):
+        if stripped.endswith(suffix):
+            candidate = stripped[: -len(suffix)].strip()
+            if candidate in divisions_by_name:
+                return divisions_by_name[candidate]
+            if candidate in DIVISION_ALIASES and DIVISION_ALIASES[candidate] in divisions_by_name:
+                return divisions_by_name[DIVISION_ALIASES[candidate]]
+
+    # 4. Substring / word boundary containment fallback
+    for div_name, div in divisions_by_name.items():
+        if div_name in cleaned or cleaned in div_name:
+            return div
+
+    return None
+
+
 async def import_members_csv(
     db: AsyncSession,
     content: bytes,
@@ -280,7 +350,7 @@ async def import_members_csv(
         github_raw = extract_github_url(github_val)
 
         photo_col = col_map.get("profile_image_url")
-        photo_raw = (raw_row.get(photo_col) or "").strip() if photo_col else ""
+        photo_raw = normalize_drive_image_url(raw_row.get(photo_col) or "") if photo_col else ""
 
         if not email:
             errors.append(ImportErrorRow(row=idx, email="", issue="missing required field: email (personal email)"))
@@ -322,7 +392,7 @@ async def import_members_csv(
             continue
 
         division_id = None
-        div = divisions_by_name.get(division_name.lower())
+        div = resolve_division(division_name, divisions_by_name)
         if div is None:
             unmatched.append(
                 ImportUnmatchedDivision(row=idx, email=email, division_name=division_name)
@@ -335,7 +405,7 @@ async def import_members_csv(
         sec_division_name = (raw_row.get(sec_col) or "").strip() if sec_col else ""
         sec_division_id = None
         if sec_division_name:
-            sec_div = divisions_by_name.get(sec_division_name.lower())
+            sec_div = resolve_division(sec_division_name, divisions_by_name)
             if sec_div is not None:
                 # Disallow selecting same division as primary
                 if sec_div.id != division_id:

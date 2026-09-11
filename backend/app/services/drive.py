@@ -73,13 +73,21 @@ async def upload_profile_picture(settings: Settings, file: UploadFile, member_id
         body={"type": "anyone", "role": "reader"},
         supportsAllDrives=True,
     ).execute()
-    return f"https://drive.google.com/uc?export=view&id={file_id}"
+    return f"https://lh3.googleusercontent.com/d/{file_id}"
 
 
 async def delete_drive_file_from_url(settings: Settings, url: str | None) -> None:
-    if not url or "id=" not in url:
+    if not url:
         return
-    file_id = url.split("id=")[-1].split("&")[0]
+    file_id = None
+    if "googleusercontent.com/d/" in url:
+        file_id = url.split("googleusercontent.com/d/")[-1].split("=")[0].split("/")[0]
+    elif "id=" in url:
+        file_id = url.split("id=")[-1].split("&")[0]
+
+    if not file_id:
+        return
+
     try:
         service = _build_drive_service(settings)
         service.files().delete(fileId=file_id, supportsAllDrives=True).execute()

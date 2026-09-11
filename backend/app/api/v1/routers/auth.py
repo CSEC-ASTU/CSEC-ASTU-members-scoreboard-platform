@@ -24,7 +24,12 @@ from app.services.google_oauth import (
     exchange_code_for_tokens,
     fetch_google_userinfo,
 )
-from app.services.settings import fetch_member_scores
+from app.services.settings import (
+    badge_for_score,
+    fetch_member_scores,
+    get_badge_multipliers,
+    get_score_cap,
+)
 
 router = APIRouter()
 
@@ -94,7 +99,7 @@ def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> 
 
 
 @router.get("/google/login")
-async def google_login(settings: AppSettings) -> RedirectResponse:
+async def google_login(settings: AppSettings, redirect: str | None = None) -> RedirectResponse:
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     state = generate_signed_state(settings.jwt_secret_key)
@@ -109,6 +114,16 @@ async def google_login(settings: AppSettings) -> RedirectResponse:
         max_age=600,
         path="/",
     )
+    if redirect and redirect.startswith("/"):
+        response.set_cookie(
+            "post_login_redirect",
+            redirect,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            max_age=600,
+            path="/",
+        )
     return response
 
 
@@ -202,10 +217,13 @@ async def google_callback(
     refresh = await issue_refresh_token(db, member.id, settings)
     await db.flush()
 
-    logger.info("google_callback login success for %s! Redirecting to %s/dashboard", email, frontend)
-    response = RedirectResponse(f"{frontend}/dashboard", status_code=status.HTTP_302_FOUND)
+    post_redirect = request.cookies.get("post_login_redirect")
+    target_url = f"{frontend}{post_redirect}" if post_redirect and post_redirect.startswith("/") else f"{frontend}/dashboard"
+    logger.info("google_callback login success for %s! Redirecting to %s", email, target_url)
+    response = RedirectResponse(target_url, status_code=status.HTTP_302_FOUND)
     _set_auth_cookies(response, settings, access, refresh)
     response.delete_cookie("oauth_state", path="/")
+    response.delete_cookie("post_login_redirect", path="/")
     return response
 
 
@@ -261,6 +279,10 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
         if sec_div:
             sec_div_name = sec_div.name
 
+    multipliers = await get_badge_multipliers(db)
+    cap = await get_score_cap(db)
+    badge = badge_for_score(scores["cycle_score"], cap, multipliers)
+
     return MeOut(
         id=m.id,
         full_name=m.full_name,
@@ -282,6 +304,7 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
         cycle_score=scores["cycle_score"],
         display_score=scores["display_score"],
         career_score=scores["career_score"],
+        badge=badge,
         permissions=perms,
     )
 

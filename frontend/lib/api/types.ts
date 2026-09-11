@@ -60,6 +60,14 @@ export interface MemberDetailOut extends MemberOut {
   google_claimed?: boolean
 }
 
+export interface MemberSelfUpdateIn {
+  department?: string
+  full_name?: string
+  phone_number?: string
+  github_url?: string
+  telegram_username?: string
+}
+
 export interface CurrentUserOut {
   id: string
   full_name: string
@@ -71,7 +79,7 @@ export interface CurrentUserOut {
   secondary_division_name?: string | null
   role: Role
   department: string | null
-  joining_year: number
+  joining_year: number | null
   student_id?: string | null
   phone_number?: string | null
   github_url?: string | null
@@ -81,7 +89,7 @@ export interface CurrentUserOut {
   cycle_score: number
   display_score: number
   career_score: number
-  badge: BadgeTier | null
+  badge?: BadgeTier | null
   permissions: string[]
 }
 

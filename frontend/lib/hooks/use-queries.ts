@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import {
   divisionsService,
   pointEventsService,
@@ -19,6 +19,7 @@ import {
   type TaskCreateIn,
   type TaskUpdateIn,
   type AttendanceSessionCreateIn,
+  type MemberSelfUpdateIn,
 } from "@/lib/api"
 
 /** =========================================================================
@@ -39,6 +40,7 @@ export function useApprovals(enabled = true) {
   return useQuery({
     queryKey: ["approvals"],
     queryFn: () => pointEventsService.listApprovals(),
+    placeholderData: keepPreviousData,
     staleTime: 30 * 1000, // 30 seconds
     enabled,
   })
@@ -79,6 +81,7 @@ export function useTasks(params?: { page?: number; page_size?: number; division_
   return useQuery({
     queryKey: ["tasks", params],
     queryFn: () => tasksService.listTasks(params),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000, // 1 minute
   })
 }
@@ -161,6 +164,7 @@ export function useLeaderboard(divisionId?: string) {
   return useQuery({
     queryKey: ["leaderboard", divisionId],
     queryFn: () => leaderboardService.getLeaderboard(divisionId === "all" ? undefined : divisionId),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   })
 }
@@ -179,6 +183,7 @@ export function useMembers(params?: {
   return useQuery({
     queryKey: ["members", params],
     queryFn: () => membersService.listMembers(params),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   })
 }
@@ -218,7 +223,7 @@ export function useUpdateMemberRoleOrDeptMutation() {
 export function useUpdateMeMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { department?: string; joining_year?: number }) => membersService.updateMe(data),
+    mutationFn: (data: MemberSelfUpdateIn) => membersService.updateMe(data),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currentUser"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
@@ -233,6 +238,7 @@ export function useMemberPermissions(params?: { page?: number; page_size?: numbe
   return useQuery({
     queryKey: ["permissions", params],
     queryFn: () => permissionsService.getMemberPermissions(params),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   })
 }

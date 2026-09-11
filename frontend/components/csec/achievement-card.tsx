@@ -31,9 +31,9 @@ export function AchievementCard({
       ? member.division
       : "General")
 
-  const careerScore = getMemberCareerScore(member.id)
-  const cycleScore = getMemberCycleScore(member.id)
-  const badge = getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
+  const careerScore = (member as any).careerScore ?? getMemberCareerScore(member.id)
+  const cycleScore = (member as any).cycleScore ?? getMemberCycleScore(member.id)
+  const badge = (member as any).badge ?? getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
 
   function copyShareLink() {
     const url = typeof window !== "undefined" ? `${window.location.origin}/members/${member.id}` : ""
@@ -73,7 +73,12 @@ export function AchievementCard({
 
         {/* Member Profile info */}
         <div className="mt-5 flex items-start gap-4">
-          <MemberAvatar name={member.name} size={56} className="ring-2 ring-zinc-200 dark:ring-zinc-800" />
+          <MemberAvatar
+            name={member.name}
+            imageUrl={(member as any).profileImageUrl || member.avatar}
+            size={56}
+            className="ring-2 ring-zinc-200 dark:ring-zinc-800"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{member.name}</h3>

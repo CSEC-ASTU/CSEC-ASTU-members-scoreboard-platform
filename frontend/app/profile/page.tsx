@@ -36,12 +36,15 @@ import {
   RefreshCw,
   Copy,
   Loader2,
+  Trash2,
 } from "lucide-react"
 import { authService } from "@/lib/api"
 
 export default function ProfilePage() {
   const { currentUser, liveUser, refetchUser } = useCurrentUser()
-  const [department, setDepartment] = useState(currentUser.department)
+  const [department, setDepartment] = useState(currentUser.department ?? "")
+  const [phoneNumber, setPhoneNumber] = useState(currentUser.phoneNumber ?? "")
+  const [githubUrl, setGithubUrl] = useState(currentUser.githubUrl ?? "")
   const [connectingTelegram, setConnectingTelegram] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [telegramConnectData, setTelegramConnectData] = useState<{ token: string; link: string | null } | null>(null)
@@ -59,8 +62,10 @@ export default function ProfilePage() {
   const isLoading = divsLoading || settingsLoading || summariesLoading
 
   useEffect(() => {
-    setDepartment(currentUser.department)
-  }, [currentUser.department])
+    setDepartment(currentUser.department ?? "")
+    setPhoneNumber(currentUser.phoneNumber ?? "")
+    setGithubUrl(currentUser.githubUrl ?? "")
+  }, [currentUser.department, currentUser.phoneNumber, currentUser.githubUrl])
 
   const divisionsMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -104,13 +109,17 @@ export default function ProfilePage() {
 
   const cycleScore = currentUser.cycleScore ?? 0
   const careerScore = currentUser.careerScore ?? 0
-  const badge = getMemberBadge(cycleScore, scoreCap)
+  const badge = (currentUser.badge as any) ?? getMemberBadge(cycleScore, scoreCap)
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
     try {
       setSaving(true)
-      await updateMeMutation.mutateAsync({ department: department.trim() })
+      await updateMeMutation.mutateAsync({
+        department: department.trim() || undefined,
+        phone_number: phoneNumber.trim() || undefined,
+        github_url: githubUrl.trim() || undefined,
+      })
       await refetchUser()
       toast.success("Profile updated successfully")
     } catch (err) {
@@ -133,6 +142,21 @@ export default function ProfilePage() {
       toast.success("Profile photo uploaded successfully!")
     } catch (err) {
       toast.error("Failed to upload avatar", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  async function handleDeleteAvatar() {
+    try {
+      setAvatarUploading(true)
+      await membersService.deleteProfilePicture()
+      await refetchUser()
+      toast.success("Profile photo removed")
+    } catch (err) {
+      toast.error("Failed to remove avatar", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
@@ -205,8 +229,11 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <MemberAvatar name={currentUser.name} imageUrl={currentUser.profileImageUrl} size={68} />
-                <label className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900">
+                <MemberAvatar name={currentUser.name} imageUrl={currentUser.profileImageUrl || currentUser.avatar} size={68} />
+                <label
+                  title="Upload profile photo"
+                  className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 transition-transform active:scale-95"
+                >
                   {avatarUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                   <input
                     type="file"
@@ -237,7 +264,20 @@ export default function ProfilePage() {
                     </Badge>
                   )}
                   <span>•</span>
-                  <span>{currentUser.department}</span>
+                  <span>{currentUser.department || "General"}</span>
+                  {currentUser.profileImageUrl && (
+                    <>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={handleDeleteAvatar}
+                        disabled={avatarUploading}
+                        className="inline-flex items-center gap-1 text-[11px] text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="h-3 w-3" /> Remove photo
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -299,15 +339,52 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="joiningYear" className="text-xs">Joining Year</Label>
-                  <Input id="joiningYear" value={String(currentUser.joiningYear)} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
+                  <Label htmlFor="studentId" className="text-xs">Student ID</Label>
+                  <Input
+                    id="studentId"
+                    value={currentUser.studentId || "Not assigned"}
+                    disabled
+                    className="bg-zinc-50 dark:bg-zinc-800/50"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="dept" className="text-xs">Department</Label>
+                  <Label htmlFor="joiningYear" className="text-xs">Joining Year</Label>
                   <Input
-                    id="dept"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
+                    id="joiningYear"
+                    value={String(currentUser.joiningYear || 2024)}
+                    disabled
+                    className="bg-zinc-50 dark:bg-zinc-800/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="dept" className="text-xs">Department</Label>
+                <Input
+                  id="dept"
+                  value={department}
+                  placeholder="e.g. Software Engineering"
+                  onChange={(e) => setDepartment(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phoneNumber" className="text-xs">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    value={phoneNumber}
+                    placeholder="+251 9..."
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="githubUrl" className="text-xs">GitHub Profile URL</Label>
+                  <Input
+                    id="githubUrl"
+                    value={githubUrl}
+                    placeholder="https://github.com/username"
+                    onChange={(e) => setGithubUrl(e.target.value)}
                   />
                 </div>
               </div>

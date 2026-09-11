@@ -6,9 +6,9 @@ from uuid import UUID
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import func, or_, select
 
-from app.core.permissions import can_see_member, has_permission, is_club_wide_officer, is_officer
+from app.core.permissions import can_see_member, can_view_sensitive_info, has_permission, is_club_wide_officer, is_officer
 from app.dependencies import AppSettings, DbSession, RequireUser
-from app.models import Division, Member, PointEvent
+from app.models import Division, Member, PermissionGrantHistory, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas import (
     AchievementCardOut,
@@ -43,21 +43,12 @@ async def list_members(
     is_active: bool | None = None,
     search: str | None = None,
 ) -> Paginated[MemberListItem]:
-    if not (is_officer(user.member) or has_permission(user.permissions, "view_division_members")):
-        raise HTTPException(status_code=403, detail="Officers only")
-
+    # All authenticated club members can browse the member directory.
+    # Crucial sensitive details (phone, telegram, student ID) are filtered below for non-officers.
     q = select(Member)
     count_q = select(func.count()).select_from(Member)
 
-    # Server-side scope
-    if user.member.role == MemberRole.DIVISION_HEAD:
-        div_filter = or_(
-            Member.division_id == user.member.division_id,
-            Member.secondary_division_id == user.member.division_id,
-        )
-        q = q.where(div_filter)
-        count_q = count_q.where(div_filter)
-    elif division_id is not None:
+    if division_id is not None:
         div_filter = or_(
             Member.division_id == division_id,
             Member.secondary_division_id == division_id,
@@ -89,6 +80,7 @@ async def list_members(
         scores = await fetch_member_scores(db, m.id) if m.google_id else {
             "cycle_score": 0, "display_score": 0, "career_score": 0
         }
+        can_view_sensitive = can_view_sensitive_info(user.member, m, user.permissions)
         items.append(
             MemberListItem(
                 id=m.id,
@@ -100,10 +92,10 @@ async def list_members(
                 role=m.role,
                 department=m.department,
                 joining_year=m.joining_year,
-                student_id=m.student_id,
-                phone_number=m.phone_number,
+                student_id=m.student_id if can_view_sensitive else None,
+                phone_number=m.phone_number if can_view_sensitive else None,
                 github_url=m.github_url,
-                telegram_username=m.telegram_username,
+                telegram_username=m.telegram_username if can_view_sensitive else None,
                 is_active=m.is_active,
                 **scores,
             )
@@ -119,6 +111,7 @@ async def get_member(member_id: UUID, db: DbSession, user: RequireUser) -> Membe
     scores = await fetch_member_scores(db, m.id) if m.google_id and m.is_active else {
         "cycle_score": 0, "display_score": 0, "career_score": 0
     }
+    can_view_sensitive = can_view_sensitive_info(user.member, m, user.permissions)
     return MemberDetail(
         id=m.id,
         full_name=m.full_name,
@@ -129,12 +122,12 @@ async def get_member(member_id: UUID, db: DbSession, user: RequireUser) -> Membe
         role=m.role,
         department=m.department,
         joining_year=m.joining_year,
-        student_id=m.student_id,
-        phone_number=m.phone_number,
+        student_id=m.student_id if can_view_sensitive else None,
+        phone_number=m.phone_number if can_view_sensitive else None,
         github_url=m.github_url,
-        telegram_username=m.telegram_username,
+        telegram_username=m.telegram_username if can_view_sensitive else None,
         is_active=m.is_active,
-        first_login_at=m.first_login_at,
+        first_login_at=m.first_login_at if can_view_sensitive else None,
         joined_at=m.joined_at,
         google_claimed=m.google_id is not None,
         **scores,
@@ -194,15 +187,61 @@ async def update_member(
         raise HTTPException(status_code=404, detail="Member not found")
 
     actor = user.member
+
+    # Check permission to modify member profile
     if actor.role == MemberRole.PRESIDENT:
         pass
+    elif actor.role == MemberRole.VICE_PRESIDENT:
+        if target.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT} and target.id != actor.id:
+            raise HTTPException(status_code=403, detail="Vice President cannot modify executive leadership members")
     elif actor.role == MemberRole.DIVISION_HEAD and actor.division_id == target.division_id:
-        if body.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}:
-            raise HTTPException(status_code=403, detail="Cannot assign club-wide roles")
+        if body.role is not None and body.role != target.role:
+            raise HTTPException(status_code=403, detail="Division heads cannot assign base club roles")
     else:
-        raise HTTPException(status_code=403, detail="Not permitted")
+        raise HTTPException(status_code=403, detail="Not permitted to update member details")
 
-    if body.role is not None:
+    # Role assignment rules & succession
+    if body.role is not None and body.role != target.role:
+        if actor.role == MemberRole.PRESIDENT:
+            if body.role == MemberRole.PRESIDENT and target.id != actor.id:
+                # Presidential succession: transfer presidency to target member,
+                # actor transitions to vice president so they remain an officer.
+                actor.role = MemberRole.VICE_PRESIDENT
+                db.add(
+                    PermissionGrantHistory(
+                        member_id=actor.id,
+                        permission_key="role:vice_president",
+                        action="role_assigned",
+                        actor_id=actor.id,
+                        note=f"Stepped down to Vice President upon transferring Presidency to {target.full_name}",
+                    )
+                )
+        elif actor.role == MemberRole.VICE_PRESIDENT:
+            if body.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}:
+                raise HTTPException(status_code=403, detail="Vice President cannot assign executive roles")
+            if body.role not in {MemberRole.DIVISION_HEAD, MemberRole.MEMBER}:
+                raise HTTPException(status_code=403, detail="Vice President may only assign Division Head or Member roles")
+        else:
+            raise HTTPException(status_code=403, detail="Not permitted to assign roles")
+
+        if body.role == MemberRole.DIVISION_HEAD:
+            div_id = body.division_id if "division_id" in body.model_fields_set else target.division_id
+            if not div_id:
+                raise HTTPException(status_code=400, detail="Division Head role requires selecting a primary division")
+
+        note = f"Role updated from {target.role.value} to {body.role.value}"
+        if body.role == MemberRole.PRESIDENT and target.id != actor.id:
+            note = f"Presidency transferred from {actor.full_name} to {target.full_name}"
+
+        db.add(
+            PermissionGrantHistory(
+                member_id=target.id,
+                permission_key=f"role:{body.role.value}",
+                action="role_assigned",
+                actor_id=actor.id,
+                note=note,
+            )
+        )
         target.role = body.role
     if "division_id" in body.model_fields_set:
         target.division_id = body.division_id

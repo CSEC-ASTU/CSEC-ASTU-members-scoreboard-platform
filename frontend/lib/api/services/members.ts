@@ -2,6 +2,7 @@ import { apiFetch } from "../client"
 import type {
   MemberDetailOut,
   MemberOut,
+  MemberSelfUpdateIn,
   AchievementCardOut,
   AnnualSummaryOut,
   Paginated,
@@ -37,8 +38,8 @@ export const membersService = {
     return apiFetch<MemberDetailOut>(`/members/${id}`)
   },
 
-  updateMe: async (data: { department?: string; joining_year?: number }): Promise<MemberOut> => {
-    return apiFetch<MemberOut>("/members/me", {
+  updateMe: async (data: MemberSelfUpdateIn): Promise<MemberDetailOut> => {
+    return apiFetch<MemberDetailOut>("/members/me", {
       method: "PATCH",
       body: JSON.stringify(data),
     })

@@ -13,10 +13,10 @@ import {
 import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 
 export default function Profile01() {
-  const { currentUser } = useCurrentUser()
-  const cycleScore = getMemberCycleScore(currentUser.id)
-  const careerScore = getMemberCareerScore(currentUser.id)
-  const badge = getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
+  const { currentUser, logout } = useCurrentUser()
+  const cycleScore = currentUser.cycleScore ?? getMemberCycleScore(currentUser.id)
+  const careerScore = currentUser.careerScore ?? getMemberCareerScore(currentUser.id)
+  const badge = (currentUser.badge as any) ?? getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
 
   const facts = [
     {
@@ -31,17 +31,17 @@ export default function Profile01() {
     },
     {
       label: "Division",
-      value: currentUser.division,
+      value: currentUser.division || "General",
       icon: <Building2 className="w-4 h-4" />,
     },
     {
       label: "Department",
-      value: currentUser.department,
+      value: currentUser.department || "Not specified",
       icon: <GraduationCap className="w-4 h-4" />,
     },
     {
       label: "Telegram",
-      value: currentUser.telegramUsername ?? "Not connected",
+      value: currentUser.telegramUsername ? `@${currentUser.telegramUsername}` : (currentUser.telegramConnected ? "Connected" : "Not connected"),
       icon: <Send className="w-4 h-4 text-zinc-400" />,
     },
   ]
@@ -52,15 +52,27 @@ export default function Profile01() {
         <div className="relative px-6 pt-6 pb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="relative shrink-0">
-              <MemberAvatar name={currentUser.name} size={60} />
-              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-zinc-900 dark:bg-zinc-100 ring-2 ring-white dark:ring-zinc-900" />
+              <MemberAvatar
+                name={currentUser.name}
+                imageUrl={currentUser.profileImageUrl || currentUser.avatar}
+                size={60}
+              />
+              <div
+                className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-white dark:ring-zinc-900 ${
+                  currentUser.telegramConnected ? "bg-emerald-500" : "bg-zinc-400"
+                }`}
+                title={currentUser.telegramConnected ? "Telegram Connected" : "Telegram Not Linked"}
+              />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">{currentUser.name}</h2>
                 {badge && <TierBadge tier={badge} />}
               </div>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">{ROLE_LABELS[currentUser.role]}</p>
+              <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{ROLE_LABELS[currentUser.role]}</p>
+              {currentUser.email && (
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{currentUser.email}</p>
+              )}
             </div>
           </div>
 
@@ -93,13 +105,14 @@ export default function Profile01() {
                 <Award className="w-3.5 h-3.5" />
                 View Achievement Card
               </Link>
-              <Link
-                href={`/login`}
-                className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-xs text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-xs text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-zinc-400 dark:hover:text-red-400 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Logout (Switch Account)</span>
-              </Link>
+              </button>
             </div>
           </div>
         </div>

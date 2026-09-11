@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 import { leaderboardService, type LeaderboardItemOut, type DivisionOut } from "@/lib/api"
 import { LeaderboardSkeleton } from "@/components/csec/skeletons"
 import { useDivisions } from "@/lib/hooks/use-queries"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 
 export default function LeaderboardPage() {
@@ -29,17 +29,22 @@ export default function LeaderboardPage() {
   const divisions: DivisionOut[] = divisionsData || []
 
   const divId = selectedDivision === "all" ? undefined : selectedDivision
-  const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery({
+  const {
+    data: leaderboardData,
+    isLoading: leaderboardLoading,
+    isFetching: leaderboardFetching,
+  } = useQuery({
     queryKey: ["leaderboard", academicYear, divId],
     queryFn: () =>
       isCurrentYear
         ? leaderboardService.getLeaderboard(divId)
         : leaderboardService.getLeaderboardHistory(Number(academicYear), divId),
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   })
 
   const items = leaderboardData?.items || []
-  const isLoading = leaderboardLoading || divisionsLoading
+  const isInitialLoading = divisionsLoading || (leaderboardLoading && !leaderboardData)
 
   const divisionMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -82,7 +87,7 @@ export default function LeaderboardPage() {
 
   return (
     <Layout>
-      {isLoading && items.length === 0 ? (
+      {isInitialLoading ? (
         <LeaderboardSkeleton />
       ) : (
         <div className="space-y-6">
@@ -139,9 +144,8 @@ export default function LeaderboardPage() {
               ))}
         </div>
 
-        {isLoading ? (
-          <div className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">Loading rankings…</div>
-        ) : isCurrentYear ? (
+        <div className={`transition-opacity duration-150 ${leaderboardFetching ? "opacity-60" : "opacity-100"}`}>
+        {isCurrentYear ? (
           <>
             {/* Top 3 Podium Cards */}
             {podium.length >= 3 && (
@@ -310,6 +314,7 @@ export default function LeaderboardPage() {
             )}
           </div>
         )}
+        </div>
       </div>
       )}
     </Layout>

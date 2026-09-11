@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Layout from "@/components/kokonutui/layout"
 import { PageHeader } from "@/components/csec/page-header"
@@ -10,18 +10,23 @@ import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 import { MembersSkeleton } from "@/components/csec/skeletons"
 import { Badge } from "@/components/ui/badge"
 import { DIVISIONS, ROLE_LABELS, type Role } from "@/lib/csec-data"
-import { Search, ChevronRight, Users, ShieldAlert, Download, SlidersHorizontal, Radar } from "lucide-react"
+import { Search, ChevronRight, Users, ShieldAlert, Download, SlidersHorizontal, Radar, Loader2, Github, Phone, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type MemberOut, type DivisionOut } from "@/lib/api"
 import { useDivisions, useMembers } from "@/lib/hooks/use-queries"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 import { BatchAdjustmentDialog } from "@/components/csec/batch-adjustment-dialog"
 import { InactivityRadar } from "@/components/csec/inactivity-radar"
+import { useCurrentUser } from "@/components/user-context"
+import { isOfficer } from "@/lib/permissions"
 
 const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
 export default function MembersPage() {
+  const { currentUser } = useCurrentUser()
+  const officer = isOfficer(currentUser)
   const [q, setQ] = useState("")
+  const [debouncedQ, setDebouncedQ] = useState("")
   const [division, setDivision] = useState("all")
   const [department, setDepartment] = useState("all")
   const [year, setYear] = useState("all")
@@ -30,18 +35,31 @@ export default function MembersPage() {
   const [viewMode, setViewMode] = useState<"directory" | "radar">("directory")
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
 
+  // Debounce search typing to avoid rapid queries and focus disruptions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQ(q)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [q])
+
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
   const divisions: DivisionOut[] = divisionsData || []
 
-  const { data: membersData, isLoading: membersLoading } = useMembers({
+  const {
+    data: membersData,
+    isLoading: membersLoading,
+    isFetching: membersFetching,
+  } = useMembers({
     division_id: division !== "all" ? division : undefined,
     role: role !== "all" ? (role as Role) : undefined,
     is_active: statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined,
-    search: q.trim() || undefined,
+    search: debouncedQ.trim() || undefined,
   })
 
   const members: MemberOut[] = membersData?.items || []
-  const isLoading = membersLoading || divisionsLoading
+  // Only show full skeleton on initial page load when no data exists yet
+  const isInitialLoading = divisionsLoading || (membersLoading && !membersData)
 
   const divisionMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -61,13 +79,21 @@ export default function MembersPage() {
   )
 
   const rows = useMemo(() => {
-    return members.map((m) => {
+    let list = members
+    if (department !== "all") {
+      list = list.filter((m) => m.department === department)
+    }
+    if (year !== "all") {
+      list = list.filter((m) => String(m.joining_year) === year)
+    }
+    return list.map((m) => {
       const primary = (m.division_id ? divisionMap[m.division_id] : null) || "General"
       const secondary = m.secondary_division_id ? divisionMap[m.secondary_division_id] : null
       return {
         id: m.id,
         name: m.full_name,
         email: m.email,
+        avatar: m.profile_image_url,
         division: primary,
         secondaryDivision: secondary,
         divisionsText: secondary ? `${primary} + ${secondary}` : primary,
@@ -78,9 +104,13 @@ export default function MembersPage() {
         cycleScore: m.cycle_score ?? 50,
         careerScore: m.career_score ?? 50,
         badge: m.badge ?? null,
+        githubUrl: m.github_url,
+        phone: m.phone_number,
+        telegram: m.telegram_username,
+        studentId: m.student_id,
       }
     })
-  }, [members, divisionMap])
+  }, [members, divisionMap, department, year])
 
   function handleExportCsv() {
     const columns: CsvColumn<MemberOut>[] = [
@@ -103,7 +133,7 @@ export default function MembersPage() {
 
   return (
     <Layout>
-      {isLoading && members.length === 0 ? (
+      {isInitialLoading ? (
         <MembersSkeleton />
       ) : (
         <div className="space-y-6">
@@ -111,29 +141,31 @@ export default function MembersPage() {
             title="Members Directory"
             description={`${members.length} members registered across ${DIVISIONS.length} divisions.`}
             action={
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCsv}
-                  className="h-9 gap-1.5 text-xs border-zinc-200 dark:border-zinc-800"
-                >
-                  <Download className="h-3.5 w-3.5 text-zinc-500" />
-                  Export Roster (CSV)
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setBatchDialogOpen(true)}
-                  className="h-9 gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Batch Award / Penalize
-                </Button>
-              </div>
+              officer ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCsv}
+                    className="h-9 gap-1.5 text-xs border-zinc-200 dark:border-zinc-800"
+                  >
+                    <Download className="h-3.5 w-3.5 text-zinc-500" />
+                    Export Roster (CSV)
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setBatchDialogOpen(true)}
+                    className="h-9 gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    Batch Award / Penalize
+                  </Button>
+                </div>
+              ) : undefined
             }
           />
 
-          {/* View Mode Tabs */}
+          {/* View Mode Tabs — Inactivity Radar is officer-only */}
           <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
             <Button
               variant={viewMode === "directory" ? "secondary" : "ghost"}
@@ -144,23 +176,28 @@ export default function MembersPage() {
               <Users className="h-3.5 w-3.5" />
               Directory List ({rows.length})
             </Button>
-            <Button
-              variant={viewMode === "radar" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("radar")}
-              className="h-8 text-xs gap-1.5 text-amber-600 dark:text-amber-400"
-            >
-              <Radar className="h-3.5 w-3.5" />
-              Inactivity & Warning Radar
-            </Button>
+            {officer && (
+              <Button
+                variant={viewMode === "radar" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("radar")}
+                className="h-8 text-xs gap-1.5 text-amber-600 dark:text-amber-400"
+              >
+                <Radar className="h-3.5 w-3.5" />
+                Inactivity & Warning Radar
+              </Button>
+            )}
           </div>
 
-          {viewMode === "radar" ? (
+          {viewMode === "radar" && officer ? (
             <InactivityRadar
               members={members}
               divisions={divisions}
               onActionClick={() => setBatchDialogOpen(true)}
             />
+          ) : viewMode === "radar" ? (
+            // Fallback: non-officers who somehow land on radar view, show directory
+            null
           ) : (
             <>
               {/* Filters */}
@@ -171,8 +208,11 @@ export default function MembersPage() {
                     placeholder="Search by name or email"
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 pr-8"
                   />
+                  {(membersFetching || q !== debouncedQ) && (
+                    <Loader2 className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-violet-500" />
+                  )}
                 </div>
                 <FilterSelect
                   value={division}
@@ -205,7 +245,7 @@ export default function MembersPage() {
               </div>
 
               {/* Member list */}
-              <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <div className={`overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 transition-opacity duration-150 ${membersFetching ? "opacity-60" : "opacity-100"}`}>
                 {rows.length === 0 && (
                   <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     No members match your selected filters.
@@ -219,11 +259,19 @@ export default function MembersPage() {
                       i !== 0 ? "border-t border-zinc-100 dark:border-zinc-800" : ""
                     }`}
                   >
-                    <MemberAvatar name={m.name} size={40} />
+                    <MemberAvatar name={m.name} imageUrl={m.avatar} size={40} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</span>
                         {m.badge && <TierBadge tier={m.badge} />}
+                        {m.githubUrl && (
+                          <span
+                            title={`GitHub: ${m.githubUrl}`}
+                            className="inline-flex items-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                          >
+                            <Github className="h-3 w-3" />
+                          </span>
+                        )}
                         {!m.isActive && (
                           <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                             <ShieldAlert className="h-3 w-3" /> Laid Off
@@ -232,6 +280,11 @@ export default function MembersPage() {
                       </div>
                       <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                         {m.divisionsText} · {m.department} · Joined {m.joiningYear}
+                        {officer && (m.phone || m.telegram) && (
+                          <span className="ml-1.5 text-zinc-400 dark:text-zinc-500">
+                            · {m.telegram ? `@${m.telegram.replace(/^@+/, '')}` : m.phone}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -252,12 +305,14 @@ export default function MembersPage() {
             </>
           )}
 
-          <BatchAdjustmentDialog
-            open={batchDialogOpen}
-            onOpenChange={setBatchDialogOpen}
-            members={members}
-            divisions={divisions}
-          />
+          {officer && (
+            <BatchAdjustmentDialog
+              open={batchDialogOpen}
+              onOpenChange={setBatchDialogOpen}
+              members={members}
+              divisions={divisions}
+            />
+          )}
         </div>
       )}
     </Layout>

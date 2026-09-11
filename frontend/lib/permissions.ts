@@ -2,6 +2,7 @@ import {
   type Member,
   type PointEvent,
   type Permission,
+  type Role,
   OFFICER_ROLES,
   getMember,
 } from "./csec-data"
@@ -87,22 +88,30 @@ export function canManagePermissions(member: Member): boolean {
 /**
  * Layoff rule (PRD §6 & API §2): Executed solely by the President.
  */
-export function canLayoff(member: Member): boolean {
+export function canLayoff(member: { role: Role }): boolean {
   return member.role === "president"
 }
 
 /**
  * Platform settings management (PRD §4a & API §10): President only.
  */
-export function canManageSettings(member: Member): boolean {
+export function canManageSettings(member: { role: Role }): boolean {
   return member.role === "president"
 }
 
 /**
  * Annual cycle reset & archive (PRD §4a & API §9): President only.
  */
-export function canExecuteAnnualReset(member: Member): boolean {
+export function canExecuteAnnualReset(member: { role: Role }): boolean {
   return member.role === "president"
+}
+
+/**
+ * Executive administration access (global tasks, member CSV bulk import, platform audit).
+ * President and Vice President only.
+ */
+export function canAccessAdmin(member: { role: Role }): boolean {
+  return member.role === "president" || member.role === "vice_president"
 }
 
 /**
@@ -115,3 +124,74 @@ export function canIssueWarning(actor: Member, target: Member): boolean {
   if (actor.role === "division_head" && target.role === "member" && target.division === actor.division) return true
   return false
 }
+
+/**
+ * Can this officer assign official base platform roles?
+ * President and Vice President only.
+ */
+export function canAssignRoles(member: { role: Role }): boolean {
+  return member.role === "president" || member.role === "vice_president"
+}
+
+/**
+ * Returns the list of base roles that the current actor is permitted to assign.
+ * - President: President (transfer), Vice President, Division Head, General Member
+ * - Vice President: Division Head, General Member
+ */
+export function getAssignableRoles(
+  actor: { role: Role },
+): Array<{ value: Role; label: string; description: string }> {
+  if (actor.role === "president") {
+    return [
+      {
+        value: "president",
+        label: "President (Transfer Leadership)",
+        description: "Transfers club presidency to this member. You will step down to Vice President.",
+      },
+      {
+        value: "vice_president",
+        label: "Vice President",
+        description: "Appoint club-wide executive officer with governance delegation powers.",
+      },
+      {
+        value: "division_head",
+        label: "Division Head",
+        description: "Appoint operational leader for a specific division.",
+      },
+      {
+        value: "member",
+        label: "General Member",
+        description: "Standard active club member.",
+      },
+    ]
+  }
+  if (actor.role === "vice_president") {
+    return [
+      {
+        value: "division_head",
+        label: "Division Head",
+        description: "Appoint operational leader for a specific division.",
+      },
+      {
+        value: "member",
+        label: "General Member",
+        description: "Standard active club member.",
+      },
+    ]
+  }
+  return []
+}
+
+/**
+ * Check if actor can modify the role of target member.
+ * - President can modify anyone.
+ * - Vice President can modify Division Heads and General Members (not President or other VPs).
+ */
+export function canModifyMemberRole(actor: { role: Role }, target: { role: Role }): boolean {
+  if (actor.role === "president") return true
+  if (actor.role === "vice_president") {
+    return target.role !== "president" && target.role !== "vice_president"
+  }
+  return false
+}
+

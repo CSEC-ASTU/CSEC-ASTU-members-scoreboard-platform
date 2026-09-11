@@ -29,8 +29,10 @@ import {
 import { MemberAvatar, WarningPill, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
 import { PageSkeletonWrapper, MemberDetailSkeleton } from "@/components/csec/skeletons"
 import { IssueWarningDialog } from "@/components/csec/issue-warning-dialog"
+import { SecurityCheckpoint } from "@/components/csec/security-checkpoint"
+import { LaptopStickerDialog } from "@/components/csec/laptop-sticker-dialog"
 import { useCurrentUser } from "@/components/user-context"
-import { canIssueWarning, canManagePermissions } from "@/lib/permissions"
+import { canIssueWarning, canManagePermissions, canModifyMemberRole, getAssignableRoles, isOfficer } from "@/lib/permissions"
 import {
   ROLE_LABELS,
   PLATFORM_SETTINGS,
@@ -60,6 +62,13 @@ import {
   AlertTriangle,
   Pencil,
   Loader2,
+  Github,
+  Phone,
+  ShieldCheck,
+  Mail,
+  Lock,
+  QrCode,
+  CheckCircle2,
 } from "lucide-react"
 
 import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation } from "@/lib/hooks/use-queries"
@@ -69,7 +78,7 @@ const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
 export default function MemberProfilePage() {
   const params = useParams<{ id: string }>()
-  const { currentUser } = useCurrentUser()
+  const { currentUser, isAuthenticated, isLoading: authLoading } = useCurrentUser()
   const queryClient = useQueryClient()
 
   const { data: memberData, isLoading: memberLoading, isError: memberError } = useMemberDetail(params.id)
@@ -83,6 +92,7 @@ export default function MemberProfilePage() {
 
   const [warningDialogOpen, setWarningDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [stickerDialogOpen, setStickerDialogOpen] = useState(false)
   const [editRole, setEditRole] = useState<Role>("member")
   const [editDivisionId, setEditDivisionId] = useState<string>("")
   const [editSecondaryDivisionId, setEditSecondaryDivisionId] = useState<string>("none")
@@ -182,7 +192,8 @@ export default function MemberProfilePage() {
   const normalCount = warnings.filter((w) => w.level === "normal").length
   const ladderStage = redCount > 0 ? 2 : yellowCount > 0 ? 1 : 0
 
-  const canEditMember = canManagePermissions(currentUser)
+  const canEditMember = adaptedMember ? canModifyMemberRole(currentUser, adaptedMember) : false
+  const assignableRoles = getAssignableRoles(currentUser)
 
   function openEditDialog() {
     if (!memberData) return
@@ -229,6 +240,22 @@ export default function MemberProfilePage() {
     queryClient.invalidateQueries({ queryKey: ["member-events", params.id] })
   }
 
+  // If auth is still resolving, show skeleton
+  if (authLoading) {
+    return (
+      <Layout>
+        <MemberDetailSkeleton />
+      </Layout>
+    )
+  }
+
+  // Physical Security Checkpoint Gatekeeper:
+  // When an unauthenticated person scans a laptop QR sticker in the lab,
+  // require them to authenticate as a member before showing identity data.
+  if (!isAuthenticated) {
+    return <SecurityCheckpoint memberId={params.id} />
+  }
+
   if (isLoading && !adaptedMember) {
     return (
       <Layout>
@@ -245,177 +272,271 @@ export default function MemberProfilePage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Identity card */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <MemberAvatar name={member.name} size={64} />
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{member.name}</h1>
-                  <Badge variant={member.role === "member" ? "secondary" : "default"}>
+      <div className="max-w-5xl mx-auto space-y-8 pb-10">
+        {/* Full-Page Profile Header */}
+        <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8 pt-2">
+          {/* Big Prominent Photo */}
+          <div className="relative shrink-0 mx-auto sm:mx-0">
+            <MemberAvatar
+              name={member.name}
+              imageUrl={memberData.profile_image_url}
+              size={144}
+              className="rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm"
+            />
+            <span
+              className={`absolute bottom-2 right-2 h-4 w-4 rounded-full border-2 border-white dark:border-zinc-950 ${
+                member.isActive ? "bg-emerald-500" : "bg-rose-500"
+              }`}
+              title={member.isActive ? "Active Member" : "Inactive / Revoked"}
+            />
+          </div>
+
+          {/* Member Info & Controls */}
+          <div className="flex-1 min-w-0 w-full space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="space-y-1.5 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                    {member.name}
+                  </h1>
+                  <Badge variant={member.role === "member" ? "secondary" : "default"} className="font-medium">
                     {ROLE_LABELS[member.role]}
                   </Badge>
                   {badge && <TierBadge tier={badge} />}
-                  {!member.isActive && (
-                    <span className="rounded bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                      Inactive / Laid off
-                    </span>
-                  )}
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      member.isActive
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${member.isActive ? "bg-emerald-500" : "bg-rose-500"}`} />
+                    {member.isActive ? "Active Member" : "Inactive"}
+                  </span>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{member.email}</p>
-                <div className="mt-1 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  <span className="font-medium text-zinc-800 dark:text-zinc-200">{primaryDivisionName}</span>
+
+                {/* Division and Department */}
+                <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-zinc-600 dark:text-zinc-300 flex-wrap">
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{primaryDivisionName}</span>
                   {secondaryDivisionName && (
                     <>
-                      <span>•</span>
+                      <span>·</span>
                       <span className="text-zinc-600 dark:text-zinc-400">{secondaryDivisionName} (2nd)</span>
                     </>
                   )}
-                  <span>•</span>
+                  <span>·</span>
                   <span>{member.department}</span>
-                  <span>•</span>
-                  <span>Joined {member.joiningYear}</span>
+                  <span>·</span>
+                  <span>Class of {member.joiningYear}</span>
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStickerDialogOpen(true)}
+                  className="h-9 text-xs"
+                >
+                  <QrCode className="mr-1.5 h-3.5 w-3.5 text-zinc-600 dark:text-zinc-300" /> Laptop Sticker QR
+                </Button>
+
+                <Link href="/profile/achievement">
+                  <Button variant="outline" size="sm" className="h-9 text-xs">
+                    <Award className="mr-1.5 h-3.5 w-3.5" /> Achievement Card
+                  </Button>
+                </Link>
+
+                {canEditMember && (
+                  <Button variant="outline" size="sm" onClick={openEditDialog} className="h-9 text-xs">
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit Role
+                  </Button>
+                )}
+
+                {officerCanWarn && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setWarningDialogOpen(true)}
+                    className="h-9 text-xs"
+                  >
+                    <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Issue Warning
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Officer Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href="/profile/achievement">
-                <Button variant="outline" size="sm">
-                  <Award className="mr-1.5 h-4 w-4" /> Achievement Card
-                </Button>
-              </Link>
+            {/* Contact & Links */}
+            <div className="flex items-center justify-center sm:justify-start gap-4 flex-wrap pt-1 text-xs text-zinc-600 dark:text-zinc-300">
+              <a
+                href={`mailto:${member.email}`}
+                className="inline-flex items-center gap-1.5 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              >
+                <Mail className="h-3.5 w-3.5 text-zinc-500" />
+                <span>{member.email}</span>
+              </a>
 
-              {canEditMember && (
-                <Button variant="outline" size="sm" onClick={openEditDialog}>
-                  <Pencil className="mr-1.5 h-4 w-4" /> Edit Role &amp; Divisions
-                </Button>
+              {memberData.github_url && (
+                <a
+                  href={
+                    memberData.github_url.startsWith("http")
+                      ? memberData.github_url
+                      : `https://github.com/${memberData.github_url.replace(/^@/, "")}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  <Github className="h-3.5 w-3.5 text-zinc-500" />
+                  <span>{memberData.github_url.replace(/^https?:\/\/(www\.)?github\.com\//, "@")}</span>
+                </a>
               )}
 
-              {officerCanWarn && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setWarningDialogOpen(true)}
-                >
-                  <AlertTriangle className="mr-1.5 h-4 w-4" /> Issue Warning / Adjustment
-                </Button>
+              {/* Officer / Self Contact Records */}
+              {(isOfficer(currentUser) || isSelf) && (
+                <>
+                  {memberData.phone_number && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 text-zinc-500" />
+                      <span>{memberData.phone_number}</span>
+                    </span>
+                  )}
+                  {memberData.telegram_username && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Send className="h-3.5 w-3.5 text-zinc-500" />
+                      <span>@{memberData.telegram_username.replace(/^@+/, "")}</span>
+                    </span>
+                  )}
+                  {memberData.student_id && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-zinc-500" />
+                      <span>ID: {memberData.student_id}</span>
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Scores Overview */}
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Trophy className="h-3 w-3 text-zinc-400" /> Current Cycle
+        {/* Integrated Stats Row */}
+        <div className="border-y border-zinc-200 dark:border-zinc-800/80 py-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-300 flex items-center gap-1">
+                <Trophy className="h-3 w-3 text-zinc-500" /> Current Cycle
               </div>
-              <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+              <div className="text-xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50 mt-1">
                 {cycleScore} pts
               </div>
             </div>
 
-            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-zinc-400" /> Career Score
+            <div>
+              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-300 flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-zinc-500" /> Career Score
               </div>
-              <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+              <div className="text-xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50 mt-1">
                 {careerScore} pts
               </div>
             </div>
 
-            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Building2 className="h-3 w-3 text-zinc-400" /> Divisions
+            <div>
+              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-300 flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-zinc-500" /> Primary Division
               </div>
-              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate" title={secondaryDivisionName ? `${primaryDivisionName} & ${secondaryDivisionName}` : primaryDivisionName}>
+              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-1.5 truncate">
                 {primaryDivisionName}
-                {secondaryDivisionName ? ` + ${secondaryDivisionName}` : ""}
               </div>
             </div>
 
-            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <CalendarDays className="h-3 w-3 text-zinc-400" /> Joining Year
+            <div>
+              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-300 flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3 text-zinc-500" /> Standing &amp; Buffer
               </div>
-              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {member.joiningYear}
+              <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mt-1.5">
+                {warnings.length === 0 ? "Good Standing" : `${warnings.length} warning(s)`}
               </div>
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/50">
             <ScoreCapProgress cycleScore={cycleScore} scoreCap={PLATFORM_SETTINGS.scoreCap} />
           </div>
         </div>
 
-        {/* Warning ladder */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-zinc-400" />
-              Loss-Aversion &amp; Accountability Ladder
-            </h2>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              Base Buffer: +{PLATFORM_SETTINGS.initialBuffer} pts
-              {normalCount > 0 && ` · ${normalCount} Normal Warning${normalCount > 1 ? "s" : ""} (-${normalCount * 15} pts)`}
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div
-              className={`rounded-lg p-3 text-center text-xs font-medium border ${
-                ladderStage >= 1
-                  ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
-                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
-              }`}
-            >
-              <div>Yellow Warning</div>
-              <div className="text-[11px] opacity-70 mt-0.5">-25 pts (Buffer halved)</div>
-            </div>
-
-            <div
-              className={`rounded-lg p-3 text-center text-xs font-medium border ${
-                ladderStage >= 2
-                  ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
-                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
-              }`}
-            >
-              <div>Red Warning</div>
-              <div className="text-[11px] opacity-70 mt-0.5">-50 pts (Last chance)</div>
-            </div>
-
-            <div
-              className={`rounded-lg p-3 text-center text-xs font-medium border ${
-                !member.isActive
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-semibold"
-                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
-              }`}
-            >
-              <div>Presidential Layoff</div>
-              <div className="text-[11px] opacity-70 mt-0.5">-100 pts (Inactivated)</div>
-            </div>
-          </div>
-        </div>
-
-        {/* History tabs */}
+        {/* History & Activity Tabs */}
         <Tabs defaultValue="activity" className="w-full">
-          <TabsList>
-            <TabsTrigger value="activity">Point Ledger ({events.length})</TabsTrigger>
-            <TabsTrigger value="warnings">Warnings ({warnings.length})</TabsTrigger>
+          <TabsList className="bg-transparent border-b border-zinc-200 dark:border-zinc-800 rounded-none w-full justify-start p-0 h-auto gap-6">
+            <TabsTrigger
+              value="activity"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 dark:data-[state=active]:border-zinc-100 data-[state=active]:bg-transparent pb-3 px-1 text-sm font-medium"
+            >
+              Point Ledger ({events.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="warnings"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 dark:data-[state=active]:border-zinc-100 data-[state=active]:bg-transparent pb-3 px-1 text-sm font-medium"
+            >
+              Warnings ({warnings.length})
+            </TabsTrigger>
             {member.permissions.length > 0 && (
-              <TabsTrigger value="permissions">Delegations ({member.permissions.length})</TabsTrigger>
+              <TabsTrigger
+                value="permissions"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 dark:data-[state=active]:border-zinc-100 data-[state=active]:bg-transparent pb-3 px-1 text-sm font-medium"
+              >
+                Delegations ({member.permissions.length})
+              </TabsTrigger>
             )}
-            <TabsTrigger value="annual">Annual Snapshots ({annualSummaries.length})</TabsTrigger>
+            <TabsTrigger
+              value="annual"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-zinc-900 dark:data-[state=active]:border-zinc-100 data-[state=active]:bg-transparent pb-3 px-1 text-sm font-medium"
+            >
+              Annual Snapshots ({annualSummaries.length})
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="activity" className="mt-4">
+          <TabsContent value="activity" className="mt-6">
             <List02 events={events} showMember={false} emptyLabel="No point events recorded for this member." />
           </TabsContent>
 
-          <TabsContent value="warnings" className="mt-4 space-y-2">
+          <TabsContent value="warnings" className="mt-6 space-y-4">
+            {/* Subtle accountability ladder indicator inside warnings tab */}
+            <div className="grid grid-cols-3 gap-2">
+              <div
+                className={`rounded-lg p-3 text-center text-xs font-medium border ${
+                  ladderStage >= 1
+                    ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
+                    : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
+                }`}
+              >
+                <div>Yellow Warning</div>
+                <div className="text-[11px] opacity-70 mt-0.5">-25 pts</div>
+              </div>
+
+              <div
+                className={`rounded-lg p-3 text-center text-xs font-medium border ${
+                  ladderStage >= 2
+                    ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
+                    : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
+                }`}
+              >
+                <div>Red Warning</div>
+                <div className="text-[11px] opacity-70 mt-0.5">-50 pts</div>
+              </div>
+
+              <div
+                className={`rounded-lg p-3 text-center text-xs font-medium border ${
+                  !member.isActive
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-semibold"
+                    : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
+                }`}
+              >
+                <div>Layoff</div>
+                <div className="text-[11px] opacity-70 mt-0.5">-100 pts</div>
+              </div>
+            </div>
+
             {warnings.length === 0 ? (
               <div className="rounded-xl border border-zinc-200 p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                 No warnings on record. Member is in good standing.
@@ -531,9 +652,9 @@ export default function MemberProfilePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {ROLE_LABELS[r]}
+                  {assignableRoles.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -603,6 +724,22 @@ export default function MemberProfilePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Laptop Sticker QR Dialog */}
+      <LaptopStickerDialog
+        open={stickerDialogOpen}
+        onOpenChange={setStickerDialogOpen}
+        member={{
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          division: primaryDivisionName,
+          secondaryDivision: secondaryDivisionName,
+          joiningYear: member.joiningYear,
+          role: member.role,
+          profileImageUrl: memberData.profile_image_url,
+        }}
+      />
     </Layout>
   )
 }

@@ -251,6 +251,70 @@ function parseCsvLine(line: string): string[] {
   return result
 }
 
+const DIVISION_ALIASES: Record<string, string> = {
+  // Form export division names mapped to internal canonical names
+  "competitive programming division": "competitive programming",
+  "competitive programming": "competitive programming",
+  "development division": "development",
+  "development": "development",
+  "cybersecurity division": "cybersecurity",
+  "cybersecurity": "cybersecurity",
+  "cyber security division": "cybersecurity",
+  "cyber security": "cybersecurity",
+  "data science division": "data science",
+  "data science": "data science",
+  "social media division": "social media",
+  "social media": "social media",
+  "blockchain team": "blockchain team",
+  "blockchain division": "blockchain team",
+  "blockchain": "blockchain team",
+  "capacity building division": "capacity building",
+  "capacity building": "capacity building",
+  "cbd": "capacity building",
+  "cp": "competitive programming",
+  "dev": "development",
+}
+
+function resolveDivision(rawName: string, divisions: DivisionOut[]): DivisionOut | null {
+  if (!rawName) return null
+  const cleaned = rawName.trim().toLowerCase().replace(/\s+/g, " ")
+  if (!cleaned) return null
+
+  // 1. Exact match
+  const exact = divisions.find((d) => d.name.trim().toLowerCase() === cleaned)
+  if (exact) return exact
+
+  // 2. Known alias
+  const canonical = DIVISION_ALIASES[cleaned]
+  if (canonical) {
+    const found = divisions.find((d) => d.name.trim().toLowerCase() === canonical)
+    if (found) return found
+  }
+
+  // 3. Strip trailing suffix
+  for (const suffix of [" division", " team", " track"]) {
+    if (cleaned.endsWith(suffix)) {
+      const candidate = cleaned.slice(0, -suffix.length).trim()
+      const found = divisions.find((d) => d.name.trim().toLowerCase() === candidate)
+      if (found) return found
+      const fromAlias = DIVISION_ALIASES[candidate]
+      if (fromAlias) {
+        const aliasFound = divisions.find((d) => d.name.trim().toLowerCase() === fromAlias)
+        if (aliasFound) return aliasFound
+      }
+    }
+  }
+
+  // 4. Substring containment
+  const match = divisions.find((d) => {
+    const dLower = d.name.trim().toLowerCase()
+    return cleaned.includes(dLower) || dLower.includes(cleaned)
+  })
+  if (match) return match
+
+  return null
+}
+
 export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizardProps) {
   const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
@@ -382,15 +446,18 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
         if (!studentId) issues.push("Missing Student ID")
         if (!phoneNumber) issues.push("Missing Phone Number")
 
-        if (!division) issues.push("Missing primary division")
-        else if (!divisionNamesSet.has(division.toLowerCase())) {
+        const resolvedDiv = resolveDivision(division, divisions)
+        if (!division) {
+          issues.push("Missing primary division")
+        } else if (!resolvedDiv) {
           issues.push(`Unrecognized division: "${division}"`)
         }
 
+        const resolvedSecDiv = secondaryDivision ? resolveDivision(secondaryDivision, divisions) : null
         if (secondaryDivision) {
-          if (!divisionNamesSet.has(secondaryDivision.toLowerCase())) {
+          if (!resolvedSecDiv) {
             issues.push(`Unrecognized secondary division: "${secondaryDivision}"`)
-          } else if (secondaryDivision.toLowerCase() === division.toLowerCase()) {
+          } else if (resolvedDiv && resolvedSecDiv.id === resolvedDiv.id) {
             issues.push("Secondary division cannot match primary")
           }
         }

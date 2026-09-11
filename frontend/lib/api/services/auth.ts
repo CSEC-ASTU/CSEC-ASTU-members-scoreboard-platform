@@ -2,13 +2,15 @@ import { apiFetch } from "../client"
 import type { CurrentUserOut, TelegramConnectOut } from "../types"
 
 export const authService = {
-  getGoogleLoginUrl: () => {
+  getGoogleLoginUrl: (redirect?: string) => {
     const base =
       process.env.NEXT_PUBLIC_API_BASE_URL ||
       (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
         ? "/api/proxy"
         : "http://localhost:8000/api/v1")
-    return `${base}/auth/google/login`
+    return redirect
+      ? `${base}/auth/google/login?redirect=${encodeURIComponent(redirect)}`
+      : `${base}/auth/google/login`
   },
 
 

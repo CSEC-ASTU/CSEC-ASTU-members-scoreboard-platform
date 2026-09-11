@@ -46,6 +46,7 @@ class MeOut(BaseModel):
     cycle_score: int
     display_score: int
     career_score: int
+    badge: str | None = None
     permissions: list[str]
 
 

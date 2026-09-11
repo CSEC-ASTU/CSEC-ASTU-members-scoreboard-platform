@@ -19,19 +19,20 @@ import {
 import { Empty } from "@/components/ui/empty"
 import { MemberAvatar, PointDelta, EventTypePill } from "@/components/csec/ui-bits"
 import { useCurrentUser } from "@/components/user-context"
-import { TASK_CATEGORY_LABELS } from "@/lib/csec-data"
-import { Check, X, Inbox, ShieldCheck, Download, Filter } from "lucide-react"
+import { Check, X, Inbox, ShieldCheck, Download, Filter, Lock } from "lucide-react"
 import { pointEventsService, membersService, tasksService, divisionsService, type PointEventOut, type MemberOut, type TaskOut, type DivisionOut } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { ApprovalsSkeleton } from "@/components/csec/skeletons"
 import { useApprovals, useMembers, useTasks, useDivisions, useApproveClaimsMutation } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
+import { isOfficer } from "@/lib/permissions"
 
 export default function ApprovalsPage() {
-  const { isAuthenticated } = useCurrentUser()
+  const { currentUser, isAuthenticated } = useCurrentUser()
+  const officerAllowed = isOfficer(currentUser)
   const queryClient = useQueryClient()
-  const { data: approvalsData, isLoading: approvalsLoading } = useApprovals(isAuthenticated)
+  const { data: approvalsData, isLoading: approvalsLoading } = useApprovals(isAuthenticated && officerAllowed)
   const { data: membersData, isLoading: membersLoading } = useMembers({ page_size: 100 })
   const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
@@ -43,7 +44,11 @@ export default function ApprovalsPage() {
   const [rejectReason, setRejectReason] = useState("")
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
 
-  const isLoading = approvalsLoading || membersLoading || tasksLoading || divisionsLoading
+  const isInitialLoading =
+    (approvalsLoading && !approvalsData) ||
+    (membersLoading && !membersData) ||
+    (tasksLoading && !tasksData) ||
+    (divisionsLoading && !divisionsData)
 
   const memberMap = useMemo(() => {
     const mObj: Record<string, MemberOut> = {}
@@ -188,9 +193,23 @@ export default function ApprovalsPage() {
     }
   }
 
+  if (!officerAllowed) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center gap-2 py-24 text-center">
+          <Lock className="h-8 w-8 text-zinc-400" />
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Officers Only</h1>
+          <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+            You do not hold governance authority to review and approve member claims.
+          </p>
+        </div>
+      </Layout>
+    )
+  }
+
   return (
     <Layout>
-      {isLoading && queue.length === 0 ? (
+      {isInitialLoading ? (
         <ApprovalsSkeleton />
       ) : (
         <div className="space-y-6">
