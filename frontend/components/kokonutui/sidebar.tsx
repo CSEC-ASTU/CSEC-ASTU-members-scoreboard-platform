@@ -174,6 +174,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               <div>
                 <SectionLabel>Directory</SectionLabel>
                 <div className="space-y-1">
+                  <NavItem href="/members" icon={Users2}>Members</NavItem>
                   <NavItem href="/claims" icon={History}>My History</NavItem>
                 </div>
               </div>
@@ -183,7 +184,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <div>
                   <SectionLabel>Administration</SectionLabel>
                   <div className="space-y-1">
-                    <NavItem href="/members" icon={Users2}>Members</NavItem>
                     {canManagePermissions(currentUser) && (
                       <NavItem href="/permissions" icon={KeyRound}>Permissions</NavItem>
                     )}
