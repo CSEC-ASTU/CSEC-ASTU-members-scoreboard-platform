@@ -61,6 +61,7 @@ def _clear_auth_cookies(response: Response, settings) -> None:
     response.delete_cookie(settings.refresh_cookie_name, path="/")
 
 
+import base64
 import hashlib
 import hmac
 import logging
@@ -69,40 +70,53 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def generate_signed_state(secret: str) -> str:
-    """Generate a tamper-proof time-bounded OAuth state parameter."""
+def generate_signed_state(secret: str, redirect: str | None = None) -> str:
+    """Generate a tamper-proof time-bounded OAuth state parameter including optional redirect path."""
     nonce = secrets.token_urlsafe(16)
     timestamp = str(int(time.time()))
-    payload = f"{nonce}:{timestamp}"
+    redirect_b64 = ""
+    if redirect and redirect.startswith("/") and not redirect.startswith("//"):
+        redirect_b64 = base64.urlsafe_b64encode(redirect.encode("utf-8")).decode("ascii")
+    payload = f"{nonce}:{timestamp}:{redirect_b64}"
     signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
     return f"{payload}:{signature}"
 
 
-def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> bool:
-    """Verify the HMAC signature and timestamp of an OAuth state parameter."""
+def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> tuple[bool, str | None]:
+    """Verify the HMAC signature and timestamp of an OAuth state parameter and extract redirect path."""
     try:
         parts = state.split(":")
-        if len(parts) != 3:
-            return False
-        nonce, timestamp_str, signature = parts
-        payload = f"{nonce}:{timestamp_str}"
+        redirect_path = None
+        if len(parts) == 4:
+            nonce, timestamp_str, redirect_b64, signature = parts
+            payload = f"{nonce}:{timestamp_str}:{redirect_b64}"
+            if redirect_b64:
+                decoded = base64.urlsafe_b64decode(redirect_b64.encode("ascii")).decode("utf-8")
+                if decoded.startswith("/") and not decoded.startswith("//"):
+                    redirect_path = decoded
+        elif len(parts) == 3:
+            nonce, timestamp_str, signature = parts
+            payload = f"{nonce}:{timestamp_str}"
+        else:
+            return False, None
+
         expected_sig = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_sig):
-            return False
+            return False, None
         timestamp = int(timestamp_str)
         now = int(time.time())
         if (now - timestamp) > max_age_seconds or (timestamp - now) > 60:
-            return False
-        return True
+            return False, None
+        return True, redirect_path
     except Exception:
-        return False
+        return False, None
 
 
 @router.get("/google/login")
 async def google_login(settings: AppSettings, redirect: str | None = None) -> RedirectResponse:
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
-    state = generate_signed_state(settings.jwt_secret_key)
+    state = generate_signed_state(settings.jwt_secret_key, redirect=redirect)
     url = build_google_login_url(settings, state)
     response = RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
@@ -142,7 +156,7 @@ async def google_callback(
         return RedirectResponse(f"{frontend}/login?error={error}")
 
     expected = request.cookies.get("oauth_state")
-    signed_valid = verify_signed_state(state or "", settings.jwt_secret_key)
+    signed_valid, redirect_from_state = verify_signed_state(state or "", settings.jwt_secret_key)
     cookie_valid = bool(expected and state and hmac.compare_digest(state, expected))
     state_valid = signed_valid or cookie_valid
 
@@ -217,9 +231,18 @@ async def google_callback(
     refresh = await issue_refresh_token(db, member.id, settings)
     await db.flush()
 
-    post_redirect = request.cookies.get("post_login_redirect")
-    target_url = f"{frontend}{post_redirect}" if post_redirect and post_redirect.startswith("/") else f"{frontend}/dashboard"
-    logger.info("google_callback login success for %s! Redirecting to %s", email, target_url)
+    post_redirect = redirect_from_state or request.cookies.get("post_login_redirect")
+    target_url = (
+        f"{frontend}{post_redirect}"
+        if post_redirect and post_redirect.startswith("/") and not post_redirect.startswith("//")
+        else f"{frontend}/dashboard"
+    )
+    logger.info(
+        "google_callback login success for %s! Redirecting to %s (redirect_from_state=%s)",
+        email,
+        target_url,
+        redirect_from_state,
+    )
     response = RedirectResponse(target_url, status_code=status.HTTP_302_FOUND)
     _set_auth_cookies(response, settings, access, refresh)
     response.delete_cookie("oauth_state", path="/")

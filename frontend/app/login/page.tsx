@@ -22,7 +22,8 @@ function LoginForm() {
 
   function handleGoogleLogin() {
     setLoading(true)
-    window.location.href = authService.getGoogleLoginUrl()
+    const redirectParam = searchParams.get("redirect") || undefined
+    window.location.href = authService.getGoogleLoginUrl(redirectParam)
   }
 
   const errorMessage = errorParam ? (ERROR_MESSAGES[errorParam] || `Authentication failed (${errorParam})`) : null
