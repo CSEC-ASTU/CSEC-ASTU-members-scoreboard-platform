@@ -311,7 +311,7 @@ export default function MemberProfilePage() {
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
             <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Trophy className="h-3 w-3 text-amber-500" /> Current Cycle
+                <Trophy className="h-3 w-3 text-zinc-400" /> Current Cycle
               </div>
               <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
                 {cycleScore} pts
@@ -320,7 +320,7 @@ export default function MemberProfilePage() {
 
             <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-cyan-500" /> Career Score
+                <Sparkles className="h-3 w-3 text-zinc-400" /> Career Score
               </div>
               <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
                 {careerScore} pts
@@ -329,7 +329,7 @@ export default function MemberProfilePage() {
 
             <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <Building2 className="h-3 w-3 text-zinc-500" /> Divisions
+                <Building2 className="h-3 w-3 text-zinc-400" /> Divisions
               </div>
               <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate" title={secondaryDivisionName ? `${primaryDivisionName} & ${secondaryDivisionName}` : primaryDivisionName}>
                 {primaryDivisionName}
@@ -339,7 +339,7 @@ export default function MemberProfilePage() {
 
             <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/40">
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                <CalendarDays className="h-3 w-3 text-zinc-500" /> Joining Year
+                <CalendarDays className="h-3 w-3 text-zinc-400" /> Joining Year
               </div>
               <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                 {member.joiningYear}
@@ -356,7 +356,7 @@ export default function MemberProfilePage() {
         <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-zinc-500" />
+              <ShieldAlert className="h-4 w-4 text-zinc-400" />
               Loss-Aversion &amp; Accountability Ladder
             </h2>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -368,34 +368,34 @@ export default function MemberProfilePage() {
             <div
               className={`rounded-lg p-3 text-center text-xs font-medium border ${
                 ladderStage >= 1
-                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-300"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50"
+                  ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
+                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
               }`}
             >
-              <div className="font-semibold">Yellow Warning</div>
-              <div className="text-[11px] opacity-80 mt-0.5">-25 pts (Buffer halved)</div>
+              <div>Yellow Warning</div>
+              <div className="text-[11px] opacity-70 mt-0.5">-25 pts (Buffer halved)</div>
             </div>
 
             <div
               className={`rounded-lg p-3 text-center text-xs font-medium border ${
                 ladderStage >= 2
-                  ? "border-red-300 bg-red-50 text-red-800 dark:border-red-700/60 dark:bg-red-950/30 dark:text-red-300"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50"
+                  ? "border-zinc-900/40 bg-zinc-100 text-zinc-900 dark:border-white/20 dark:bg-white/[0.08] dark:text-zinc-100 font-semibold"
+                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
               }`}
             >
-              <div className="font-semibold">Red Warning</div>
-              <div className="text-[11px] opacity-80 mt-0.5">-50 pts (Last chance)</div>
+              <div>Red Warning</div>
+              <div className="text-[11px] opacity-70 mt-0.5">-50 pts (Last chance)</div>
             </div>
 
             <div
               className={`rounded-lg p-3 text-center text-xs font-medium border ${
                 !member.isActive
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50"
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-semibold"
+                  : "border-zinc-200/80 bg-zinc-50/50 text-zinc-400 dark:border-zinc-800/80 dark:bg-zinc-900/20 dark:text-zinc-500"
               }`}
             >
-              <div className="font-semibold">Presidential Layoff</div>
-              <div className="text-[11px] opacity-80 mt-0.5">-100 pts (Inactivated)</div>
+              <div>Presidential Layoff</div>
+              <div className="text-[11px] opacity-70 mt-0.5">-100 pts (Inactivated)</div>
             </div>
           </div>
         </div>
@@ -511,28 +511,28 @@ export default function MemberProfilePage() {
 
       {/* Edit Member Admin Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Member Profile</DialogTitle>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-zinc-100">Edit Member Profile</DialogTitle>
             <DialogDescription>
               Update member role, department, and division memberships (capped at 2 divisions).
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSaveMemberAdmin} className="space-y-4 py-2">
+          <form onSubmit={handleSaveMemberAdmin} className="space-y-5 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="member-name" className="text-xs">Member Name</Label>
-              <Input id="member-name" value={member.name} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
+              <Label htmlFor="member-name" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Member Name</Label>
+              <Input id="member-name" value={member.name} disabled className="bg-zinc-100 dark:bg-zinc-900/60" />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Platform Role</Label>
+              <Label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Platform Role</Label>
               <Select value={editRole} onValueChange={(v) => setEditRole(v as Role)}>
-                <SelectTrigger className="text-xs">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {ROLES.map((r) => (
-                    <SelectItem key={r} value={r} className="text-xs">
+                    <SelectItem key={r} value={r}>
                       {ROLE_LABELS[r]}
                     </SelectItem>
                   ))}
@@ -540,16 +540,16 @@ export default function MemberProfilePage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs">Primary Division</Label>
+                <Label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Primary Division</Label>
                 <Select value={editDivisionId} onValueChange={setEditDivisionId}>
-                  <SelectTrigger className="text-xs">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select primary" />
                   </SelectTrigger>
                   <SelectContent>
                     {divisions.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="text-xs">
+                      <SelectItem key={d.id} value={d.id}>
                         {d.name}
                       </SelectItem>
                     ))}
@@ -558,17 +558,17 @@ export default function MemberProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Secondary Division</Label>
+                <Label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Secondary Division</Label>
                 <Select value={editSecondaryDivisionId} onValueChange={setEditSecondaryDivisionId}>
-                  <SelectTrigger className="text-xs">
+                  <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none" className="text-xs">None (1 division only)</SelectItem>
+                    <SelectItem value="none">None (1 division only)</SelectItem>
                     {divisions
                       .filter((d) => d.id !== editDivisionId)
                       .map((d) => (
-                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                        <SelectItem key={d.id} value={d.id}>
                           {d.name}
                         </SelectItem>
                       ))}
@@ -578,21 +578,24 @@ export default function MemberProfilePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-dept" className="text-xs">Department</Label>
+              <Label htmlFor="edit-dept" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Department</Label>
               <Input
                 id="edit-dept"
                 value={editDept}
                 onChange={(e) => setEditDept(e.target.value)}
                 placeholder="e.g. Software Engineering"
-                className="text-xs"
               />
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
+              <Button type="button" variant="ghost" onClick={() => setEditDialogOpen(false)} className="text-zinc-400 hover:text-zinc-200">
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={savingEdit}>
+              <Button
+                type="submit"
+                disabled={savingEdit}
+                className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-50"
+              >
                 {savingEdit && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 Save Changes
               </Button>

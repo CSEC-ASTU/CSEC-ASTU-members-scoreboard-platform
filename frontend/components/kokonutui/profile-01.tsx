@@ -22,12 +22,12 @@ export default function Profile01() {
     {
       label: "Cycle Score",
       value: `${cycleScore} pts`,
-      icon: <Trophy className="w-4 h-4 text-amber-500" />,
+      icon: <Trophy className="w-4 h-4 text-zinc-400" />,
     },
     {
       label: "Career Score",
       value: `${careerScore} pts`,
-      icon: <Sparkles className="w-4 h-4 text-cyan-500" />,
+      icon: <Sparkles className="w-4 h-4 text-zinc-400" />,
     },
     {
       label: "Division",
@@ -42,7 +42,7 @@ export default function Profile01() {
     {
       label: "Telegram",
       value: currentUser.telegramUsername ?? "Not connected",
-      icon: <Send className="w-4 h-4 text-blue-500" />,
+      icon: <Send className="w-4 h-4 text-zinc-400" />,
     },
   ]
 
@@ -53,7 +53,7 @@ export default function Profile01() {
           <div className="flex items-center gap-4 mb-4">
             <div className="relative shrink-0">
               <MemberAvatar name={currentUser.name} size={60} />
-              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-zinc-900 dark:bg-zinc-100 ring-2 ring-white dark:ring-zinc-900" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">

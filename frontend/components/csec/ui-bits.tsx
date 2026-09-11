@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils"
 import type { ClaimStatus, WarningLevel, EventType, BadgeTier } from "@/lib/csec-data"
 import { Sparkles, Shield, Award, Gem } from "lucide-react"
 
-// Small rounded status pill
+// Small rounded status pill (monochromatic)
 export function StatusPill({
   status,
   className,
@@ -11,11 +11,11 @@ export function StatusPill({
   className?: string
 }) {
   const styles: Record<string, string> = {
-    approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-    active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    inactive: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+    approved: "bg-zinc-100 text-zinc-900 dark:bg-white/[0.08] dark:text-zinc-100 border border-zinc-200/80 dark:border-white/10",
+    active: "bg-zinc-100 text-zinc-900 dark:bg-white/[0.08] dark:text-zinc-100 border border-zinc-200/80 dark:border-white/10",
+    pending: "bg-zinc-100/70 text-zinc-600 dark:bg-white/[0.04] dark:text-zinc-400 border border-zinc-200/50 dark:border-white/[0.06]",
+    rejected: "bg-zinc-100/70 text-zinc-500 dark:bg-white/[0.04] dark:text-zinc-500 border border-zinc-200/50 dark:border-white/[0.06]",
+    inactive: "bg-zinc-100/50 text-zinc-400 dark:bg-white/[0.03] dark:text-zinc-500 border border-zinc-200/40 dark:border-white/[0.04]",
   }
   return (
     <span
@@ -25,32 +25,26 @@ export function StatusPill({
         className,
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {status}
     </span>
   )
 }
 
 export function WarningPill({ level, className }: { level: WarningLevel; className?: string }) {
-  const styles: Record<WarningLevel, string> = {
-    normal: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-    yellow: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    red: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  }
   const labels: Record<WarningLevel, string> = {
-    normal: "Normal Warning (-15 pts)",
-    yellow: "Yellow Warning (-25 pts)",
-    red: "Red Warning (-50 pts)",
+    normal: "Warning (-15 pts)",
+    yellow: "Warning (-25 pts)",
+    red: "Critical (-50 pts)",
   }
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-        styles[level],
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10",
         className,
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {labels[level] || "Warning"}
     </span>
   )
@@ -63,40 +57,21 @@ export function EventTypePill({
   type: EventType
   className?: string
 }) {
-  const configs: Record<EventType, { label: string; style: string }> = {
-    claim: {
-      label: "Claim",
-      style: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    },
-    normal_warning: {
-      label: "Normal Warning",
-      style: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-    },
-    yellow_warning: {
-      label: "Yellow Warning",
-      style: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    },
-    red_warning: {
-      label: "Red Warning",
-      style: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    },
-    manual_adjustment: {
-      label: "Officer Adjustment",
-      style: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-    },
-    layoff: {
-      label: "Layoff",
-      style: "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900",
-    },
+  const configs: Record<EventType, { label: string }> = {
+    claim: { label: "Claim" },
+    normal_warning: { label: "Warning" },
+    yellow_warning: { label: "Pattern Alert" },
+    red_warning: { label: "Final Notice" },
+    manual_adjustment: { label: "Adjustment" },
+    layoff: { label: "Layoff" },
   }
 
-  const { label, style } = configs[type] || { label: type, style: "bg-zinc-100 text-zinc-700" }
+  const { label } = configs[type] || { label: type }
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-        style,
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10",
         className,
       )}
     >
@@ -115,24 +90,18 @@ export function TierBadge({
 }) {
   if (!tier) return null
 
-  const badges: Record<BadgeTier, { label: string; icon: typeof Award; style: string }> = {
+  const badges: Record<BadgeTier, { label: string; icon: typeof Award }> = {
     gold: {
       label: "Gold Tier",
       icon: Award,
-      style:
-        "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700/60 shadow-sm",
     },
     platinum: {
       label: "Platinum Tier",
       icon: Sparkles,
-      style:
-        "bg-cyan-50 text-cyan-700 border-cyan-300 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-700/60 shadow-sm",
     },
     diamond: {
       label: "Diamond Tier",
       icon: Gem,
-      style:
-        "bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-700/60 shadow-sm",
     },
   }
 
@@ -142,12 +111,11 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase",
-        config.style,
+        "inline-flex items-center gap-1 rounded-md border border-zinc-200/80 dark:border-white/10 bg-zinc-100/80 dark:bg-white/[0.05] text-zinc-800 dark:text-zinc-200 px-2 py-0.5 text-[11px] font-medium tracking-wide",
         className,
       )}
     >
-      <Icon className="h-3 w-3" />
+      <Icon className="h-3 w-3 text-zinc-500 dark:text-zinc-400" />
       {config.label}
     </span>
   )
@@ -172,18 +140,13 @@ export function ScoreCapProgress({
         <span className="text-zinc-500 dark:text-zinc-400">
           Cycle Progress <span className="font-semibold text-zinc-900 dark:text-zinc-100">{cycleScore}</span> / {scoreCap} pts
         </span>
-        <span className={cn("font-medium", isCapped ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-zinc-500 dark:text-zinc-400")}>
-          {isCapped ? "Score Capped ✨" : `${percentage}%`}
+        <span className="font-medium text-zinc-500 dark:text-zinc-400">
+          {isCapped ? "Score Capped" : `${percentage}%`}
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
         <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            isCapped
-              ? "bg-gradient-to-r from-amber-500 to-amber-300"
-              : "bg-zinc-900 dark:bg-zinc-50",
-          )}
+          className="h-full rounded-full transition-all duration-500 bg-zinc-900 dark:bg-zinc-100"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -197,8 +160,8 @@ export function PointDelta({ value, className }: { value: number; className?: st
   return (
     <span
       className={cn(
-        "font-medium tabular-nums",
-        positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
+        "font-semibold tabular-nums",
+        positive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-500 dark:text-zinc-400",
         className,
       )}
     >
@@ -208,7 +171,7 @@ export function PointDelta({ value, className }: { value: number; className?: st
   )
 }
 
-// Deterministic initials avatar
+// Deterministic initials avatar (monochromatic)
 function initials(name: string): string {
   return name
     .split(" ")
@@ -217,14 +180,6 @@ function initials(name: string): string {
     .join("")
     .toUpperCase()
 }
-
-const AVATAR_TONES = [
-  "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-]
 
 export function MemberAvatar({
   name,
@@ -237,13 +192,11 @@ export function MemberAvatar({
   size?: number
   className?: string
 }) {
-  const tone = AVATAR_TONES[name.length % AVATAR_TONES.length]
-
   if (imageUrl) {
     return (
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-full border border-zinc-200 dark:border-zinc-800",
+          "relative shrink-0 overflow-hidden rounded-full border border-zinc-200 dark:border-white/10",
           className,
         )}
         style={{ width: size, height: size }}
@@ -260,8 +213,7 @@ export function MemberAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-medium",
-        tone,
+        "flex shrink-0 items-center justify-center rounded-full font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/10",
         className,
       )}
       style={{ width: size, height: size, fontSize: size * 0.38 }}

@@ -898,16 +898,18 @@ export default function AdminPage() {
 
       {/* Task Create/Edit Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{draft.id ? "Edit Task Definition" : "Create New Task"}</DialogTitle>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-zinc-100">
+              {draft.id ? "Edit Task Definition" : "Create New Task"}
+            </DialogTitle>
             <DialogDescription>
               Define the activity, baseline reward points, and task category.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="task-title">Title</Label>
+              <Label htmlFor="task-title" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Title</Label>
               <Input
                 id="task-title"
                 value={draft.title}
@@ -916,7 +918,7 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="task-desc">Description</Label>
+              <Label htmlFor="task-desc" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Description</Label>
               <Textarea
                 id="task-desc"
                 value={draft.description}
@@ -925,9 +927,9 @@ export default function AdminPage() {
                 placeholder="Details on what is expected for verification."
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="task-points">Points</Label>
+                <Label htmlFor="task-points" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Points</Label>
                 <Input
                   id="task-points"
                   type="number"
@@ -936,7 +938,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Category</Label>
                 <Select
                   value={draft.category}
                   onValueChange={(v) => setDraft({ ...draft, category: v as TaskCategory })}
@@ -955,7 +957,7 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Division Scope</Label>
+              <Label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Division Scope</Label>
               <Select
                 value={draft.division_id || "club_wide"}
                 onValueChange={(v) => setDraft({ ...draft, division_id: v === "club_wide" ? null : v })}
@@ -976,7 +978,7 @@ export default function AdminPage() {
                 Division tasks can only be claimed by members enrolled in that division.
               </p>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <div className="flex items-center justify-between rounded-xl border border-zinc-200 dark:border-white/10 p-3 bg-zinc-50 dark:bg-zinc-900/40">
               <div>
                 <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Active Task</p>
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -986,11 +988,13 @@ export default function AdminPage() {
               <Switch checked={draft.active} onCheckedChange={(v) => setDraft({ ...draft, active: v })} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-200">
               Cancel
             </Button>
-            <Button onClick={saveTask}>Save Task</Button>
+            <Button onClick={saveTask} className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20">
+              Save Task
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -42,10 +42,10 @@ export default function List02({
   }
 
   return (
-    <div className={cn("w-full overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800", className)}>
+    <div className={cn("w-full overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-white/[0.06]", className)}>
       <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
+        <TableHeader className="bg-zinc-50/50 dark:bg-white/[0.02]">
+          <TableRow className="hover:bg-transparent border-b border-zinc-200/80 dark:border-white/[0.06]">
             {showMember && <TableHead>Member</TableHead>}
             <TableHead>Event / Task</TableHead>
             <TableHead>Type</TableHead>

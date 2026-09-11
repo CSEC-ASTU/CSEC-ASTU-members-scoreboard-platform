@@ -384,9 +384,9 @@ export default function PermissionsPage() {
 
       {/* Grant Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Grant Delegated Duty Permission</DialogTitle>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-zinc-100">Grant Delegated Duty Permission</DialogTitle>
             <DialogDescription>
               Assign a granular capability to a member without altering their base role.
             </DialogDescription>
@@ -460,12 +460,13 @@ export default function PermissionsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={submitting} className="text-zinc-400 hover:text-zinc-200">
               Cancel
             </Button>
             <Button
               onClick={handleGrant}
               disabled={submitting || !targetMemberId || !permissionKey}
+              className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-50"
             >
               {submitting ? "Granting..." : "Grant Permission"}
             </Button>

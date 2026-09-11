@@ -65,10 +65,10 @@ export function ClaimDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <div onClick={() => setOpen(true)}>{trigger}</div>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <DialogTitle>Submit a task claim</DialogTitle>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-zinc-100">Submit a task claim</DialogTitle>
             {taskDivisionName ? (
               <Badge variant="outline" className="text-xs">
                 {taskDivisionName}
@@ -92,15 +92,15 @@ export function ClaimDialog({
         <div className="space-y-4 py-2">
           {/* 6-Digit Whiteboard Verification Code Entry for Session Attendance */}
           {isSessionTask && (
-            <div className="rounded-xl border border-indigo-200 bg-gradient-to-b from-indigo-50/70 to-indigo-50/20 p-4 dark:border-indigo-900/50 dark:from-indigo-950/30 dark:to-indigo-950/10 space-y-2">
+            <div className="rounded-xl border border-zinc-200/80 dark:border-white/10 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="verification-code" className="text-xs font-semibold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                  <KeyRound className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <Label htmlFor="verification-code" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                  <KeyRound className="h-4 w-4 text-zinc-500" />
                   Whiteboard Session Code
                 </Label>
                 {verificationCode.length === 6 && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> 6 digits entered
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-zinc-400" /> 6 digits entered
                   </span>
                 )}
               </div>
@@ -115,7 +115,7 @@ export function ClaimDialog({
                   placeholder="• • •   • • •"
                   value={verificationCode}
                   onChange={handleCodeChange}
-                  className="text-center font-mono text-2xl tracking-[0.5em] font-bold h-12 bg-white dark:bg-zinc-900 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 focus-visible:ring-indigo-500"
+                  className="text-center font-mono text-2xl tracking-[0.5em] font-bold h-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 focus-visible:ring-zinc-400"
                   autoFocus
                 />
               </div>
@@ -129,7 +129,7 @@ export function ClaimDialog({
           {/* If club-wide task and member belongs to 2 divisions, let them pick attribution */}
           {!task.division_id && memberDivisions.length > 1 && (
             <div className="space-y-1.5">
-              <Label htmlFor="attribution-division" className="text-xs">
+              <Label htmlFor="attribution-division" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
                 Credit Claim to Division
               </Label>
               <Select value={selectedDivisionId} onValueChange={setSelectedDivisionId}>
@@ -151,10 +151,10 @@ export function ClaimDialog({
           )}
 
           {/* Integrity & Physical Presence Warning */}
-          <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2.5">
-            <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="rounded-xl border border-zinc-200/80 dark:border-white/[0.06] bg-zinc-50 dark:bg-zinc-900/30 p-3.5 text-xs text-zinc-600 dark:text-zinc-400 flex items-start gap-2.5">
+            <ShieldAlert className="h-4 w-4 shrink-0 text-zinc-400 mt-0.5" />
             <div className="space-y-0.5 leading-relaxed">
-              <span className="font-semibold block text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <span className="font-semibold block text-[11px] uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                 Honor Code &amp; Presence Notice
               </span>
               <span>
@@ -191,11 +191,15 @@ export function ClaimDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="ghost" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-200">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitDisabled}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled}
+            className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 disabled:opacity-50"
+          >
             {isSessionTask ? "Verify Code & Claim (+10 pts)" : "Submit claim"}
           </Button>
         </DialogFooter>

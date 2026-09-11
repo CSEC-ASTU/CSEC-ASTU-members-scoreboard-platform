@@ -96,83 +96,83 @@ export function InactivityRadar({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card
           onClick={() => setFilterTier("critical")}
-          className={`cursor-pointer transition-all border-l-4 border-l-rose-500 ${
+          className={`cursor-pointer transition-all border ${
             filterTier === "critical"
-              ? "ring-2 ring-rose-500 shadow-md bg-rose-50/20 dark:bg-rose-950/20"
-              : "hover:border-zinc-300 dark:hover:border-zinc-700"
+              ? "ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-sm bg-zinc-50/80 dark:bg-white/[0.04] border-zinc-900 dark:border-zinc-100"
+              : "border-zinc-200/80 dark:border-white/10 hover:border-zinc-400 dark:hover:border-zinc-700"
           }`}
         >
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                Critical (Red Zone)
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Critical
               </span>
-              <ShieldAlert className="h-4 w-4 text-rose-500" />
+              <ShieldAlert className="h-4 w-4 text-zinc-400" />
             </div>
             <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {categorized.critical.length}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-zinc-500">
-            &le; 0 points — immediate dismissal risk
+            &le; 0 points — dismissal risk
           </CardContent>
         </Card>
 
         <Card
           onClick={() => setFilterTier("warning")}
-          className={`cursor-pointer transition-all border-l-4 border-l-amber-500 ${
+          className={`cursor-pointer transition-all border ${
             filterTier === "warning"
-              ? "ring-2 ring-amber-500 shadow-md bg-amber-50/20 dark:bg-amber-950/20"
-              : "hover:border-zinc-300 dark:hover:border-zinc-700"
+              ? "ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-sm bg-zinc-50/80 dark:bg-white/[0.04] border-zinc-900 dark:border-zinc-100"
+              : "border-zinc-200/80 dark:border-white/10 hover:border-zinc-400 dark:hover:border-zinc-700"
           }`}
         >
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                Warning (Yellow Zone)
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Warning
               </span>
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-zinc-400" />
             </div>
             <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {categorized.warning.length}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-zinc-500">
-            1 - 25 points — probationary status
+            1 - 25 points — probationary
           </CardContent>
         </Card>
 
         <Card
           onClick={() => setFilterTier("all")}
-          className={`cursor-pointer transition-all border-l-4 border-l-emerald-500 ${
+          className={`cursor-pointer transition-all border ${
             filterTier === "all"
-              ? "ring-2 ring-emerald-500 shadow-md bg-emerald-50/20 dark:bg-emerald-950/20"
-              : "hover:border-zinc-300 dark:hover:border-zinc-700"
+              ? "ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-sm bg-zinc-50/80 dark:bg-white/[0.04] border-zinc-900 dark:border-zinc-100"
+              : "border-zinc-200/80 dark:border-white/10 hover:border-zinc-400 dark:hover:border-zinc-700"
           }`}
         >
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 In Good Standing
               </span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              <CheckCircle2 className="h-4 w-4 text-zinc-400" />
             </div>
             <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {categorized.healthy.length}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 text-xs text-zinc-500">
-            &gt; 25 points — active & compliant
+            &gt; 25 points — active &amp; compliant
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-indigo-500 bg-zinc-50/50 dark:bg-zinc-900/50">
+        <Card className="border border-zinc-200/80 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-900/50">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Compliance Rate
               </span>
-              <UserCheck className="h-4 w-4 text-indigo-500" />
+              <UserCheck className="h-4 w-4 text-zinc-400" />
             </div>
             <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {members.length > 0
@@ -225,7 +225,7 @@ export function InactivityRadar({
             All Members ({members.length})
           </Button>
           <Button
-            variant={filterTier === "critical" ? "destructive" : "outline"}
+            variant={filterTier === "critical" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilterTier("critical")}
             className="h-8 text-xs px-2.5"
@@ -233,12 +233,10 @@ export function InactivityRadar({
             Critical ({categorized.critical.length})
           </Button>
           <Button
-            variant={filterTier === "warning" ? "secondary" : "outline"}
+            variant={filterTier === "warning" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilterTier("warning")}
-            className={`h-8 text-xs px-2.5 ${
-              filterTier === "warning" ? "bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100" : ""
-            }`}
+            className="h-8 text-xs px-2.5"
           >
             Warning ({categorized.warning.length})
           </Button>
@@ -249,7 +247,7 @@ export function InactivityRadar({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredList.length === 0 ? (
           <div className="col-span-full p-12 text-center border rounded-xl border-dashed border-zinc-200 dark:border-zinc-800">
-            <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500 mb-2 opacity-80" />
+            <CheckCircle2 className="h-8 w-8 mx-auto text-zinc-400 mb-2 opacity-80" />
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               No members found in this status filter
             </p>
@@ -267,13 +265,7 @@ export function InactivityRadar({
             return (
               <Card
                 key={m.id}
-                className={`relative overflow-hidden transition-all border ${
-                  isCritical
-                    ? "border-rose-200 bg-rose-50/10 dark:border-rose-900/40 dark:bg-rose-950/10"
-                    : isWarning
-                    ? "border-amber-200 bg-amber-50/10 dark:border-amber-900/40 dark:bg-amber-950/10"
-                    : "border-zinc-200 dark:border-zinc-800"
-                }`}
+                className="relative overflow-hidden transition-all border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-white/20"
               >
                 <CardHeader className="p-4 pb-2">
                   <div className="flex items-start justify-between gap-2">
@@ -284,13 +276,7 @@ export function InactivityRadar({
                       <p className="text-xs text-zinc-500 truncate">{m.email}</p>
                     </div>
                     <Badge
-                      className={`text-[10px] font-mono shrink-0 ${
-                        isCritical
-                          ? "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border-rose-300"
-                          : isWarning
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border-amber-300"
-                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border-emerald-300"
-                      }`}
+                      className="text-[10px] font-mono shrink-0 bg-zinc-100 text-zinc-900 dark:bg-white/[0.06] dark:text-zinc-100 border border-zinc-200 dark:border-white/10"
                     >
                       {score} pts
                     </Badge>
@@ -315,27 +301,21 @@ export function InactivityRadar({
 
                   {/* Status Banner */}
                   <div
-                    className={`text-[11px] p-2 rounded-md flex items-center gap-1.5 ${
-                      isCritical
-                        ? "bg-rose-100/70 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium"
-                        : isWarning
-                        ? "bg-amber-100/70 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300"
-                        : "bg-zinc-100/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                    }`}
+                    className="text-[11px] p-2 rounded-md flex items-center gap-1.5 border border-zinc-200/60 dark:border-white/5 bg-zinc-50/80 dark:bg-white/[0.02] text-zinc-600 dark:text-zinc-400"
                   >
                     {isCritical ? (
                       <>
-                        <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                        <ShieldAlert className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         <span>Action needed: Red warning or layoff evaluation</span>
                       </>
                     ) : isWarning ? (
                       <>
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        <span>At risk: 1 missing task will cause red warning</span>
+                        <AlertTriangle className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                        <span>At risk: 1 missing task will trigger warning status</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
                         <span>Member active in club sessions</span>
                       </>
                     )}
@@ -348,18 +328,18 @@ export function InactivityRadar({
                         variant="outline"
                         size="sm"
                         onClick={() => onActionClick(m, "warning")}
-                        className="flex-1 h-7 text-xs border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-300"
+                        className="flex-1 h-7 text-xs border-zinc-200/80 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
                       >
-                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        <AlertTriangle className="h-3 w-3 mr-1 text-zinc-400" />
                         Issue Warning
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onActionClick(m, "bonus")}
-                        className="flex-1 h-7 text-xs border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                        className="flex-1 h-7 text-xs border-zinc-200/80 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
                       >
-                        <Award className="h-3 w-3 mr-1" />
+                        <Award className="h-3 w-3 mr-1 text-zinc-400" />
                         Award Points
                       </Button>
                     </div>

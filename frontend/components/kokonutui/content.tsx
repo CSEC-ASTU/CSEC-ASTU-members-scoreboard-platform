@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { LineChart, Receipt, ArrowRight } from "lucide-react"
+import { LineChart, Receipt, ArrowRight, Sparkles } from "lucide-react"
 import Link from "next/link"
 import List01 from "./list-01"
 import List02 from "./list-02"
@@ -39,49 +39,60 @@ export default function Content() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div className="space-y-8">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Welcome back, {currentUser.name.split(" ")[0]} 👋
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Welcome back, {currentUser.name.split(" ")[0]}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             CSEC ASTU Member Accountability &amp; Performance Overview.
           </p>
         </div>
 
         <Link
           href="/tasks"
-          className="inline-flex items-center gap-1.5 self-start rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl bg-violet-600 hover:bg-violet-500 text-white px-4 py-2.5 text-xs font-semibold shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5"
         >
-          Claim a Task <ArrowRight className="h-3.5 w-3.5" />
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Claim a Task</span>
+          <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
-      {/* KPI summary cards */}
+      {/* Hero Spotlight + Quick Pulse */}
       <List01 />
 
       {/* Points trend chart */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#1F1F23] dark:bg-[#0F0F12]">
-        <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
-          <LineChart className="h-4 w-4" />
-          Division Contribution Trend
-        </h2>
+      <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-6 sm:p-7 shadow-xl shadow-black/5 dark:shadow-black/20">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="flex items-center gap-2.5 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="rounded-lg bg-zinc-100 dark:bg-white/[0.06] p-1.5 text-zinc-500 dark:text-zinc-400">
+              <LineChart className="h-4 w-4" />
+            </div>
+            Division Contribution Trend
+          </h2>
+          <span className="text-xs text-zinc-400">Active Cycle Progress</span>
+        </div>
         <List03 />
       </div>
 
       {/* My recent point events */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#1F1F23] dark:bg-[#0F0F12]">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
-            <Receipt className="h-4 w-4" />
+      <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-6 sm:p-7 shadow-xl shadow-black/5 dark:shadow-black/20">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="flex items-center gap-2.5 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="rounded-lg bg-zinc-100 dark:bg-white/[0.06] p-1.5 text-zinc-500 dark:text-zinc-400">
+              <Receipt className="h-4 w-4" />
+            </div>
             My Recent Point Events
           </h2>
           <Link
             href="/claims"
-            className="text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors"
           >
-            View full ledger <ArrowRight className="h-3 w-3" />
+            <span>View full ledger</span>
+            <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         <List02 events={events.slice(0, 6)} showMember={false} emptyLabel="You have no point events on record yet." />

@@ -275,10 +275,15 @@ export default function ApprovalsPage() {
                   disabled={selectedIds.length === 0}
                   onClick={() => setRejectOpen(true)}
                 >
-                  <X className="mr-1 h-3.5 w-3.5 text-rose-500" /> Reject Selected
+                  <X className="mr-1 h-3.5 w-3.5 text-zinc-400" /> Reject Selected
                 </Button>
-                <Button size="sm" disabled={selectedIds.length === 0} onClick={() => approve(selectedIds)}>
-                  <Check className="mr-1 h-3.5 w-3.5 text-emerald-400" /> Bulk Approve ({selectedIds.length})
+                <Button
+                  size="sm"
+                  disabled={selectedIds.length === 0}
+                  onClick={() => approve(selectedIds)}
+                  className="bg-violet-600 hover:bg-violet-500 text-white"
+                >
+                  <Check className="mr-1 h-3.5 w-3.5" /> Bulk Approve ({selectedIds.length})
                 </Button>
               </div>
             </div>
@@ -352,9 +357,9 @@ export default function ApprovalsPage() {
                               setRejectOpen(true)
                             }}
                           >
-                            <X className="mr-1 h-3.5 w-3.5" /> Reject
+                            <X className="mr-1 h-3.5 w-3.5 text-zinc-400" /> Reject
                           </Button>
-                          <Button size="sm" onClick={() => approve([e.id])}>
+                          <Button size="sm" onClick={() => approve([e.id])} className="bg-violet-600 hover:bg-violet-500 text-white">
                             <Check className="mr-1 h-3.5 w-3.5" /> Approve (+{e.points_delta})
                           </Button>
                         </div>
@@ -371,27 +376,30 @@ export default function ApprovalsPage() {
 
       {/* Rejection Reason Modal */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Reject {selectedIds.length > 1 ? `${selectedIds.length} claims` : "claim"}</DialogTitle>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-zinc-100">
+              Reject {selectedIds.length > 1 ? `${selectedIds.length} claims` : "claim"}
+            </DialogTitle>
             <DialogDescription>
               Provide an accountable reason for the member. This will be stored in the ledger.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="reject-reason">
-              Reason <span className="text-red-500">*</span>
+            <Label htmlFor="reject-reason" className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              Reason <span className="text-rose-400">*</span>
             </Label>
             <Textarea
               id="reject-reason"
               placeholder="e.g. Attendance not confirmed in division meeting log."
               value={rejectReason}
               onChange={(ev) => setRejectReason(ev.target.value)}
-              rows={3}
+              rows={4}
+              className="bg-zinc-100 dark:bg-zinc-900/60"
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setRejectOpen(false)} className="text-zinc-400 hover:text-zinc-200">
               Cancel
             </Button>
             <Button variant="destructive" onClick={rejectSelected} disabled={!rejectReason.trim()}>

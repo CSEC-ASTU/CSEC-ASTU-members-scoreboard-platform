@@ -164,21 +164,21 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
   }
 
   return (
-    <Card className="relative overflow-hidden border-indigo-200/80 bg-gradient-to-br from-indigo-50/70 via-white to-violet-50/50 dark:border-indigo-900/40 dark:from-indigo-950/20 dark:via-zinc-900/40 dark:to-violet-950/20 shadow-sm">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+    <Card className="relative overflow-hidden border-zinc-200/80 bg-white dark:border-white/10 dark:bg-zinc-900/60 shadow-sm">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/[0.03] rounded-full blur-3xl pointer-events-none" />
 
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm">
               <QrCode className="h-4 w-4" />
             </div>
             <div>
               <CardTitle className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 Whiteboard Attendance Session
                 {activeSession ? (
-                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-xs flex items-center gap-1">
-                    <Radio className="h-3 w-3 animate-pulse text-emerald-500" /> LIVE NOW
+                  <Badge variant="outline" className="border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 font-mono text-xs flex items-center gap-1">
+                    <Radio className="h-3 w-3 animate-pulse text-zinc-900 dark:text-zinc-100" /> LIVE NOW
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-xs">
@@ -197,7 +197,7 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
       <CardContent className="pt-1">
         {activeSession ? (
           /* Live Active Session View */
-          <div className="rounded-xl border border-emerald-500/30 bg-white/80 p-4 dark:bg-zinc-900/80 backdrop-blur-sm space-y-4">
+          <div className="rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/80 p-4 dark:bg-zinc-900/80 backdrop-blur-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -212,27 +212,27 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <Clock className="h-3.5 w-3.5 text-zinc-400" />
                   <span>
-                    Expires in: <strong className="font-mono text-amber-600 dark:text-amber-400">{timeLeft || "calculating..."}</strong>
+                    Expires in: <strong className="font-mono text-zinc-900 dark:text-zinc-100">{timeLeft || "calculating..."}</strong>
                   </span>
                 </div>
               </div>
 
               {/* 6-Digit Code Display */}
               <div className="flex items-center gap-3 self-start sm:self-auto">
-                <div className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-2 dark:border-indigo-800 dark:bg-indigo-950/40">
-                  <span className="text-2xl sm:text-3xl font-mono font-bold tracking-widest text-indigo-700 dark:text-indigo-300">
+                <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 px-4 py-2">
+                  <span className="text-2xl sm:text-3xl font-mono font-bold tracking-widest text-zinc-900 dark:text-zinc-100">
                     {activeSession.code.slice(0, 3)} {activeSession.code.slice(3)}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                    className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                     onClick={handleCopyCode}
                     title="Copy code"
                   >
-                    {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                    {copied ? <CheckCircle2 className="h-4 w-4 text-zinc-900 dark:text-zinc-100" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
 
@@ -249,9 +249,9 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
             </div>
 
             <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/40 p-2.5 text-[11px] text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-500" />
+              <ShieldCheck className="h-4 w-4 shrink-0 text-zinc-400" />
               <span>
-                <strong>Whiteboard Notice:</strong> Write <code className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{activeSession.code}</code> on the lab board. Members enter this PIN when claiming. Each member can only claim this code <strong>once</strong>.
+                <strong>Whiteboard Notice:</strong> Write <code className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{activeSession.code}</code> on the lab board. Members enter this PIN when claiming. Each member can only claim this code <strong>once</strong>.
               </span>
             </div>
           </div>
@@ -297,7 +297,7 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
             <Button
               onClick={handleStartSession}
               disabled={createSessionMutation.isPending || !selectedTaskId}
-              className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0"
+              className="w-full md:w-auto bg-violet-600 hover:bg-violet-500 text-white text-xs shrink-0"
             >
               <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Start Session &amp; Generate Code
             </Button>

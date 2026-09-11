@@ -473,7 +473,7 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
       {/* 1. Google Form Column Specification Reference Card */}
       <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 space-y-3">
         <div className="flex items-center gap-2">
-          <Info className="h-4 w-4 text-indigo-500" />
+          <Info className="h-4 w-4 text-zinc-400" />
           <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
             Google Form CSV Format Specification (10 Required, 1 Optional)
           </h4>
@@ -483,12 +483,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-1">
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Personal Email
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required (Login)
               </Badge>
             </div>
@@ -497,12 +497,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Full Name
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -511,12 +511,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Student ID
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -525,12 +525,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Phone Number
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -539,12 +539,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Primary Division
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -553,12 +553,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Department
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -567,12 +567,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Club Joining Year
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -581,12 +581,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Telegram Profile URL
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -595,12 +595,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 GitHub Profile URL
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -609,12 +609,12 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Front-Facing Selfie
               </span>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
+              <Badge variant="outline" className="text-[10px] border-zinc-300 dark:border-white/10 bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200">
                 Required
               </Badge>
             </div>
@@ -623,7 +623,7 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
             </p>
           </div>
 
-          <div className="p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-900/40 bg-white dark:bg-zinc-900">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/60">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                 Secondary Division
@@ -646,7 +646,7 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
           <div className="flex items-center justify-center w-full">
             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-zinc-100/70 dark:hover:bg-zinc-800/60 transition-colors">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-7 h-7 mb-2 text-indigo-500" />
+                <Upload className="w-7 h-7 mb-2 text-zinc-400" />
                 <p className="mb-1 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
                   {file ? file.name : "Click to select CSV export or drag and drop here"}
                 </p>
@@ -668,11 +668,11 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
 
         {/* Missing Required Columns Alert */}
         {missingRequiredHeaders.length > 0 && (
-          <div className="p-3.5 rounded-lg border border-rose-200 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900/40 text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400" />
             <div>
-              <strong className="font-semibold">Missing Required Columns:</strong>
-              <p className="mt-0.5">
+              <strong className="font-semibold text-zinc-900 dark:text-zinc-100">Missing Required Columns:</strong>
+              <p className="mt-0.5 text-zinc-500">
                 The uploaded file is missing: {missingRequiredHeaders.join(", ")}. Please rename
                 the column header in Google Sheets or ensure the column was exported.
               </p>
@@ -685,7 +685,7 @@ export function CsvImportWizard({ divisions, onImportComplete }: CsvImportWizard
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileCheck className="h-4 w-4 text-emerald-500" />
+                <FileCheck className="h-4 w-4 text-zinc-400" />
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                   Pre-Flight Auto-Mapper &amp; Preview
                 </span>

@@ -124,7 +124,7 @@ export default function MembersPage() {
                 <Button
                   size="sm"
                   onClick={() => setBatchDialogOpen(true)}
-                  className="h-9 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="h-9 gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20"
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                   Batch Award / Penalize

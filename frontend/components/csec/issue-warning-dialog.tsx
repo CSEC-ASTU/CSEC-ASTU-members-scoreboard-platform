@@ -129,10 +129,10 @@ export function IssueWarningDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-amber-500" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            <Shield className="h-5 w-5 text-zinc-400" />
             Issue Warning or Point Adjustment
           </DialogTitle>
           <DialogDescription>
@@ -185,7 +185,7 @@ export function IssueWarningDialog({
 
           <div className="space-y-2">
             <Label htmlFor="warning-reason">
-              Reason <span className="text-red-500">*</span>
+              Reason <span className="text-zinc-400">*</span>
             </Label>
             <Textarea
               id="warning-reason"

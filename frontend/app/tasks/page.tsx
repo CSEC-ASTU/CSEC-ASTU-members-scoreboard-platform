@@ -164,9 +164,9 @@ export default function TasksPage() {
             <SessionCodeCard currentUser={currentUser} tasks={tasks} divisions={divisions} />
 
             {/* Honor Code & Physical Presence Notice */}
-            <div className="rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:text-amber-300 flex items-center justify-between gap-3">
+            <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.06] bg-zinc-50 dark:bg-zinc-900/30 p-4 text-xs text-zinc-600 dark:text-zinc-400 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <ShieldAlert className="h-4 w-4 shrink-0 text-zinc-400" />
                 <span className="leading-relaxed">
                   <strong>Attendance &amp; Task Integrity:</strong> If you are not actually present in a session or did not complete the duty, please do not submit a claim. Submitting false claims will result in negative point deductions, official warnings, or club dismissal.
                 </span>
@@ -174,15 +174,15 @@ export default function TasksPage() {
             </div>
 
             {/* Division filter pills */}
-            <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-100 dark:border-zinc-800 text-xs">
-              <span className="text-zinc-400 mr-1 text-[11px] font-medium uppercase tracking-wider">Division:</span>
+            <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-zinc-200/80 dark:border-white/[0.06] text-xs">
+              <span className="text-zinc-400 mr-1 text-[11px] font-semibold uppercase tracking-wider">Division:</span>
               <button
                 type="button"
                 onClick={() => setSelectedDivisionFilter("all")}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                className={`rounded-xl px-3 py-1 text-xs font-medium transition-all duration-200 ${
                   selectedDivisionFilter === "all"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                    : "border border-zinc-200/80 bg-white dark:bg-zinc-900/40 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:text-zinc-200"
                 }`}
               >
                 {isClubOfficer ? "All Tasks" : "All My Tasks"}
@@ -190,10 +190,10 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDivisionFilter("club_wide")}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                className={`rounded-xl px-3 py-1 text-xs font-medium transition-all duration-200 ${
                   selectedDivisionFilter === "club_wide"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                    : "border border-zinc-200/80 bg-white dark:bg-zinc-900/40 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:text-zinc-200"
                 }`}
               >
                 Club-Wide
@@ -204,10 +204,10 @@ export default function TasksPage() {
                   key={d.id}
                   type="button"
                   onClick={() => setSelectedDivisionFilter(d.id)}
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  className={`rounded-xl px-3 py-1 text-xs font-medium transition-all duration-200 ${
                     selectedDivisionFilter === d.id
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                      : "border border-zinc-200/80 bg-white dark:bg-zinc-900/40 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:text-zinc-200"
                   }`}
                 >
                   {d.name}
@@ -216,15 +216,15 @@ export default function TasksPage() {
             </div>
 
             {/* Category filter pills */}
-            <div className="flex flex-wrap items-center gap-1.5 pb-2">
-              <span className="text-zinc-400 mr-1 text-[11px] font-medium uppercase tracking-wider">Category:</span>
+            <div className="flex flex-wrap items-center gap-2 pb-2">
+              <span className="text-zinc-400 mr-1 text-[11px] font-semibold uppercase tracking-wider">Category:</span>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
                   selectedCategory === "all"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                    : "border border-zinc-200/80 bg-white dark:bg-zinc-900/40 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:text-zinc-200"
                 }`}
               >
                 All Categories
@@ -234,10 +234,10 @@ export default function TasksPage() {
                   key={c}
                   type="button"
                   onClick={() => setSelectedCategory(c)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
                     selectedCategory === c
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                      : "border border-zinc-200/80 bg-white dark:bg-zinc-900/40 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:text-zinc-200"
                   }`}
                 >
                   {TASK_CATEGORY_LABELS[c]}
@@ -246,7 +246,7 @@ export default function TasksPage() {
             </div>
 
             {/* Task grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {visibleTasks.map((task) => {
                 const isAutoApprove =
                   Math.abs(task.points) <= PLATFORM_SETTINGS.autoApproveClaimMaxPoints && !task.isPenalty
@@ -256,40 +256,40 @@ export default function TasksPage() {
                 return (
                   <div
                     key={task.id}
-                    className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900/40"
+                    className="flex flex-col justify-between rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-6 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-0.5 hover:border-violet-500/30 transition-all duration-300"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant="secondary" className="font-normal text-[11px]">
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300">
                             {TASK_CATEGORY_LABELS[task.category as TaskCategory] || task.category}
-                          </Badge>
+                          </span>
                           {taskDivName ? (
-                            <Badge variant="outline" className="text-[10px]">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
                               {taskDivName}
-                            </Badge>
+                            </span>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] text-zinc-500">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
                               Club-Wide
-                            </Badge>
+                            </span>
                           )}
                         </div>
-                        <span className="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        <span className="shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/10 tabular-nums">
                           +{task.points} pts
                         </span>
                       </div>
-                      <h3 className="mt-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">{task.title}</h3>
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{task.description}</p>
+                      <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">{task.title}</h3>
+                      <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{task.description}</p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+                    <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/[0.06] space-y-3">
                       {task.category === "division_session" ? (
-                        <div className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-                          <KeyRound className="h-3 w-3" /> Requires Whiteboard PIN
+                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                          <KeyRound className="h-3.5 w-3.5" /> Requires Whiteboard PIN
                         </div>
                       ) : isAutoApprove ? (
-                        <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                          <Zap className="h-3 w-3" /> Auto-approved (low-stakes claim)
+                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                          <Zap className="h-3.5 w-3.5" /> Auto-approved (low-stakes claim)
                         </div>
                       ) : null}
 
@@ -305,7 +305,7 @@ export default function TasksPage() {
                           memberDivisions={memberDivisions}
                           onSubmit={(payload) => submitClaim(task, payload)}
                           trigger={
-                            <Button className="w-full" size="sm">
+                            <Button className="w-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 rounded-xl transition-all duration-200" size="sm">
                               <Plus className="mr-1.5 h-4 w-4" /> Submit Claim
                             </Button>
                           }
@@ -320,16 +320,16 @@ export default function TasksPage() {
 
           <TabsContent value="claims" className="mt-4 space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 px-2.5 py-1 rounded-full">
-                <Clock className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1.5 text-xs bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10 px-2.5 py-1 rounded-full font-medium">
+                <Clock className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{counts.pending} Pending</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-1 rounded-full">
-                <CheckCircle2 className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1.5 text-xs bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10 px-2.5 py-1 rounded-full font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{counts.approved} Approved</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 px-2.5 py-1 rounded-full">
-                <AlertCircle className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1.5 text-xs bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10 px-2.5 py-1 rounded-full font-medium">
+                <AlertCircle className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{counts.rejected} Rejected</span>
               </div>
             </div>

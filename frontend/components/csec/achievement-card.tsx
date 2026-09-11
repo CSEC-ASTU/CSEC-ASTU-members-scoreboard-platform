@@ -48,8 +48,8 @@ export function AchievementCard({
       {/* The Styled Achievement Card */}
       <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-zinc-50 via-white to-zinc-100/80 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-[#0F0F12] dark:to-zinc-900">
         {/* Subtle decorative background glow */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl dark:bg-amber-500/5" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/5" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/[0.03] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-zinc-500/[0.03] blur-3xl" />
 
         {/* Card Header: Club branding + Verified badge */}
         <div className="flex items-center justify-between border-b border-zinc-200/80 pb-4 dark:border-zinc-800/80">
@@ -66,8 +66,8 @@ export function AchievementCard({
               </div>
             </div>
           </div>
-          <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <ShieldCheck className="h-3.5 w-3.5" /> Verified
+          <div className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 px-2 py-0.5 text-[11px] font-medium text-zinc-800 dark:text-zinc-200">
+            <ShieldCheck className="h-3.5 w-3.5 text-zinc-500" /> Verified
           </div>
         </div>
 
@@ -97,7 +97,7 @@ export function AchievementCard({
           <div>
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Lifetime Career Score</span>
             <div className="mt-1 flex items-baseline gap-1">
-              <Trophy className="h-4 w-4 text-amber-500" />
+              <Trophy className="h-4 w-4 text-zinc-400" />
               <span className="text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
                 {careerScore}
               </span>
@@ -110,7 +110,7 @@ export function AchievementCard({
               Current Cycle ({PLATFORM_SETTINGS.currentAcademicYear})
             </span>
             <div className="mt-1 flex items-baseline gap-1">
-              <Sparkles className="h-4 w-4 text-cyan-500" />
+              <Sparkles className="h-4 w-4 text-zinc-400" />
               <span className="text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
                 {cycleScore}
               </span>
@@ -129,7 +129,7 @@ export function AchievementCard({
       {/* Share Actions */}
       <div className="mt-4 flex gap-2">
         <Button onClick={copyShareLink} variant="outline" className="flex-1" size="sm">
-          {copied ? <Check className="mr-1.5 h-4 w-4 text-emerald-500" /> : <Copy className="mr-1.5 h-4 w-4" />}
+          {copied ? <Check className="mr-1.5 h-4 w-4 text-zinc-900 dark:text-zinc-100" /> : <Copy className="mr-1.5 h-4 w-4" />}
           {copied ? "Copied!" : "Copy Share Link"}
         </Button>
         <Button
