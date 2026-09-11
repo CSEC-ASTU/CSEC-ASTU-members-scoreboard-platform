@@ -31,14 +31,20 @@ import {
   Award,
   History,
   ShieldCheck,
+  CheckCircle2,
+  ExternalLink,
+  RefreshCw,
+  Copy,
   Loader2,
 } from "lucide-react"
+import { authService } from "@/lib/api"
 
 export default function ProfilePage() {
-  const { currentUser, refetchUser } = useCurrentUser()
+  const { currentUser, liveUser, refetchUser } = useCurrentUser()
   const [department, setDepartment] = useState(currentUser.department)
-  const [telegram, setTelegram] = useState(currentUser.telegramUsername ?? "")
-  const [connected, setConnected] = useState(Boolean(currentUser.telegramUsername))
+  const [connectingTelegram, setConnectingTelegram] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(false)
+  const [telegramConnectData, setTelegramConnectData] = useState<{ token: string; link: string | null } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -131,6 +137,48 @@ export default function ProfilePage() {
       })
     } finally {
       setAvatarUploading(false)
+    }
+  }
+
+  const isTelegramConnected = Boolean(
+    currentUser.telegramConnected || (liveUser && liveUser.telegram_connected)
+  )
+  const currentTelegramUsername =
+    liveUser?.telegram_username ?? currentUser.telegramUsername
+
+  async function handleConnectTelegram() {
+    try {
+      setConnectingTelegram(true)
+      const data = await authService.connectTelegram()
+      setTelegramConnectData(data)
+      if (data.link) {
+        window.open(data.link, "_blank", "noopener,noreferrer")
+        toast.info("Opening Telegram bot...", {
+          description: "Click Start in the chat to complete linking your account.",
+        })
+      } else {
+        toast.success("Handshake token generated!", {
+          description: "Use the link below or send /start to the bot.",
+        })
+      }
+    } catch (err) {
+      toast.error("Failed to initiate Telegram connection", {
+        description: err instanceof Error ? err.message : "Please try again later.",
+      })
+    } finally {
+      setConnectingTelegram(false)
+    }
+  }
+
+  async function handleCheckTelegramStatus() {
+    try {
+      setCheckingStatus(true)
+      await refetchUser()
+      toast.success("Account status refreshed")
+    } catch {
+      // ignore
+    } finally {
+      setCheckingStatus(false)
     }
   }
 
@@ -270,45 +318,158 @@ export default function ProfilePage() {
             </form>
           </div>
 
-          {/* Telegram Settings */}
+          {/* Telegram Settings & Handshake */}
           <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                Telegram Notifications (Phase 2 Handshake)
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Telegram Bot Notifications
+                </h3>
+                {isTelegramConnected ? (
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 gap-1 text-[11px]">
+                    <CheckCircle2 className="h-3 w-3" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px]">
+                    Not Linked
+                  </Badge>
+                )}
+              </div>
               <Send className="h-4 w-4 text-blue-500" />
             </div>
 
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Link your Telegram handle to receive real-time digests, duty reminders, and warning alerts directly to your device.
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Connect your Telegram account to receive real-time notifications when your point claims are approved, warning notices are issued, and club-wide digests are published.
             </p>
 
-            <div className="space-y-2">
-              <Label htmlFor="telegram-input" className="text-xs">Telegram Username</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="telegram-input"
-                  value={telegram}
-                  onChange={(e) => setTelegram(e.target.value)}
-                  placeholder="@username"
-                />
+            {isTelegramConnected ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-emerald-200/60 bg-emerald-50/60 p-3.5 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300 flex items-start gap-2.5">
+                  <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Telegram Handshake Active</p>
+                    <p className="text-emerald-700 dark:text-emerald-400/90 text-[11px]">
+                      Your Chat ID is mapped to your CSEC account{currentTelegramUsername ? ` (@${currentTelegramUsername})` : ""}. Notifications are being delivered directly to your Telegram chat.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    onClick={handleConnectTelegram}
+                    disabled={connectingTelegram}
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    {connectingTelegram ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Re-link Account
+                  </Button>
+                  <Button
+                    onClick={handleCheckTelegramStatus}
+                    disabled={checkingStatus}
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                  >
+                    {checkingStatus ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Check Status
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
                 <Button
-                  onClick={() => {
-                    setConnected(Boolean(telegram.trim()))
-                    toast.success(telegram.trim() ? "Telegram connected" : "Telegram disconnected")
-                  }}
-                  size="sm"
-                  variant="outline"
+                  onClick={handleConnectTelegram}
+                  disabled={connectingTelegram}
+                  className="w-full sm:w-auto text-xs"
                 >
-                  {connected ? "Update" : "Connect"}
+                  {connectingTelegram ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Connect Telegram Account
                 </Button>
               </div>
-            </div>
+            )}
 
-            {connected && (
-              <div className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                Bot webhook handshake active. Chat ID mapped.
+            {/* Handshake link / token banner */}
+            {telegramConnectData && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3.5 dark:border-blue-900/40 dark:bg-blue-950/20 space-y-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+                <div className="font-semibold text-blue-900 dark:text-blue-300 flex items-center justify-between">
+                  <span>Handshake Link (Valid for 10 min)</span>
+                  <Button
+                    onClick={handleCheckTelegramStatus}
+                    disabled={checkingStatus}
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-[11px] px-2"
+                  >
+                    <RefreshCw className={`mr-1 h-3 w-3 ${checkingStatus ? "animate-spin" : ""}`} /> Check Status
+                  </Button>
+                </div>
+                {telegramConnectData.link ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                      Click below to open Telegram and send <code>/start</code>:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={telegramConnectData.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open Telegram Bot
+                      </a>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => {
+                          if (telegramConnectData.link) {
+                            navigator.clipboard.writeText(telegramConnectData.link)
+                            toast.success("Link copied to clipboard")
+                          }
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copy Link
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-[11px] text-zinc-600 dark:text-zinc-400">
+                    <p>
+                      Bot username is not configured on the backend yet. You can manually send this command in your chat with the bot:
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <code className="bg-white px-2 py-1 rounded border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 font-mono text-xs">
+                        /start {telegramConnectData.token}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`/start ${telegramConnectData.token}`)
+                          toast.success("Command copied to clipboard")
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copy
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

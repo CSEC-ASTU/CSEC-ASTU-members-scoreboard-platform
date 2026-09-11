@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Trophy, ArrowUpRight, TrendingUp, Sparkles, Shield, AlertCircle, Clock, CheckCircle2 } from "lucide-react"
+import { Trophy, ArrowUpRight, TrendingUp, Sparkles, Shield, AlertCircle, Clock, CheckCircle2, Send } from "lucide-react"
 import Link from "next/link"
 import { useCurrentUser } from "@/components/user-context"
 import { TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
@@ -11,7 +11,7 @@ import { authService, pointEventsService, type CurrentUserOut, type PointEventOu
 import { useDivisions } from "@/lib/hooks/use-queries"
 
 export default function List01({ className }: { className?: string }) {
-  const { currentUser, isAuthenticated } = useCurrentUser()
+  const { currentUser, liveUser, isAuthenticated } = useCurrentUser()
   const [userData, setUserData] = useState<CurrentUserOut | null>(null)
   const [events, setEvents] = useState<PointEventOut[]>([])
 
@@ -62,6 +62,16 @@ export default function List01({ className }: { className?: string }) {
   const pendingCount = events.filter((e) => e.status === "pending").length
   const hasYellow = events.some((e) => e.event_type === "yellow_warning")
   const hasRed = events.some((e) => e.event_type === "red_warning")
+
+  const isTelegramConnected = Boolean(
+    userData?.telegram_connected ??
+    liveUser?.telegram_connected ??
+    currentUser.telegramConnected
+  )
+  const telegramUsername =
+    userData?.telegram_username ??
+    liveUser?.telegram_username ??
+    currentUser.telegramUsername
 
   return (
     <div className={cn("grid grid-cols-1 lg:grid-cols-12 gap-6", className)}>
@@ -185,22 +195,57 @@ export default function List01({ className }: { className?: string }) {
         </div>
 
         {/* Telegram Bot Notification Status */}
-        <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-5 shadow-sm">
+        <Link
+          href="/profile"
+          className="group block rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-5 shadow-sm hover:border-blue-500/40 dark:hover:border-blue-500/40 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Telegram Bot Handshake
+            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Send className="h-3.5 w-3.5 text-blue-500" />
+              Telegram Bot Status
             </span>
-            <div className="h-2 w-2 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+            <div
+              className={cn(
+                "h-2.5 w-2.5 rounded-full ring-4 transition-colors",
+                isTelegramConnected
+                  ? "bg-emerald-500 ring-emerald-500/20"
+                  : "bg-amber-500 ring-amber-500/20 animate-pulse"
+              )}
+            />
           </div>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {currentUser.telegramUsername || "@csec_member"}
+          <div className="mt-2.5 flex items-center justify-between">
+            <span
+              className={cn(
+                "text-sm font-medium",
+                isTelegramConnected
+                  ? "text-zinc-900 dark:text-zinc-100"
+                  : "text-amber-600 dark:text-amber-400 font-semibold"
+              )}
+            >
+              {isTelegramConnected
+                ? telegramUsername
+                  ? `@${telegramUsername}`
+                  : "Connected"
+                : "Not Linked"}
             </span>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-              Sync Active
+            <span
+              className={cn(
+                "text-[11px] font-semibold px-2 py-0.5 rounded-md border",
+                isTelegramConnected
+                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40"
+                  : "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40"
+              )}
+            >
+              {isTelegramConnected ? "Sync Active" : "Action Required"}
             </span>
           </div>
-        </div>
+          {!isTelegramConnected && (
+            <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center justify-between group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <span>Required for notifications</span>
+              <span className="font-semibold underline underline-offset-2">Link Account &rarr;</span>
+            </p>
+          )}
+        </Link>
       </div>
     </div>
   )

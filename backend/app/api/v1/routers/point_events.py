@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.config import Settings, get_settings
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
@@ -26,6 +27,7 @@ from app.services.point_events import (
     decide_event,
     visible_point_events_filter,
 )
+from app.services.telegram import notify_bot
 
 router = APIRouter()
 
@@ -141,6 +143,8 @@ async def create_point_event(
             division_id=claim.division_id,
             verification_code=claim.verification_code,
         )
+        if event.status == PointEventStatus.APPROVED:
+            notify_bot(settings, event.id)
         return PointEventOut.model_validate(event)
 
     officer = OfficerPointEventCreate.model_validate(body)
@@ -157,6 +161,8 @@ async def create_point_event(
         task_id=officer.task_id,
         division_id=officer.division_id,
     )
+    if event.status == PointEventStatus.APPROVED:
+        notify_bot(settings, event.id)
     return PointEventOut.model_validate(event)
 
 
@@ -180,10 +186,17 @@ async def get_point_event(event_id: UUID, db: DbSession, user: RequireUser) -> P
 
 
 @router.patch("/{event_id}/approve", response_model=PointEventOut)
-async def approve_event(event_id: UUID, db: DbSession, user: RequireUser) -> PointEventOut:
+async def approve_event(
+    event_id: UUID,
+    db: DbSession,
+    user: RequireUser,
+    settings: Settings = Depends(get_settings),
+) -> PointEventOut:
+    actual_settings = settings if isinstance(settings, Settings) else get_settings()
     event = await decide_event(
         db, event_id=event_id, actor=user.member, actor_perms=user.permissions, approve=True
     )
+    notify_bot(actual_settings, event.id)
     return PointEventOut.model_validate(event)
 
 
@@ -203,7 +216,13 @@ async def reject_event(
 
 
 @router.post("/bulk-approve", response_model=BulkResult)
-async def bulk_approve(body: BulkApproveRequest, db: DbSession, user: RequireUser) -> BulkResult:
+async def bulk_approve(
+    body: BulkApproveRequest,
+    db: DbSession,
+    user: RequireUser,
+    settings: Settings = Depends(get_settings),
+) -> BulkResult:
+    actual_settings = settings if isinstance(settings, Settings) else get_settings()
     succeeded: list[UUID] = []
     failed: list[dict] = []
     for eid in body.event_ids:
@@ -212,6 +231,7 @@ async def bulk_approve(body: BulkApproveRequest, db: DbSession, user: RequireUse
                 db, event_id=eid, actor=user.member, actor_perms=user.permissions, approve=True
             )
             succeeded.append(eid)
+            notify_bot(actual_settings, eid)
         except HTTPException as exc:
             failed.append({"event_id": str(eid), "detail": exc.detail})
     return BulkResult(succeeded=succeeded, failed=failed)
@@ -242,7 +262,9 @@ async def batch_officer_events(
     body: BatchOfficerEventCreate,
     db: DbSession,
     user: RequireUser,
+    settings: Settings = Depends(get_settings),
 ) -> BulkResult:
+    actual_settings = settings if isinstance(settings, Settings) else get_settings()
     succeeded: list[UUID] = []
     failed: list[dict] = []
     for mid in body.member_ids:
@@ -259,6 +281,7 @@ async def batch_officer_events(
                 division_id=body.division_id,
             )
             succeeded.append(event.id)
+            notify_bot(actual_settings, event.id)
         except HTTPException as exc:
             failed.append({"member_id": str(mid), "detail": exc.detail})
     await db.commit()

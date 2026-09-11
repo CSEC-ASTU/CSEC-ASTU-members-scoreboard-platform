@@ -14,6 +14,7 @@ interface UserContextValue {
     careerScore?: number
     profileImageUrl?: string
     rawPermissions?: string[]
+    telegramConnected?: boolean
   }
   liveUser: CurrentUserOut | null
   setCurrentUserId: (id: string) => void
@@ -89,6 +90,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         cycleScore: liveUser.cycle_score,
         displayScore: liveUser.display_score,
         careerScore: liveUser.career_score,
+        telegramUsername: liveUser.telegram_username ?? undefined,
+        telegramConnected: Boolean(liveUser.telegram_connected),
       }
     }
     return {
@@ -108,6 +111,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       cycleScore: 50,
       displayScore: 50,
       careerScore: 50,
+      telegramConnected: false,
     }
   }, [liveUser])
 

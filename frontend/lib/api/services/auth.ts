@@ -1,5 +1,5 @@
 import { apiFetch } from "../client"
-import type { CurrentUserOut } from "../types"
+import type { CurrentUserOut, TelegramConnectOut } from "../types"
 
 export const authService = {
   getGoogleLoginUrl: () => {
@@ -25,5 +25,9 @@ export const authService = {
 
   logout: async (): Promise<{ status: string }> => {
     return apiFetch<{ status: string }>("/auth/logout", { method: "POST" })
+  },
+
+  connectTelegram: async (): Promise<TelegramConnectOut> => {
+    return apiFetch<TelegramConnectOut>("/auth/telegram/connect", { method: "POST" })
   },
 }

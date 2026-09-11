@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     auto_approve_claim_max_points: int = 10
     profile_picture_max_bytes: int = 2 * 1024 * 1024
 
+    # Telegram bot integration
+    telegram_bot_url: str = ""
+    internal_api_secret: str = ""
+    telegram_bot_username: str = ""
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors(cls, value: object) -> object:
@@ -57,4 +62,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return cached application settings from .env."""
     return Settings()

@@ -41,11 +41,17 @@ class MeOut(BaseModel):
     phone_number: str | None = None
     github_url: str | None = None
     telegram_username: str | None = None
+    telegram_connected: bool = False
     onboarded: bool
     cycle_score: int
     display_score: int
     career_score: int
     permissions: list[str]
+
+
+class TelegramConnectOut(BaseModel):
+    token: str
+    link: str | None = None
 
 
 # ---- Members ----

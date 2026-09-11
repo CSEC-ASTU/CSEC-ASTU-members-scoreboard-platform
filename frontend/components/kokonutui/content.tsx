@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { LineChart, Receipt, ArrowRight, Sparkles } from "lucide-react"
+import { LineChart, Receipt, ArrowRight, Sparkles, AlertTriangle, Send } from "lucide-react"
 import Link from "next/link"
 import List01 from "./list-01"
 import List02 from "./list-02"
@@ -12,8 +12,9 @@ import { DashboardSkeleton } from "@/components/csec/skeletons"
 import type { PointEvent } from "@/lib/csec-data"
 
 export default function Content() {
-  const { currentUser, isAuthenticated } = useCurrentUser()
+  const { currentUser, liveUser, isAuthenticated } = useCurrentUser()
   const { data: eventsData, isLoading } = useMemberEvents(isAuthenticated ? currentUser.id : null)
+  const isTelegramConnected = Boolean(currentUser.telegramConnected || liveUser?.telegram_connected)
 
   const events: PointEvent[] = useMemo(() => {
     return (eventsData?.items || []).map((e) => ({
@@ -60,6 +61,41 @@ export default function Content() {
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
+
+      {/* Mandatory Telegram Connection Prompt */}
+      {isAuthenticated && !isTelegramConnected && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 backdrop-blur-xl shadow-lg shadow-amber-500/5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="rounded-xl bg-amber-500/20 p-2 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 ring-1 ring-amber-500/30">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Telegram Account Not Linked
+                  </h3>
+                  <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide border border-amber-500/30">
+                    Action Required
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed">
+                  Connecting your Telegram account is <strong>required</strong> to maintain active member standing. You will not receive automated point approvals, attendance verification alerts, warning notices, or club digests until your account is linked.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/profile"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 text-xs font-semibold shadow-md shadow-amber-600/25 transition-all hover:-translate-y-0.5 shrink-0"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>Connect Telegram Now</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Hero Spotlight + Quick Pulse */}
       <List01 />

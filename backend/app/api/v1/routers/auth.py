@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -18,7 +18,7 @@ from app.core.security import (
 )
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Division, LoginAttemptFailure, Member
-from app.schemas import MeOut
+from app.schemas import MeOut, TelegramConnectOut
 from app.services.google_oauth import (
     build_google_login_url,
     exchange_code_for_tokens,
@@ -277,9 +277,31 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
         phone_number=m.phone_number,
         github_url=m.github_url,
         telegram_username=m.telegram_username,
+        telegram_connected=m.telegram_chat_id is not None,
         onboarded=m.first_login_at is not None,
         cycle_score=scores["cycle_score"],
         display_score=scores["display_score"],
         career_score=scores["career_score"],
         permissions=perms,
     )
+
+
+@router.post("/telegram/connect", response_model=TelegramConnectOut)
+async def connect_telegram(
+    db: DbSession,
+    user: RequireUser,
+    settings: AppSettings,
+) -> TelegramConnectOut:
+    """Generate a one-time token for linking the member's Telegram account."""
+    token = secrets.token_urlsafe(32)
+    m = user.member
+    m.telegram_connect_token = token
+    m.telegram_token_expires_at = datetime.now(UTC) + timedelta(minutes=10)
+    await db.flush()
+
+    link = None
+    if settings.telegram_bot_username:
+        clean_username = settings.telegram_bot_username.lstrip("@")
+        link = f"https://t.me/{clean_username}?start={token}"
+
+    return TelegramConnectOut(token=token, link=link)
