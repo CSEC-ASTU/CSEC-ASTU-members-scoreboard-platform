@@ -213,15 +213,18 @@ async def google_callback(
 async def refresh(request: Request, response: Response, db: DbSession, settings: AppSettings) -> dict:
     raw = request.cookies.get(settings.refresh_cookie_name)
     if not raw:
+        logger.warning("POST /auth/refresh failed: refresh cookie missing")
         raise HTTPException(status_code=401, detail="Refresh cookie missing")
     rotated = await rotate_refresh_token(db, raw, settings)
     if rotated is None:
+        logger.warning("POST /auth/refresh failed: invalid or expired refresh token")
         _clear_auth_cookies(response, settings)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     member, new_refresh = rotated
     access = create_access_token(member.id, settings)
     _set_auth_cookies(response, settings, access, new_refresh)
-    return {"detail": "refreshed"}
+    logger.info("POST /auth/refresh success for member_id=%s (%s)", member.id, member.email)
+    return {"status": "ok", "detail": "refreshed"}
 
 
 @router.post("/logout")

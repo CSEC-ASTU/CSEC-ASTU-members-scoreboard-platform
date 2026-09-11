@@ -46,6 +46,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkAuth()
+
+    const handleSessionExpired = () => {
+      setLiveUser(null)
+    }
+
+    window.addEventListener("csec:session-expired", handleSessionExpired)
+    return () => {
+      window.removeEventListener("csec:session-expired", handleSessionExpired)
+    }
   }, [])
 
   const currentUser = useMemo(() => {

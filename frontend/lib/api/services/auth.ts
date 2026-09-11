@@ -16,8 +16,11 @@ export const authService = {
     return apiFetch<CurrentUserOut>("/auth/me")
   },
 
-  refreshToken: async (): Promise<{ status: string }> => {
-    return apiFetch<{ status: string }>("/auth/refresh", { method: "POST" })
+  refreshToken: async (): Promise<{ status?: string; detail: string }> => {
+    return apiFetch<{ status?: string; detail: string }>("/auth/refresh", {
+      method: "POST",
+      skipAuthRefresh: true,
+    })
   },
 
   logout: async (): Promise<{ status: string }> => {

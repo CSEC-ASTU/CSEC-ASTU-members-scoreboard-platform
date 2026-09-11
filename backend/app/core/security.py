@@ -48,21 +48,34 @@ async def rotate_refresh_token(
     result = await db.execute(
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
-            RefreshToken.revoked_at.is_(None),
         )
     )
     stored = result.scalar_one_or_none()
     if stored is None:
         return None
-    if stored.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
-        stored.revoked_at = datetime.now(UTC)
+
+    now = datetime.now(UTC)
+    expires_at = stored.expires_at if stored.expires_at.tzinfo else stored.expires_at.replace(tzinfo=UTC)
+
+    if expires_at < now:
+        if stored.revoked_at is None:
+            stored.revoked_at = now
         return None
 
-    stored.revoked_at = datetime.now(UTC)
     member = await db.get(Member, stored.member_id)
     if member is None or not member.is_active:
         return None
 
+    # Concurrency grace window: if this token was already rotated within the last 15 seconds,
+    # issue a new token without failing or logging the user out.
+    if stored.revoked_at is not None:
+        revoked_at = stored.revoked_at if stored.revoked_at.tzinfo else stored.revoked_at.replace(tzinfo=UTC)
+        if (now - revoked_at).total_seconds() <= 15:
+            new_raw = await issue_refresh_token(db, member.id, settings)
+            return member, new_raw
+        return None
+
+    stored.revoked_at = now
     new_raw = await issue_refresh_token(db, member.id, settings)
     return member, new_raw
 
