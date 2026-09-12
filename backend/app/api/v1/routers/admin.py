@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.permissions import has_permission, is_club_wide_officer
+from app.core.rate_limit import RateLimiter
 from app.dependencies import DbSession, RequireUser
 from app.models import LoginAttemptFailure, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
@@ -24,7 +25,7 @@ from app.services.import_members import import_members_csv
 router = APIRouter()
 
 
-@router.post("/members/import", response_model=ImportResult)
+@router.post("/members/import", response_model=ImportResult, dependencies=[Depends(RateLimiter(times=3, seconds=60))])
 async def import_members(
     db: DbSession,
     user: RequireUser,
@@ -48,7 +49,7 @@ async def annual_reset_preview(db: DbSession, user: RequireUser) -> AnnualResetP
     return AnnualResetPreview(**data)
 
 
-@router.post("/annual-reset", response_model=AnnualResetResult)
+@router.post("/annual-reset", response_model=AnnualResetResult, dependencies=[Depends(RateLimiter(times=3, seconds=60))])
 async def annual_reset(db: DbSession, user: RequireUser) -> AnnualResetResult:
     if user.member.role != MemberRole.PRESIDENT:
         raise HTTPException(status_code=403, detail="President only")

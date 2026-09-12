@@ -54,7 +54,10 @@ async def _load_user_from_token(db: AsyncSession, token: str | None) -> CurrentU
 
 async def require_user(request: Request, db: DbSession, settings: AppSettings) -> CurrentUser:
     token = request.cookies.get(settings.access_cookie_name)
-    return await _load_user_from_token(db, token)
+    user = await _load_user_from_token(db, token)
+    request.state.user = user
+    return user
 
 
 RequireUser = Annotated[CurrentUser, Depends(require_user)]
+

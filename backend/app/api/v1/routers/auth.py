@@ -4,12 +4,14 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.core.permissions import get_effective_permissions
+from app.core.rate_limit import RateLimiter, get_client_ip
 from app.core.security import (
+
     create_access_token,
     issue_refresh_token,
     revoke_all_member_tokens,
@@ -116,8 +118,9 @@ def verify_signed_state(state: str, secret: str, max_age_seconds: int = 600) -> 
         return False, None
 
 
-@router.get("/google/login")
+@router.get("/google/login", dependencies=[Depends(RateLimiter(times=20, seconds=60, key_func=get_client_ip))])
 async def google_login(settings: AppSettings, redirect: str | None = None) -> RedirectResponse:
+
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     state = generate_signed_state(settings.jwt_secret_key, redirect=redirect)
@@ -336,8 +339,9 @@ async def me(db: DbSession, user: RequireUser) -> MeOut:
     )
 
 
-@router.post("/telegram/connect", response_model=TelegramConnectOut)
+@router.post("/telegram/connect", response_model=TelegramConnectOut, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def connect_telegram(
+
     db: DbSession,
     user: RequireUser,
     settings: AppSettings,

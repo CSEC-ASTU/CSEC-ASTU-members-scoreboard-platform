@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import func, or_, select
 
 from app.core.permissions import can_see_member, can_view_sensitive_info, has_permission, is_club_wide_officer, is_officer
+from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Division, Member, PermissionGrantHistory, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
@@ -151,7 +152,7 @@ async def update_me(body: MemberSelfUpdate, db: DbSession, user: RequireUser) ->
     return await get_member(m.id, db, user)
 
 
-@router.post("/me/profile-picture")
+@router.post("/me/profile-picture", dependencies=[Depends(RateLimiter(times=5, seconds=300))])
 async def upload_my_picture(
     db: DbSession,
     user: RequireUser,

@@ -111,6 +111,9 @@ async def create_claim(
             )
 
     if clean_code:
+        from app.core.rate_limit import pin_lockout_manager
+        pin_lockout_manager.check_lockout(member.id)
+
         if len(clean_code) != 6 or not clean_code.isdigit():
             raise HTTPException(
                 status_code=400,
@@ -135,10 +138,14 @@ async def create_claim(
         attendance_session = res.scalars().first()
 
         if not attendance_session:
+            pin_lockout_manager.record_failure(member.id)
             raise HTTPException(
                 status_code=400,
                 detail="Invalid or expired session verification code.",
             )
+
+        pin_lockout_manager.record_success(member.id)
+
 
         # Flag 3: Strict Once-Per-Session Claim Enforcement
         existing_claim = await db.scalar(

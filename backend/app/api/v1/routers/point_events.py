@@ -7,6 +7,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings, get_settings
+from app.core.permissions import can_approve_submitter, has_permission, is_club_wide_officer
+from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
@@ -123,8 +125,9 @@ async def list_point_events(
     )
 
 
-@router.post("", response_model=PointEventOut, status_code=201)
+@router.post("", response_model=PointEventOut, status_code=201, dependencies=[Depends(RateLimiter(times=15, seconds=60))])
 async def create_point_event(
+
     request: Request,
     db: DbSession,
     user: RequireUser,
@@ -257,8 +260,9 @@ async def bulk_reject(body: BulkRejectRequest, db: DbSession, user: RequireUser)
     return BulkResult(succeeded=succeeded, failed=failed)
 
 
-@router.post("/batch-officer", response_model=BulkResult)
+@router.post("/batch-officer", response_model=BulkResult, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def batch_officer_events(
+
     body: BatchOfficerEventCreate,
     db: DbSession,
     user: RequireUser,

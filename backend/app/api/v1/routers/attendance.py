@@ -4,11 +4,12 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select, update
 from sqlalchemy.orm import selectinload
 
 from app.core.permissions import has_permission, is_club_wide_officer
+from app.core.rate_limit import RateLimiter
 from app.dependencies import DbSession, RequireUser
 from app.models import Division, Member, Task
 from app.models.attendance_session import AttendanceSession
@@ -42,7 +43,7 @@ def _check_session_authority(user, target_division_id: UUID | None) -> None:
     )
 
 
-@router.post("", response_model=AttendanceSessionOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AttendanceSessionOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(RateLimiter(times=6, seconds=300))])
 async def create_attendance_session(
     db: DbSession,
     user: RequireUser,
