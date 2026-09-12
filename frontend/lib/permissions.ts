@@ -100,6 +100,7 @@ export function getApprovableEvents(actor: Member, events: PointEvent[]): PointE
  * Division heads can delegate within their division; VP & President club-wide.
  */
 export function canManagePermissions(member: Member): boolean {
+  if (!member || member.role === "member") return false
   return OFFICER_ROLES.includes(member.role)
 }
 

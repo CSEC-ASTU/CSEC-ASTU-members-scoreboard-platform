@@ -130,6 +130,7 @@ async def create_claim(
                 or_(
                     AttendanceSession.task_id == task.id,
                     AttendanceSession.division_id == event_division_id,
+                    AttendanceSession.division_id.is_(None),
                 ),
             )
             .order_by(AttendanceSession.created_at.desc())

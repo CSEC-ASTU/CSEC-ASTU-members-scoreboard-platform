@@ -294,6 +294,7 @@ class BulkApproveRequest(BaseModel):
 class AttendanceSessionCreate(BaseModel):
     task_id: UUID
     division_id: UUID | None = None
+    title: str | None = None
     duration_minutes: int = Field(default=90, ge=15, le=360)
 
 
@@ -303,6 +304,7 @@ class AttendanceSessionOut(BaseModel):
     id: UUID
     task_id: UUID
     division_id: UUID | None
+    title: str | None = None
     code: str
     created_by: UUID | None
     expires_at: datetime

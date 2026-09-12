@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import {
   Sparkles,
   ShieldCheck,
   Radio,
+  Globe,
 } from "lucide-react"
 
 interface SessionCodeCardProps {
@@ -47,41 +49,55 @@ interface SessionCodeCardProps {
 }
 
 export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCardProps) {
-  const isOfficer =
-    currentUser.role === "president" ||
-    currentUser.role === "vice_president" ||
-    currentUser.role === "division_head"
+  const isExecutive =
+    currentUser.role === "president" || currentUser.role === "vice_president"
+  const isDivisionHead = currentUser.role === "division_head"
+  const isOfficer = isExecutive || isDivisionHead
 
-  const divisionId = currentUser.divisionId || undefined
+  const [selectedScope, setSelectedScope] = useState<string>(
+    isExecutive ? "club_wide" : (currentUser.divisionId || "club_wide")
+  )
+  const [customTitle, setCustomTitle] = useState<string>("")
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("")
+  const [durationMinutes, setDurationMinutes] = useState<string>("90")
+  const [timeLeft, setTimeLeft] = useState<string>("")
+  const [copied, setCopied] = useState(false)
+
   const { data: activeSessions = [], isLoading } = useActiveAttendanceSessions(
-    currentUser.role === "division_head" ? divisionId : undefined
+    isDivisionHead ? (currentUser.divisionId || undefined) : undefined
   )
 
   const createSessionMutation = useCreateAttendanceSessionMutation()
   const endSessionMutation = useEndAttendanceSessionMutation()
 
   // Eligible attendance tasks
-  const sessionTasks = tasks.filter((t) => t.category === "division_session" && t.active)
+  const eligibleTasks = tasks.filter((t) => t.category === "division_session" && t.active)
 
-  const defaultTask =
-    sessionTasks.find((t) => t.division_id === currentUser.divisionId) || sessionTasks[0]
-
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("")
-  const [durationMinutes, setDurationMinutes] = useState<string>("90")
-  const [timeLeft, setTimeLeft] = useState<string>("")
-  const [copied, setCopied] = useState(false)
-
-  // Sync selected task when tasks load
-  useEffect(() => {
-    if (!selectedTaskId && defaultTask) {
-      setSelectedTaskId(defaultTask.id)
+  // Filter tasks based on selected scope
+  const displayTasks = eligibleTasks.filter((t) => {
+    if (selectedScope === "club_wide") {
+      return t.division_id === null
     }
-  }, [defaultTask, selectedTaskId])
+    return t.division_id === selectedScope
+  })
+
+  // Fallback to all eligible tasks if empty for chosen scope
+  const availableTasks = displayTasks.length > 0 ? displayTasks : eligibleTasks
+
+  // Automatically adjust selected task when scope or available tasks change
+  useEffect(() => {
+    if (availableTasks.length > 0) {
+      const match = availableTasks.find((t) => t.id === selectedTaskId)
+      if (!match) {
+        setSelectedTaskId(availableTasks[0].id)
+      }
+    }
+  }, [selectedScope, availableTasks, selectedTaskId])
 
   // Active session for this officer's scope
   const activeSession = activeSessions.find((s) => {
     if (!s.is_active) return false
-    if (currentUser.role === "division_head") {
+    if (isDivisionHead) {
       return s.division_id === currentUser.divisionId
     }
     return true
@@ -130,16 +146,17 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
       return
     }
 
-    const task = tasks.find((t) => t.id === selectedTaskId)
-    const targetDivisionId = task?.division_id || currentUser.divisionId
+    const targetDivisionId = selectedScope === "club_wide" ? null : selectedScope
 
     try {
       await createSessionMutation.mutateAsync({
         task_id: selectedTaskId,
-        division_id: targetDivisionId || null,
+        division_id: targetDivisionId,
+        title: customTitle.trim() || undefined,
         duration_minutes: parseInt(durationMinutes, 10),
       })
       toast.success("Attendance session started! Write the code on the whiteboard.")
+      setCustomTitle("")
     } catch (err: any) {
       toast.error("Failed to start session", { description: err.message })
     }
@@ -187,7 +204,7 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
                 )}
               </CardTitle>
               <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-                Generate dynamic 6-digit codes per session to write on the lab board. Codes auto-expire to prevent Telegram leaks.
+                Generate dynamic 6-digit codes per session to write on the lab board. Codes auto-expire to prevent leaks.
               </CardDescription>
             </div>
           </div>
@@ -200,16 +217,17 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
           <div className="rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/80 p-4 dark:bg-zinc-900/80 backdrop-blur-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Active Task:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Active Session:</span>
                   <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                     {activeSession.task_title || "Session Attendance"}
                   </span>
-                  {activeSession.division_name && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {activeSession.division_name}
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-normal flex items-center gap-1">
+                    {(!activeSession.division_id || activeSession.division_name === "Club-wide") && (
+                      <Globe className="w-3 h-3 text-purple-500" />
+                    )}
+                    {activeSession.division_name || "Club-wide"}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
                   <Clock className="h-3.5 w-3.5 text-zinc-400" />
@@ -257,50 +275,97 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
           </div>
         ) : (
           /* Start New Session Form */
-          <div className="flex flex-col md:flex-row md:items-end gap-3 rounded-xl border border-zinc-200/80 bg-white/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Session Task
-              </label>
-              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                <SelectTrigger className="w-full bg-white dark:bg-zinc-800 text-xs">
-                  <SelectValue placeholder="Select attendance task" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sessionTasks.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="text-xs">
-                      {t.title} (+{t.base_points} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3 rounded-xl border border-zinc-200/80 bg-white/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            {/* Top Row: Scope & Custom Title */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
+                  <span>Scope / Audience</span>
+                </label>
+                <Select value={selectedScope} onValueChange={setSelectedScope}>
+                  <SelectTrigger className="w-full bg-white dark:bg-zinc-800 text-xs">
+                    <SelectValue placeholder="Select session scope" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isExecutive && (
+                      <SelectItem value="club_wide" className="text-xs font-medium">
+                        🌐 Club-wide (All Members)
+                      </SelectItem>
+                    )}
+                    {divisions.map((d) => (
+                      <SelectItem
+                        key={d.id}
+                        value={d.id}
+                        disabled={isDivisionHead && currentUser.divisionId !== d.id && currentUser.secondaryDivisionId !== d.id}
+                        className="text-xs"
+                      >
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Custom Session Title <span className="text-[11px] text-zinc-400 font-normal">(Optional)</span>
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g., Week 4: Dynamic Programming & Graph BFS"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  className="h-9 bg-white dark:bg-zinc-800 text-xs"
+                />
+              </div>
             </div>
 
-            <div className="w-full md:w-36 space-y-1.5">
-              <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Duration
-              </label>
-              <Select value={durationMinutes} onValueChange={setDurationMinutes}>
-                <SelectTrigger className="w-full bg-white dark:bg-zinc-800 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30" className="text-xs">30 minutes</SelectItem>
-                  <SelectItem value="60" className="text-xs">1 hour</SelectItem>
-                  <SelectItem value="90" className="text-xs">1.5 hours</SelectItem>
-                  <SelectItem value="120" className="text-xs">2 hours</SelectItem>
-                  <SelectItem value="180" className="text-xs">3 hours</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Bottom Row: Task, Duration & Start Button */}
+            <div className="flex flex-col md:flex-row md:items-end gap-3 pt-1">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Attendance Task
+                </label>
+                <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                  <SelectTrigger className="w-full bg-white dark:bg-zinc-800 text-xs">
+                    <SelectValue placeholder="Select attendance task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">
+                        {t.title} (+{t.base_points} pts)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Button
-              onClick={handleStartSession}
-              disabled={createSessionMutation.isPending || !selectedTaskId}
-              className="w-full md:w-auto bg-violet-600 hover:bg-violet-500 text-white text-xs shrink-0"
-            >
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Start Session &amp; Generate Code
-            </Button>
+              <div className="w-full md:w-36 space-y-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Duration
+                </label>
+                <Select value={durationMinutes} onValueChange={setDurationMinutes}>
+                  <SelectTrigger className="w-full bg-white dark:bg-zinc-800 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30" className="text-xs">30 minutes</SelectItem>
+                    <SelectItem value="60" className="text-xs">1 hour</SelectItem>
+                    <SelectItem value="90" className="text-xs">1.5 hours</SelectItem>
+                    <SelectItem value="120" className="text-xs">2 hours</SelectItem>
+                    <SelectItem value="180" className="text-xs">3 hours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={handleStartSession}
+                disabled={createSessionMutation.isPending || !selectedTaskId}
+                className="w-full md:w-auto bg-violet-600 hover:bg-violet-500 text-white text-xs shrink-0 h-9"
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Start Session &amp; Generate Code
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

@@ -13,6 +13,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  CalendarCheck,
 } from "lucide-react"
 
 import Link from "next/link"
@@ -165,6 +166,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <SectionLabel>Core</SectionLabel>
                 <div className="space-y-1">
                   <NavItem href="/dashboard" icon={LayoutDashboard}>Dashboard</NavItem>
+                  <NavItem href="/attendance" icon={CalendarCheck}>Attendance</NavItem>
                   <NavItem href="/tasks" icon={ListChecks}>Tasks</NavItem>
                   <NavItem href="/leaderboard" icon={Trophy}>Leaderboard</NavItem>
                 </div>
@@ -179,8 +181,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 </div>
               </div>
 
-              {/* ADMINISTRATION */}
-              {officer && (
+              {/* ADMINISTRATION - Executive & Division Officers Only */}
+              {officer && currentUser.role !== "member" && (
                 <div>
                   <SectionLabel>Administration</SectionLabel>
                   <div className="space-y-1">
@@ -189,10 +191,19 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                     )}
                     {canAccessAdmin(currentUser) && (
                       <div>
-                      <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
-                      <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
+                        <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                        <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+              {/* Delegated Approval queue for members who are delegated approvers */}
+              {currentUser.role === "member" && (currentUser.permissions || []).some((p) => p.isEnabled && p.permissionKey === "approve_task") && (
+                <div>
+                  <SectionLabel>Queue</SectionLabel>
+                  <div className="space-y-1">
+                    <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                   </div>
                 </div>
               )}

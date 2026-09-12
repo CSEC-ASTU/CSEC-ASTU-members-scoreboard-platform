@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import httpx
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.permissions import has_permission, is_club_wide_officer
 from app.core.rate_limit import RateLimiter
-from app.dependencies import DbSession, RequireUser
+from app.dependencies import AppSettings, DbSession, RequireUser, _load_user_from_token
 from app.models import LoginAttemptFailure, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas import (
@@ -21,6 +22,7 @@ from app.schemas import (
 )
 from app.services.annual_reset import execute_annual_reset, preview_annual_reset
 from app.services.import_members import import_members_csv
+from app.services.weekly_performers import format_weekly_digest_message, get_weekly_top_performers
 
 router = APIRouter()
 
@@ -182,3 +184,86 @@ async def list_login_failures(
         "page": page,
         "page_size": page_size,
     }
+
+
+@router.get("/weekly-performers")
+async def weekly_performers(
+    db: DbSession,
+    user: RequireUser,
+    days: int = Query(7, ge=1, le=90),
+) -> dict:
+    """Extract weekly top point earners club-wide and per division."""
+    if not (
+        user.member.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}
+        or is_club_wide_officer(user.member)
+        or has_permission(user.permissions, "view_admin_panel")
+    ):
+        raise HTTPException(status_code=403, detail="Officer permission required")
+
+    data = await get_weekly_top_performers(db, days=days)
+    data["formatted_message"] = format_weekly_digest_message(data)
+    return data
+
+
+@router.post("/weekly-performers/dispatch")
+async def dispatch_weekly_performers(
+    request: Request,
+    db: DbSession,
+    settings: AppSettings,
+    days: int = Query(7, ge=1, le=90),
+    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
+) -> dict:
+    """Dispatch the weekly performance digest to all club officers on Telegram.
+
+    Authorization:
+    - Automated scripts (Google Apps Script / cron): Provide `X-Internal-Secret: <INTERNAL_API_SECRET>`.
+    - Dashboard calls: Requires active Officer credentials.
+    """
+    is_internal_auth = (
+        bool(settings.internal_api_secret)
+        and x_internal_secret == settings.internal_api_secret
+    )
+
+    if not is_internal_auth:
+        token = request.cookies.get(settings.access_cookie_name)
+        user = await _load_user_from_token(db, token)
+        if not (
+            user.member.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}
+            or is_club_wide_officer(user.member)
+            or has_permission(user.permissions, "view_admin_panel")
+        ):
+            raise HTTPException(status_code=403, detail="Officer permission required")
+
+    data = await get_weekly_top_performers(db, days=days)
+    message_text = format_weekly_digest_message(data)
+
+    if not settings.telegram_bot_url or not settings.internal_api_secret:
+        return {
+            "status": "skipped",
+            "detail": "Telegram bot URL or internal API secret is not configured.",
+            "message": message_text,
+        }
+
+    url = f"{settings.telegram_bot_url.rstrip('/')}/internal/weekly-digest"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                url,
+                json={"message_text": message_text},
+                headers={"X-Internal-Secret": settings.internal_api_secret},
+            )
+            bot_res = (
+                resp.json()
+                if resp.status_code == 200
+                else {"status": resp.status_code, "detail": resp.text}
+            )
+    except Exception as exc:
+        bot_res = {"status": "error", "detail": str(exc)}
+
+    return {
+        "status": "dispatched",
+        "bot_response": bot_res,
+        "message": message_text,
+    }
+
+

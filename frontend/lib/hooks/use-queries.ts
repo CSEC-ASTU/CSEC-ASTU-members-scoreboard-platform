@@ -394,3 +394,12 @@ export function useEndAttendanceSessionMutation() {
   })
 }
 
+export function useAttendanceMatrix(division_id?: string, days: number = 30) {
+  return useQuery({
+    queryKey: ["attendance-matrix", division_id, days],
+    queryFn: () => attendanceService.getAttendanceMatrix(division_id, days),
+    staleTime: 30 * 1000,
+  })
+}
+
+

@@ -319,7 +319,7 @@ async def resolve_admin_chat_ids(db: AsyncSession, settings: Settings) -> list[s
     chats: list[str] = list(settings.telegram_admin_chat_ids)
     result = await db.execute(
         select(Member).where(
-            Member.role.in_([MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT]),
+            Member.role.in_([MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT, MemberRole.DIVISION_HEAD]),
             Member.is_active.is_(True),
             Member.telegram_chat_id.is_not(None),
         )
@@ -328,6 +328,16 @@ async def resolve_admin_chat_ids(db: AsyncSession, settings: Settings) -> list[s
         if m.telegram_chat_id and m.telegram_chat_id not in chats:
             chats.append(m.telegram_chat_id)
     return chats
+
+
+async def push_weekly_digest(db: AsyncSession, *, settings: Settings, message_text: str) -> dict:
+    chat_ids = await resolve_admin_chat_ids(db, settings)
+    results = []
+    for chat_id in chat_ids:
+        ok = await send_telegram_message(settings, chat_id, message_text)
+        results.append({"chat_id": chat_id, "sent": ok})
+    return {"delivered_to": results, "officer_chat_count": len(chat_ids)}
+
 
 
 async def push_admin_digest(db: AsyncSession, *, settings: Settings) -> dict:

@@ -6,8 +6,6 @@ Designed for university campus and lab networks (NAT-safe):
 - Attendance session codes are guarded by an account-level PIN lockout manager.
 """
 
-from __future__ import annotations
-
 from collections import defaultdict
 import threading
 import time

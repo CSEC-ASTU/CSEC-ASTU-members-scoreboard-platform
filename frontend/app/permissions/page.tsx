@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import Layout from "@/components/kokonutui/layout"
 import { PageHeader } from "@/components/csec/page-header"
@@ -310,6 +311,25 @@ export default function PermissionsPage() {
     (m) => m.role === "member" && m.is_active,
   )
 
+  if (!allowed || currentUser.role === "member") {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+          <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Access Restricted</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md mb-6">
+            You do not have permission to view or manage governance delegations. Only executive club officers can access this portal.
+          </p>
+          <Button asChild variant="outline" size="sm" className="border-zinc-200 dark:border-white/10">
+            <Link href="/dashboard">Return to Dashboard</Link>
+          </Button>
+        </div>
+      </Layout>
+    )
+  }
+
   return (
     <Layout>
       {isInitialLoading ? (
@@ -348,259 +368,454 @@ export default function PermissionsPage() {
             }
           />
 
-          {/* Leadership & Executive Overview */}
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40 shadow-sm">
-            <div className="border-b border-zinc-100 bg-zinc-50/60 px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900/60 flex items-center justify-between">
+          {/* ── Section 1: Club Leadership & Officer Structure (Notion Database Table) ── */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <Crown className="h-4 w-4 text-amber-500" />
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider">
+                <h2 className="text-xs font-semibold text-zinc-900 dark:text-white uppercase tracking-wider">
                   Club Leadership & Officer Structure
-                </span>
+                </h2>
               </div>
-              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {presidents.length} President · {vicePresidents.length} Vice President · {divisionHeads.length} Division Heads
               </span>
             </div>
 
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {/* President Row */}
-              {presidents.map((p) => (
-                <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-amber-50/20 dark:bg-amber-950/10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative">
-                      <MemberAvatar name={p.full_name} size={40} />
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] text-white">
-                        <Crown className="h-2.5 w-2.5" />
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{p.full_name}</span>
-                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] gap-1">
+            <div className="relative overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white text-xs font-semibold">
+                    {/* Sticky Column 1: Officer Name */}
+                    <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[240px] font-semibold">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                        <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                        <span className="font-semibold">Officer Name</span>
+                      </div>
+                    </th>
+
+                    {/* Column 2: Leadership Role */}
+                    <th className="py-3.5 px-5 min-w-[170px] font-semibold">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                        <span className="text-[13px]">🏷️</span>
+                        <span className="font-semibold">Leadership Role</span>
+                      </div>
+                    </th>
+
+                    {/* Column 3: Assigned Division */}
+                    <th className="py-3.5 px-5 min-w-[180px] font-semibold">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                        <span className="text-[13px]">🎯</span>
+                        <span className="font-semibold">Assigned Division</span>
+                      </div>
+                    </th>
+
+                    {/* Column 4: Governance Scope */}
+                    <th className="py-3.5 px-5 min-w-[220px] font-semibold">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                        <span className="text-[13px]">⚡</span>
+                        <span className="font-semibold">Governance Scope</span>
+                      </div>
+                    </th>
+
+                    {/* Column 5: Action */}
+                    <th className="py-3.5 px-5 text-right min-w-[150px] font-semibold">
+                      <span className="font-semibold">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {/* President Rows */}
+                  {presidents.map((p) => (
+                    <tr
+                      key={p.id}
+                      className="border-b border-zinc-200/60 dark:border-white/[0.03] hover:bg-zinc-50/70 dark:hover:bg-white/[0.02] transition-colors group"
+                    >
+                      <td className="sticky left-0 z-10 bg-white dark:bg-[#0B0B0E] group-hover:bg-zinc-50 dark:group-hover:bg-[#101014] py-4 px-5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <MemberAvatar name={p.full_name} size={32} />
+                            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] text-white">
+                              <Crown className="h-2 w-2" />
+                            </span>
+                          </div>
+                          <div className="truncate max-w-[180px]">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                {p.full_name}
+                              </span>
+                              {p.id === currentUser.id && (
+                                <span className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 text-[10px] px-1.5 py-0.2 rounded font-medium">
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+                              {p.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-300 dark:text-amber-950 dark:border-amber-400/40">
                           <Crown className="h-3 w-3" /> President
-                        </Badge>
-                        {p.id === currentUser.id && (
-                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 dark:border-amber-700">
-                            You
-                          </Badge>
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <span className="text-xs text-zinc-800 dark:text-white font-normal">
+                          Club-wide Executive
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400 font-normal">
+                          Executive Governance & Platform Administration
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5 text-right">
+                        {currentUser.role === "president" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setGrantMode("role")
+                              setSelectedRole("president")
+                              setOpen(true)
+                            }}
+                            className="h-7 text-xs border-zinc-200 dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300"
+                          >
+                            <ArrowRightLeft className="mr-1 h-3 w-3" /> Transfer
+                          </Button>
                         )}
-                      </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                        {p.email} · Executive Governance &amp; Administration
-                      </div>
-                    </div>
-                  </div>
+                      </td>
+                    </tr>
+                  ))}
 
-                  {currentUser.role === "president" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setGrantMode("role")
-                        setSelectedRole("president")
-                        setOpen(true)
-                      }}
-                      className="text-xs border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-800 dark:text-amber-300 self-start sm:self-center"
+                  {/* Vice President Rows */}
+                  {vicePresidents.map((vp) => (
+                    <tr
+                      key={vp.id}
+                      className="border-b border-zinc-200/60 dark:border-white/[0.03] hover:bg-zinc-50/70 dark:hover:bg-white/[0.02] transition-colors group"
                     >
-                      <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" /> Transfer Presidency
-                    </Button>
-                  )}
-                </div>
-              ))}
+                      <td className="sticky left-0 z-10 bg-white dark:bg-[#0B0B0E] group-hover:bg-zinc-50 dark:group-hover:bg-[#101014] py-4 px-5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <MemberAvatar name={vp.full_name} size={32} />
+                            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-zinc-900 dark:bg-white text-[9px] text-white dark:text-zinc-950">
+                              <Shield className="h-2 w-2" />
+                            </span>
+                          </div>
+                          <div className="truncate max-w-[180px]">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                {vp.full_name}
+                              </span>
+                              {vp.id === currentUser.id && (
+                                <span className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 text-[10px] px-1.5 py-0.2 rounded font-medium">
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+                              {vp.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-              {/* Vice Presidents */}
-              {vicePresidents.map((vp) => (
-                <div key={vp.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative">
-                      <MemberAvatar name={vp.full_name} size={38} />
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] text-white">
-                        <Shield className="h-2.5 w-2.5" />
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{vp.full_name}</span>
-                        <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] gap-1">
+                      <td className="py-4 px-5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-zinc-900 text-white dark:bg-white dark:text-zinc-950">
                           <Shield className="h-3 w-3" /> Vice President
-                        </Badge>
-                        {vp.id === currentUser.id && (
-                          <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-300 dark:border-indigo-700">
-                            You
-                          </Badge>
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <span className="text-xs text-zinc-800 dark:text-white font-normal">
+                          Club-wide Operations
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400 font-normal">
+                          Operations, Task Management & Approval Overrides
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5 text-right">
+                        {canAssign && canModifyMemberRole(currentUser, vp) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openRoleAssignmentFor(vp)}
+                            className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                          >
+                            <UserCog className="mr-1 h-3 w-3" /> Reassign
+                          </Button>
                         )}
-                      </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                        {vp.email} · Executive Officer
-                      </div>
-                    </div>
-                  </div>
+                      </td>
+                    </tr>
+                  ))}
 
-                  {canAssign && canModifyMemberRole(currentUser, vp) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openRoleAssignmentFor(vp)}
-                      className="text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 self-start sm:self-center"
-                    >
-                      <UserCog className="mr-1.5 h-3.5 w-3.5" /> Reassign Role
-                    </Button>
-                  )}
-                </div>
-              ))}
-
-              {/* Division Heads */}
-              {divisionHeads.map((head) => {
-                const divisionName = head.division_id ? divisionsMap.get(head.division_id) : "Unassigned"
-                return (
-                  <div key={head.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <MemberAvatar name={head.full_name} size={38} />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{head.full_name}</span>
-                          <Badge variant="outline" className="text-[10px] border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300 gap-1">
-                            <UserCheck className="h-3 w-3" /> Division Head
-                          </Badge>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {divisionName}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                          {head.email} · Leads {divisionName} Division
-                        </div>
-                      </div>
-                    </div>
-
-                    {canAssign && canModifyMemberRole(currentUser, head) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openRoleAssignmentFor(head)}
-                        className="text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 self-start sm:self-center"
+                  {/* Division Heads Rows */}
+                  {divisionHeads.map((head) => {
+                    const divisionName = head.division_id ? divisionsMap.get(head.division_id) : "Unassigned"
+                    return (
+                      <tr
+                        key={head.id}
+                        className="border-b border-zinc-200/60 dark:border-white/[0.03] hover:bg-zinc-50/70 dark:hover:bg-white/[0.02] transition-colors group"
                       >
-                        <UserCog className="mr-1.5 h-3.5 w-3.5" /> Manage Role
-                      </Button>
-                    )}
-                  </div>
-                )
-              })}
+                        <td className="sticky left-0 z-10 bg-white dark:bg-[#0B0B0E] group-hover:bg-zinc-50 dark:group-hover:bg-[#101014] py-4 px-5 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <MemberAvatar name={head.full_name} size={32} />
+                            <div className="truncate max-w-[180px]">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                  {head.full_name}
+                                </span>
+                                {head.id === currentUser.id && (
+                                  <span className="bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 text-[10px] px-1.5 py-0.2 rounded font-medium">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+                                {head.email}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
 
-              {presidents.length === 0 && vicePresidents.length === 0 && divisionHeads.length === 0 && (
-                <div className="p-6 text-center text-xs text-zinc-500">
-                  No leadership officers found. Use &quot;Assign Base Role&quot; above to designate leaders.
-                </div>
-              )}
+                        <td className="py-4 px-5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-white/[0.06] dark:text-zinc-300 border border-zinc-200/60 dark:border-white/10">
+                            <UserCheck className="h-3 w-3" /> Division Head
+                          </span>
+                        </td>
+
+                        {/* Assigned Division - Plain white text with no body */}
+                        <td className="py-4 px-5">
+                          <span className="text-xs text-zinc-800 dark:text-white font-normal">
+                            {divisionName}
+                          </span>
+                        </td>
+
+                        <td className="py-4 px-5">
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400 font-normal">
+                            Leads {divisionName} Division sessions & approvals
+                          </span>
+                        </td>
+
+                        <td className="py-4 px-5 text-right">
+                          {canAssign && canModifyMemberRole(currentUser, head) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openRoleAssignmentFor(head)}
+                              className="h-7 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                            >
+                              <UserCog className="mr-1 h-3 w-3" /> Manage
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+
+                  {presidents.length === 0 && vicePresidents.length === 0 && divisionHeads.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-xs text-zinc-500">
+                        No leadership officers found. Use &quot;Assign Base Role&quot; above to designate leaders.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Active delegated permissions */}
-          <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm">
-            <div className="border-b border-zinc-100 bg-zinc-50/60 px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900/60 flex items-center justify-between">
+          {/* ── Section 2: Active Delegated Duty Grants (Notion Database Table) ── */}
+          <div className="space-y-2 pt-6">
+            <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-violet-500" />
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider">
+                <KeyRound className="h-4 w-4 text-purple-500" />
+                <h2 className="text-xs font-semibold text-zinc-900 dark:text-white uppercase tracking-wider">
                   Active Delegated Duty Grants ({grants.length})
-                </span>
+                </h2>
               </div>
-              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 Granular operational overrides
               </span>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 p-12 text-sm text-zinc-500">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading permissions...
-              </div>
-            ) : grants.length === 0 ? (
-              <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                No delegated duty permissions granted currently.
-              </div>
-            ) : (
-              grants.map((g, i) => {
-                const member = membersMap.get(g.member_id)
-                const catalogItem = catalogMap.get(g.permission_key)
-                const displayLabel = catalogItem?.description || g.permission_key
-                const scopeText = g.scope_value
-                  ? divisionsMap.get(g.scope_value)
-                    ? `Division: ${divisionsMap.get(g.scope_value)}`
-                    : `Scope: ${g.scope_value}`
-                  : "Club-wide"
-
-                return (
-                  <div
-                    key={g.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 ${
-                      i !== 0 ? "border-t border-zinc-100 dark:border-zinc-800" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <MemberAvatar name={member?.full_name ?? "?"} size={36} />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                            {displayLabel}
-                          </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {member?.full_name ?? g.member_id.slice(0, 8)}
-                          </Badge>
-                          <code className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-600 dark:text-zinc-400">
-                            {g.permission_key}
-                          </code>
+            <div className="relative overflow-x-auto w-full">
+              {loading ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-xs text-zinc-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading permissions...
+                </div>
+              ) : grants.length === 0 ? (
+                <div className="py-16 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                  No delegated duty permissions granted currently.
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white text-xs font-semibold">
+                      {/* Sticky Column 1: Delegated Duty */}
+                      <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[260px] font-semibold">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                          <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                          <span className="font-semibold">Delegated Duty</span>
                         </div>
-                        <div className="truncate text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                          {scopeText}
-                          {g.granted_at
-                            ? ` · Granted ${new Date(g.granted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                            : ""}
+                      </th>
+
+                      {/* Column 2: Delegatee Member */}
+                      <th className="py-3.5 px-5 min-w-[200px] font-semibold">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                          <span className="text-[13px]">👤</span>
+                          <span className="font-semibold">Delegatee</span>
                         </div>
-                      </div>
-                    </div>
+                      </th>
 
-                    <div className="flex items-center gap-4 self-end sm:self-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {g.is_enabled ? "Active" : "Disabled"}
-                        </span>
-                        <Switch
-                          checked={g.is_enabled}
-                          onCheckedChange={(checked) => toggleGrantEnabled(g.id, checked)}
-                          aria-label={`Toggle ${g.permission_key}`}
-                        />
-                      </div>
+                      {/* Column 3: Scope */}
+                      <th className="py-3.5 px-5 min-w-[180px] font-semibold">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                          <span className="text-[13px]">🎯</span>
+                          <span className="font-semibold">Scope</span>
+                        </div>
+                      </th>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Revoke permission">
-                            <Trash2 className="h-4 w-4 text-zinc-400 hover:text-rose-500" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Revoke this permission permanently?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {member?.full_name ?? "This member"} will lose the &quot;{g.permission_key}&quot; operational duty immediately.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => revoke(g.id)}>Confirm Revocation</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                )
-              })
-            )}
+                      {/* Column 4: Status */}
+                      <th className="py-3.5 px-5 min-w-[140px] font-semibold">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                          <span className="text-[13px]">⚪</span>
+                          <span className="font-semibold">Status</span>
+                        </div>
+                      </th>
+
+                      {/* Column 5: Date Granted */}
+                      <th className="py-3.5 px-5 min-w-[140px] font-semibold">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                          <span className="text-[13px]">📅</span>
+                          <span className="font-semibold">Granted</span>
+                        </div>
+                      </th>
+
+                      {/* Column 6: Action */}
+                      <th className="py-3.5 px-4 w-12 text-right"></th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {grants.map((g) => {
+                      const member = membersMap.get(g.member_id)
+                      const catalogItem = catalogMap.get(g.permission_key)
+                      const displayLabel = catalogItem?.description || g.permission_key
+                      const scopeText = g.scope_value
+                        ? divisionsMap.get(g.scope_value)
+                          ? divisionsMap.get(g.scope_value)
+                          : g.scope_value
+                        : "Club-wide"
+
+                      return (
+                        <tr
+                          key={g.id}
+                          className="border-b border-zinc-200/60 dark:border-white/[0.03] hover:bg-zinc-50/70 dark:hover:bg-white/[0.02] transition-colors group"
+                        >
+                          {/* Sticky Column: Delegated Duty */}
+                          <td className="sticky left-0 z-10 bg-white dark:bg-[#0B0B0E] group-hover:bg-zinc-50 dark:group-hover:bg-[#101014] py-4 px-5 transition-colors">
+                            <div className="truncate max-w-[240px]">
+                              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                {displayLabel}
+                              </span>
+                              <code className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                                {g.permission_key}
+                              </code>
+                            </div>
+                          </td>
+
+                          {/* Delegatee Member */}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-2.5">
+                              <MemberAvatar name={member?.full_name ?? "?"} size={28} />
+                              <div className="truncate max-w-[150px]">
+                                <span className="block text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                  {member?.full_name ?? g.member_id.slice(0, 8)}
+                                </span>
+                                <span className="block text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                                  {member?.email}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Scope - Plain white text with no body */}
+                          <td className="py-4 px-5">
+                            <span className="text-xs text-zinc-800 dark:text-white font-normal">
+                              {scopeText}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={g.is_enabled}
+                                onCheckedChange={(checked) => toggleGrantEnabled(g.id, checked)}
+                                aria-label={`Toggle ${g.permission_key}`}
+                              />
+                              <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                                {g.is_enabled ? "Active" : "Disabled"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Granted Date */}
+                          <td className="py-4 px-5 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                            {g.granted_at
+                              ? new Date(g.granted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                              : "—"}
+                          </td>
+
+                          {/* Action */}
+                          <td className="py-4 px-4 text-right">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400" aria-label="Revoke permission">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Revoke this permission permanently?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {member?.full_name ?? "This member"} will lose the &quot;{g.permission_key}&quot; operational duty immediately.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => revoke(g.id)}>Confirm Revocation</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
 
           {/* Danger zone: Layoff (President Only) */}
           {canLayoff(currentUser) && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-5 dark:border-rose-900/40 dark:bg-rose-950/20">
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10 p-5 mt-6">
               <div className="mb-1 flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                <h2 className="text-sm font-semibold text-rose-700 dark:text-rose-400">
+                <h2 className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
                   Presidential Layoff Execution
                 </h2>
               </div>

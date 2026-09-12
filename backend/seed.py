@@ -42,6 +42,12 @@ SETTINGS_DATA = [
 
 CLUB_WIDE_TASKS = [
     {
+        "title": "Club-Wide General Meeting Attendance",
+        "category": "division_session",
+        "base_points": 10,
+        "description": "Attend scheduled club-wide general assembly, all-hands meeting, or community session.",
+    },
+    {
         "title": "Weekly Lab Cleaning Duty",
         "category": "lab_cleaning",
         "base_points": 15,

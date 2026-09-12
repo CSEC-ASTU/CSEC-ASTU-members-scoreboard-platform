@@ -13,6 +13,7 @@ from app.services.bot import (
     handle_bot_command,
     notify_for_point_event,
     push_admin_digest,
+    push_weekly_digest,
     send_telegram_message,
 )
 
@@ -81,3 +82,15 @@ async def internal_notify(
 @router.post("/internal/admin-digest", dependencies=[Depends(require_internal_secret)])
 async def internal_admin_digest(db: DbSession, settings: AppSettings) -> dict:
     return await push_admin_digest(db, settings=settings)
+
+
+class WeeklyDigestRequest(BaseModel):
+    message_text: str
+
+
+@router.post("/internal/weekly-digest", dependencies=[Depends(require_internal_secret)])
+async def internal_weekly_digest(
+    body: WeeklyDigestRequest, db: DbSession, settings: AppSettings
+) -> dict:
+    return await push_weekly_digest(db, settings=settings, message_text=body.message_text)
+

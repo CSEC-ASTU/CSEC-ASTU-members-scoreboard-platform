@@ -197,6 +197,7 @@ export interface AttendanceSessionOut {
   id: string
   task_id: string
   division_id: string | null
+  title?: string | null
   code: string
   created_by: string | null
   expires_at: string
@@ -209,8 +210,65 @@ export interface AttendanceSessionOut {
 export interface AttendanceSessionCreateIn {
   task_id: string
   division_id?: string | null
+  title?: string | null
   duration_minutes?: number
 }
+
+export interface AttendanceSessionStatus {
+  status: "present" | "late" | "absent"
+  delay_minutes: number | null
+  claimed_at: string | null
+  points_awarded: number
+}
+
+export interface AttendanceMatrixColumn {
+  id: string
+  date: string
+  date_display: string
+  task_title: string
+  division_name: string
+  is_active: boolean
+}
+
+export interface AttendanceMemberStats {
+  attended_count: number
+  total_sessions: number
+  late_count: number
+  on_time_count: number
+  attendance_rate: number
+}
+
+export interface AttendanceMatrixRow {
+  member_id: string
+  full_name: string
+  email: string
+  profile_image_url: string | null
+  division_id: string | null
+  division_name: string
+  role: Role | string
+  stats: AttendanceMemberStats
+  sessions: Record<string, AttendanceSessionStatus>
+}
+
+export interface AttendanceMatrixKPI {
+  total_sessions: number
+  total_members: number
+  average_turnout_rate: number
+  on_time_rate: number
+  total_checkins: number
+  total_late_checkins: number
+}
+
+export interface AttendanceMatrixOut {
+  division_id: string | null
+  days: number
+  start_date: string
+  end_date: string
+  kpi: AttendanceMatrixKPI
+  columns: AttendanceMatrixColumn[]
+  rows: AttendanceMatrixRow[]
+}
+
 
 
 export interface OfficerAdjustmentIn {

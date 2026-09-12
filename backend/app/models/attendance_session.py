@@ -18,6 +18,7 @@ class AttendanceSession(Base):
     division_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="CASCADE"), nullable=True
     )
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     code: Mapped[str] = mapped_column(String(6), nullable=False, index=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("members.id", ondelete="SET NULL"), nullable=True

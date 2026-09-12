@@ -1,5 +1,5 @@
 import { apiFetch } from "../client"
-import type { AttendanceSessionCreateIn, AttendanceSessionOut } from "../types"
+import type { AttendanceMatrixOut, AttendanceSessionCreateIn, AttendanceSessionOut } from "../types"
 
 export const attendanceService = {
   createSession: async (data: AttendanceSessionCreateIn): Promise<AttendanceSessionOut> => {
@@ -20,4 +20,15 @@ export const attendanceService = {
       method: "POST",
     })
   },
+
+  getAttendanceMatrix: async (division_id?: string, days: number = 30): Promise<AttendanceMatrixOut> => {
+    const params: Record<string, string | number> = { days }
+    if (division_id && division_id !== "all") {
+      params.division_id = division_id
+    }
+    return apiFetch<AttendanceMatrixOut>("/attendance-sessions/matrix", {
+      params,
+    })
+  },
 }
+
