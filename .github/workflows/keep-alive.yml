@@ -28,19 +28,64 @@ jobs:
             exit 1
           fi
 
+          # Clean secrets: strip whitespace, surrounding quotes, and trailing slashes
+          CLEAN_BACKEND=$(echo "$BACKEND_URL" | tr -d '"' | tr -d "'" | xargs)
+          CLEAN_BACKEND="${CLEAN_BACKEND%/}"
+          CLEAN_BOT=$(echo "$BOT_URL" | tr -d '"' | tr -d "'" | xargs)
+          CLEAN_BOT="${CLEAN_BOT%/}"
+
+          # Construct health check endpoints (avoid duplicate paths)
+          if [[ "$CLEAN_BACKEND" == *"/api/v1/health"* ]]; then
+            BACKEND_TARGET="$CLEAN_BACKEND"
+          elif [[ "$CLEAN_BACKEND" == *"/api/v1"* ]]; then
+            BACKEND_TARGET="$CLEAN_BACKEND/health"
+          else
+            BACKEND_TARGET="$CLEAN_BACKEND/api/v1/health"
+          fi
+
+          if [[ "$CLEAN_BOT" == *"/health"* ]]; then
+            BOT_TARGET="$CLEAN_BOT"
+          else
+            BOT_TARGET="$CLEAN_BOT/health"
+          fi
+
           echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "----------------------------------------------------"
 
-          echo "Pinging Web Backend..."
-          BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code} (took %{time_total}s)" \
-            --retry 2 --retry-delay 5 --max-time 60 "${BACKEND_URL%/}/api/v1/health" || echo "FAILED")
-          echo "  -> Backend [/api/v1/health]: $BACKEND_CODE"
+          FAILED=0
 
-          echo "Pinging Telegram Bot API..."
-          BOT_CODE=$(curl -s -o /dev/null -w "%{http_code} (took %{time_total}s)" \
-            --retry 2 --retry-delay 5 --max-time 60 "${BOT_URL%/}/health" || echo "FAILED")
-          echo "  -> Telegram Bot [/health]: $BOT_CODE"
+          echo "Pinging Web Backend at $BACKEND_TARGET..."
+          BACKEND_HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --retry 2 --retry-delay 5 --max-time 60 "$BACKEND_TARGET" || echo "000")
+          BACKEND_TIME=$(curl -sS -o /dev/null -w "%{time_total}" --max-time 10 "$BACKEND_TARGET" 2>/dev/null || echo "0.0")
+
+          if [ "$BACKEND_HTTP_CODE" -ge 200 ] && [ "$BACKEND_HTTP_CODE" -lt 400 ]; then
+            echo "  -> Backend: SUCCESS (HTTP $BACKEND_HTTP_CODE in ${BACKEND_TIME}s)"
+          else
+            echo "::error::Backend ping failed with HTTP $BACKEND_HTTP_CODE"
+            echo "  -> Backend: FAILED (HTTP $BACKEND_HTTP_CODE)"
+            FAILED=1
+          fi
+
+          echo "Pinging Telegram Bot at $BOT_TARGET..."
+          BOT_HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --retry 2 --retry-delay 5 --max-time 60 "$BOT_TARGET" || echo "000")
+          BOT_TIME=$(curl -sS -o /dev/null -w "%{time_total}" --max-time 10 "$BOT_TARGET" 2>/dev/null || echo "0.0")
+
+          if [ "$BOT_HTTP_CODE" -ge 200 ] && [ "$BOT_HTTP_CODE" -lt 400 ]; then
+            echo "  -> Telegram Bot: SUCCESS (HTTP $BOT_HTTP_CODE in ${BOT_TIME}s)"
+          else
+            echo "::error::Telegram Bot ping failed with HTTP $BOT_HTTP_CODE"
+            echo "  -> Telegram Bot: FAILED (HTTP $BOT_HTTP_CODE)"
+            FAILED=1
+          fi
 
           echo "----------------------------------------------------"
-          echo "Keep-alive ping cycle completed successfully."
+          if [ "$FAILED" -ne 0 ]; then
+            echo "❌ Keep-alive ping failed. One or more services are unreachable or degraded."
+            exit 1
+          fi
+
+          echo "✔ All services are alive and healthy."
+
 
