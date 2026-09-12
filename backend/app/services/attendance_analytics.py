@@ -24,6 +24,7 @@ async def get_attendance_matrix(
     *,
     division_id: UUID | None = None,
     days: int = 30,
+    member_id: UUID | None = None,
 ) -> dict[str, Any]:
     """Calculate the attendance matrix and summary stats for a division or club-wide.
 
@@ -31,6 +32,7 @@ async def get_attendance_matrix(
     - On-Time: Check-in <= 15 minutes of session creation.
     - Late: Check-in > 15 minutes of session creation (receives full points, flagged as late).
     - Absent: No approved point event linked to the session.
+    - Privacy: If member_id is provided, only that member's row and stats are computed.
     """
     now = datetime.now(UTC)
     cutoff = now - timedelta(days=days)
@@ -51,14 +53,16 @@ async def get_attendance_matrix(
     sessions = (await db.execute(session_stmt)).scalars().all()
     session_ids = [s.id for s in sessions]
 
-    # 2. Fetch active members for the division (or club-wide)
+    # 2. Fetch active members for the division (or single scoped member)
     member_stmt = (
         select(Member)
         .options(selectinload(Member.division))
         .where(Member.is_active.is_(True))
         .order_by(Member.full_name.asc())
     )
-    if division_id:
+    if member_id:
+        member_stmt = member_stmt.where(Member.id == member_id)
+    elif division_id:
         member_stmt = member_stmt.where(
             (Member.division_id == division_id) | (Member.secondary_division_id == division_id)
         )
@@ -72,6 +76,8 @@ async def get_attendance_matrix(
             PointEvent.attendance_session_id.in_(session_ids),
             PointEvent.status == PointEventStatus.APPROVED,
         )
+        if member_id:
+            events_stmt = events_stmt.where(PointEvent.member_id == member_id)
         events = (await db.execute(events_stmt)).scalars().all()
         for ev in events:
             if ev.attendance_session_id:

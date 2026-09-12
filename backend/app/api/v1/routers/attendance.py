@@ -207,14 +207,46 @@ async def get_matrix_data(
 ) -> dict:
     """Generate Notion-style attendance matrix and KPIs.
 
-    - division_id=None queries Club-Wide sessions.
-    - division_id=UUID queries sessions for that specific division.
+    - Executive Officers (President, VP, Admins) can query club-wide or any division.
+    - Division Heads can query their assigned division(s) or club-wide.
+    - Regular Members are strictly restricted on the backend to their own personal record and stats.
     """
+    member: Member = user.member
+    is_exec = (
+        member.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}
+        or is_club_wide_officer(member)
+        or has_permission(user.permissions, "view_admin_panel")
+    )
+    is_div_head = member.role == MemberRole.DIVISION_HEAD
+
+    target_member_id: UUID | None = None
     effective_division_id = division_id
+
+    if not (is_exec or is_div_head):
+        # Regular Member: Strict backend privacy enforcement.
+        # Only query their own personal record; other members' rows are never fetched or leaked.
+        target_member_id = member.id
+        if effective_division_id:
+            member_divs = {d for d in [member.division_id, member.secondary_division_id] if d}
+            if effective_division_id not in member_divs:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only view attendance records for your assigned division.",
+                )
+    elif is_div_head and not is_exec:
+        # Division Head: Can view their assigned division(s) or club-wide sessions
+        if effective_division_id:
+            head_divs = {d for d in [member.division_id, member.secondary_division_id] if d}
+            if effective_division_id not in head_divs:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Division Heads can only view the attendance matrix for their own division.",
+                )
 
     return await get_attendance_matrix(
         db,
         division_id=effective_division_id,
         days=days,
+        member_id=target_member_id,
     )
 

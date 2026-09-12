@@ -191,3 +191,46 @@ async def test_attendance_matrix_club_wide_and_custom_title():
     assert matrix["columns"][0]["task_title"] == "General Assembly #1"
     assert matrix["columns"][0]["division_name"] == "Club-wide"
 
+
+async def test_attendance_matrix_member_id_scoping():
+    db = AsyncMock()
+    now = datetime.now(UTC)
+
+    session = MagicMock()
+    session.id = uuid.uuid4()
+    session.division_id = None
+    session.title = "Week 1 Meeting"
+    session.task = MagicMock()
+    session.task.title = "Meeting Task"
+    session.division = None
+    session.created_at = now - timedelta(days=1)
+    session.is_active = False
+
+    target_member = MagicMock()
+    target_member.id = uuid.uuid4()
+    target_member.full_name = "Bob Member"
+    target_member.email = "bob@example.com"
+    target_member.profile_image_url = None
+    target_member.division_id = None
+    target_member.division = None
+    target_member.role = "member"
+
+    res_sessions = MagicMock()
+    res_sessions.scalars.return_value.all.return_value = [session]
+
+    res_members = MagicMock()
+    # When member_id is queried, only the scoped member is returned by the database
+    res_members.scalars.return_value.all.return_value = [target_member]
+
+    res_events = MagicMock()
+    res_events.scalars.return_value.all.return_value = []
+
+    db.execute.side_effect = [res_sessions, res_members, res_events]
+
+    matrix = await get_attendance_matrix(db, division_id=None, days=30, member_id=target_member.id)
+
+    assert len(matrix["rows"]) == 1
+    assert matrix["rows"][0]["member_id"] == str(target_member.id)
+    assert matrix["rows"][0]["full_name"] == "Bob Member"
+
+
