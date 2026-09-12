@@ -1,6 +1,6 @@
-# CSEC ASTU Platform — API Contract (Phase 1)
+# CSEC ASTU Platform — REST API Contract Specification
 
-Companion to the PRD and `csec-astu-database-schema.sql`. Base path: `/api/v1`. All request/response bodies are JSON unless noted. All endpoints except `/auth/google/*`, `/health`, and Phase 2's `/telegram/webhook` require the auth cookie (§2 of the PRD) — "Auth" below names the permission layered on top of "logged in."
+Authoritative REST API specification for client-server integration. Base path: `/api/v1`. All request/response bodies are JSON unless noted. All endpoints except `/auth/google/*`, `/health`, and `/telegram/webhook` require the auth cookie — "Auth" below names the permission layered on top of "logged in."
 
 **Conventions used throughout:**
 
@@ -14,13 +14,13 @@ Companion to the PRD and `csec-astu-database-schema.sql`. Base path: `/api/v1`. 
 
 ## 1. Auth
 
-| Method & path               | Purpose                                                                                          | Auth                   |
-| --------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------- |
-| `GET /auth/google/login`    | Redirects to Google's OAuth consent screen                                                       | none                   |
-| `GET /auth/google/callback` | OAuth callback — verifies identity, upserts `members` row, issues cookies, redirects to frontend | none                   |
-| `POST /auth/refresh`        | Rotates the access-token cookie using the refresh-token cookie                                   | refresh cookie present |
-| `POST /auth/logout`         | Clears both cookies server-side                                                                  | logged in              |
-| `GET /auth/me`              | Returns the current member's profile, role, and effective permissions                            | logged in              |
+| Method & path               | Purpose                                                                                                                                                                                                                                                                                                                                                                                          | Auth                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| `GET /auth/google/login`    | Redirects to Google's OAuth consent screen                                                                                                                                                                                                                                                                                                                                                       | none                   |
+| `GET /auth/google/callback` | OAuth callback — looks up the Google account's email against `members.email` (never creates a new row). Unclaimed match (`google_id IS NULL`) → claims it: sets `google_id`, stamps `first_login_at`, issues cookies. Already-claimed match → normal login. No match at all → `403`, redirects to a "not registered" page instead of setting any cookie. See §13 for the full registration flow. | none                   |
+| `POST /auth/refresh`        | Rotates the access-token cookie using the refresh-token cookie                                                                                                                                                                                                                                                                                                                                   | refresh cookie present |
+| `POST /auth/logout`         | Clears both cookies server-side                                                                                                                                                                                                                                                                                                                                                                  | logged in              |
+| `GET /auth/me`              | Returns the current member's profile, role, and effective permissions                                                                                                                                                                                                                                                                                                                            | logged in              |
 
 **`GET /auth/me` response:**
 
@@ -53,14 +53,31 @@ Companion to the PRD and `csec-astu-database-schema.sql`. Base path: `/api/v1`. 
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | `GET /members`                       | List members directory — filters: `division_id`, `role`, `is_active`, `search` (name/email). Non-officers receive masked sensitive fields (`phone_number`, `telegram_username`, `student_id` = `null`). Officers view full details. | logged in (HttpOnly cookie)                                     |
 | `GET /members/{id}`                  | Get one member's full profile + scores. Sensitive contact info masked for non-officers unless viewing own profile.                                                                          | logged in (HttpOnly cookie)                                     |
-| `PATCH /members/me`                  | Update own editable fields (`department`, `joining_year` if not yet onboarded)                       | logged in                                                       |
-| `POST /members/me/onboarding`        | One-time: submit `department`, `joining_year`, optionally `division_id` if self-selection is allowed | logged in, `onboarded_at IS NULL`                               |
+| `PATCH /members/me`                  | Update own editable fields (e.g. fix a typo'd `department`)                                          | logged in                                                       |
 | `POST /members/me/profile-picture`   | Upload profile picture (`multipart/form-data`) → stored on Drive, URL saved                          | logged in                                                       |
 | `DELETE /members/me/profile-picture` | Remove profile picture                                                                               | logged in                                                       |
 | `PATCH /members/{id}`                | Officer/president edits another member's `role`, `division_id`, or `department`                      | division head (own division) or president                       |
+| `POST /admin/members/import`         | Bulk-import/upsert members from a CSV export of the registration Google Form — see §13               | officer with `import_members`, or president                     |
 | `POST /members/{id}/layoff`          | Execute a layoff: sets `is_active = false`, logs a `-100` `layoff` point_event with the given reason | **president only** (§6)                                         |
 | `GET /members/{id}/point-events`     | That member's full ledger                                                                            | self, an officer with visibility, or president                  |
 | `GET /members/{id}/achievement-card` | Data to render the shareable card: `career_score`, badges, joining year, name, division              | self, or anyone if the member has made it public (see note)     |
+
+**`POST /admin/members/import` — multipart, `file` = CSV; optional `?dry_run=true` to validate without writing:**
+
+```json
+{
+  "created": 12,
+  "updated": 3,
+  "errors": [
+    { "row": 9, "email": "", "issue": "missing required field: email" }
+  ],
+  "unmatched_divisions": [
+    { "row": 7, "email": "someone@astu.edu.et", "division_name": "Robotics" }
+  ]
+}
+```
+
+Expected CSV columns: `full_name, email, department, joining_year, division`. Upsert is keyed on `email` (lowercased) — safe to re-run against a growing Form response sheet; existing rows get their `department`/`joining_year`/`division_id` refreshed, but `google_id`, `role`, `is_active`, and any score history are never touched by an import.
 
 **`POST /members/{id}/layoff` request:**
 
@@ -246,7 +263,21 @@ No `POST`/`PATCH`/`DELETE` — the catalog is seed data (see the schema file), n
 
 ---
 
-## 13. Phase 2 — Telegram (do not build yet, see PRD §1a/§11)
+## 13. Registration flow — CSV import + login-only access
+
+Since real registration happens through the club's Google Form, students never self-register on the platform. This is the full flow, in order:
+
+1. An officer exports the Form's response sheet as CSV and calls `POST /admin/members/import` (§2). This creates `members` rows with `full_name`, `email`, `department`, `joining_year`, and `division_id` filled in, but `google_id` left `NULL` — the row exists, but nobody can log into it yet.
+2. A student clicks "Sign in with Google" and goes through the normal OAuth flow (§1).
+3. `GET /auth/google/callback` looks up the returned email against `members.email`:
+   - **Match, `google_id IS NULL`** → this is the student's first login. Their account is _claimed_: `google_id` is set, `first_login_at` is stamped, cookies are issued, they land on the dashboard.
+   - **Match, `google_id` already set** → ordinary login.
+   - **No match** → rejected with `403`, redirected to a "you're not registered yet" page. Nothing is written to the database — no ghost accounts pile up from typos or people who aren't actually registered.
+4. There's no self-serve onboarding step (no `POST /members/me/onboarding`) — the CSV already supplied everything that step used to collect. `PATCH /members/me` still exists for fixing a typo after the fact.
+
+**Open question, worth deciding before you build it rather than after:** what should happen when a login is rejected in step 3 — should it just show an error, or should the platform quietly log the attempted email somewhere so an officer can see "these people tried to log in and weren't found" (usually a missed import or an email typo on the Form)? A rejection screen alone is simpler; a lightweight `login_attempt_failures` log adds real operational value at the cost of one more table. Your call — I'd lean toward adding it since it's cheap, but it's not load-bearing for Phase 1 either way.
+
+## 14. Phase 2 — Telegram (do not build yet, see PRD §1a/§11)
 
 Listed here only so the eventual contract is already anticipated and doesn't collide with Phase 1 routes.
 

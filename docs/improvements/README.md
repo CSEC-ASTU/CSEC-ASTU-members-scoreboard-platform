@@ -1,25 +1,29 @@
-# Backend improvements log
+# Platform Improvements Log
 
-This folder tracks changes made while implementing the Phase 1 FastAPI backend that go **beyond** (or refine) the original PRD / API contract / schema docs in `docs/`.
+This directory tracks architectural, behavioral, and functional improvements implemented in the **CSEC ASTU Platform** that go beyond the initial specifications in `docs/`.
 
-Each file describes one improvement: why it was added, what changed (schema / API / behavior), and how to use it.
+Each document details the motivation, schema/API changes, implementation specifics, and verification criteria.
 
-| ID | Title | Status |
-|---|---|---|
-| [01](01-login-attempt-failures.md) | Log unmatched Google login attempts | shipped |
-| [02](02-permission-grant-history.md) | Append-only permission grant history | shipped |
-| [03](03-auto-approve-low-stakes-claims.md) | Auto-approve low-stakes claims | shipped |
-| [04](04-refresh-token-store.md) | Server-side refresh token store + rotation | shipped |
-| [05](05-decision-reason-column.md) | Separate rejection / decision reason on ledger | shipped |
-| [06](06-configurable-initial-buffer-view.md) | `member_scores` view reads `initial_buffer` from settings | shipped |
-| [07](07-request-id-middleware.md) | `X-Request-ID` tracing middleware | shipped |
-| [08](08-login-failures-admin-endpoint.md) | Admin endpoint for login failures | shipped |
-| [09](09-attendance-session-codes.md) | Physical presence verification with rotating whiteboard PINs | shipped |
-| [10](10-normal-warning-tier.md) | Normal warning disciplinary tier (`-15 pts`) | shipped |
-| [11](11-duplicate-claim-prevention-engine.md) | Backend duplicate claim prevention engine | shipped |
-| [12](12-member-contact-fields-and-personal-email-auth.md) | Member contact fields & personal email OAuth auth | shipped |
-| [13](13-officer-productivity-and-export-suite.md) | Batch adjustments, Inactivity Radar & CSV export | shipped |
-| [14](14-google-form-csv-import-auto-mapper.md) | Google Form CSV import auto-mapper & pre-flight wizard | shipped |
-| [15](15-standalone-telegram-bot-service.md) | Standalone Telegram bot service & push notification engine | shipped |
+| ID | Title | Scope | Status |
+|:---:|---|:---:|:---:|
+| [01](01-login-attempt-failures.md) | Log Unmatched Google Login Attempts | Security / Auth | Shipped |
+| [02](02-permission-grant-history.md) | Append-Only Permission Grant Audit History | Security / RBAC | Shipped |
+| [03](03-auto-approve-low-stakes-claims.md) | Auto-Approve Low-Stakes & Automated Claims | Automation | Shipped |
+| [04](04-refresh-token-store.md) | Cryptographic Server-Side Refresh Token Store & Rotation | Security / Auth | Shipped |
+| [05](05-decision-reason-column.md) | Granular Decision Reason Column on Point Event Ledger | Auditability | Shipped |
+| [06](06-configurable-initial-buffer-view.md) | Dynamic Loss-Aversion Initial Buffer (50 pts) via App Settings | Ledger Engine | Shipped |
+| [07](07-request-id-middleware.md) | Distributed `X-Request-ID` Tracing Middleware | Observability | Shipped |
+| [08](08-login-failures-admin-endpoint.md) | Officer Security Endpoint for Unmatched Login Triage | Security | Shipped |
+| [09](09-attendance-session-codes.md) | Physical Presence Verification with 6-Digit Rotating Whiteboard PINs | Anti-Fraud | Shipped |
+| [10](10-normal-warning-tier.md) | Three-Tier Disciplinary Matrix with Normal Warning (`-15 pts`) | Governance | Shipped |
+| [11](11-duplicate-claim-prevention-engine.md) | Automated Multi-Vector Duplicate Claim Prevention Engine | Anti-Fraud | Shipped |
+| [12](12-member-contact-fields-and-personal-email-auth.md) | Student Schema Expansion & Personal Email Google OAuth Alignment | Auth / Data | Shipped |
+| [13](13-officer-productivity-and-export-suite.md) | Batch Adjustment Modal, Inactivity Radar & UTF-8 BOM CSV Exporter | Officer UX | Shipped |
+| [14](14-google-form-csv-import-auto-mapper.md) | Google Form 14-Question CSV Auto-Mapper & 11-Card Pre-Flight Wizard | Onboarding | Shipped |
+| [15](15-standalone-telegram-bot-service.md) | Standalone Telegram Bot Microservice (Port 8001) & Real-Time Push | Notifications | Shipped |
+| [16](16-attendance-and-punctuality-engine.md) | Attendance & Punctuality Engine with 15-Min Late Detection & Club Sessions | Presence | Shipped |
+| [17](17-modular-architecture-and-feature-sliced-design.md) | Modular Domain Schemas, Sliced Query Hooks & Backend Repository Layer | Architecture | Shipped |
 
-Phase 2 items (Telegram bot, rate limiting) are tracked in [`PROJECT_ANALYSIS_AND_ROADMAP.md`](../PROJECT_ANALYSIS_AND_ROADMAP.md).
+---
+
+For the complete architectural roadmap and executive audit scorecards, refer to [`PROJECT_ANALYSIS_AND_ROADMAP.md`](../PROJECT_ANALYSIS_AND_ROADMAP.md).
