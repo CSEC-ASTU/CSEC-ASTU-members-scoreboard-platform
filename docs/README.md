@@ -22,6 +22,7 @@ docs/
 ├── README.md                              # Central Documentation Portal (You are here)
 ├── PROJECT_ANALYSIS_AND_ROADMAP.md        # 100/100 Comprehensive Engineering Audit & Roadmap
 ├── ARCHITECTURE_UPDATE_GUIDE.md           # Modularization Guide & Separation of Concerns Blueprint
+├── AUDIT_REMEDIATION_PLAN.md              # 20-Min Implementation Plan for Audit Remediation & Hardening
 ├── api-contract.md                        # Exhaustive REST API Specification (Endpoints, DTOs, Auth)
 ├── design-guide.md                        # Notion Database Design System & Visual Tokens
 ├── bot-integration-guide.md               # Standalone Telegram Bot Architecture (Port 8001)
