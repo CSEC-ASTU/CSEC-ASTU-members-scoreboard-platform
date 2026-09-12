@@ -1,0 +1,46 @@
+name: Keep-Alive Ping Services
+
+on:
+  schedule:
+    # Runs every 10 minutes (Render services spin down after 15 minutes of inactivity)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+concurrency:
+  group: keep-alive-pings
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping Render Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Web Backend & Telegram Bot
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          BOT_URL: ${{ secrets.TELEGRAM_BOT_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$BOT_URL" ]; then
+            echo "::error::BACKEND_URL or TELEGRAM_BOT_URL secret is not configured in repository secrets."
+            echo "Please configure both secrets under Repository Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "----------------------------------------------------"
+
+          echo "Pinging Web Backend..."
+          BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code} (took %{time_total}s)" \
+            --retry 2 --retry-delay 5 --max-time 60 "${BACKEND_URL%/}/api/v1/health" || echo "FAILED")
+          echo "  -> Backend [/api/v1/health]: $BACKEND_CODE"
+
+          echo "Pinging Telegram Bot API..."
+          BOT_CODE=$(curl -s -o /dev/null -w "%{http_code} (took %{time_total}s)" \
+            --retry 2 --retry-delay 5 --max-time 60 "${BOT_URL%/}/health" || echo "FAILED")
+          echo "  -> Telegram Bot [/health]: $BOT_CODE"
+
+          echo "----------------------------------------------------"
+          echo "Keep-alive ping cycle completed successfully."
+
