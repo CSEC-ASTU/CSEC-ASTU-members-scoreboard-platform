@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.core.permissions import has_permission
+from app.core.permissions import has_permission, is_club_wide_officer
 from app.dependencies import DbSession, RequireUser
 from app.models import LoginAttemptFailure, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
@@ -67,8 +67,12 @@ async def audit_log(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
 ) -> Paginated[PointEventOut]:
-    if user.member.role != MemberRole.PRESIDENT:
-        raise HTTPException(status_code=403, detail="President only")
+    if not (
+        user.member.role in {MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT}
+        or is_club_wide_officer(user.member)
+        or has_permission(user.permissions, "view_audit_log")
+    ):
+        raise HTTPException(status_code=403, detail="President or authorized officer only")
 
     q = select(PointEvent).options(
         selectinload(PointEvent.member),

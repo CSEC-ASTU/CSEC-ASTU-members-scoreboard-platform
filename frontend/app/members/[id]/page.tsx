@@ -142,6 +142,7 @@ export default function MemberProfilePage() {
       name: memberData.full_name,
       email: memberData.email,
       avatar: memberData.profile_image_url ?? undefined,
+      profileImageUrl: memberData.profile_image_url ?? undefined,
       division: primaryDivisionName as any,
       department: memberData.department || "Engineering",
       joiningYear: memberData.joining_year || 2024,
@@ -149,7 +150,10 @@ export default function MemberProfilePage() {
       isActive: memberData.is_active,
       onboarded: true,
       permissions: [],
-    }
+      careerScore: memberData.scores?.career_score ?? memberData.career_score ?? 0,
+      cycleScore: memberData.scores?.cycle_score ?? memberData.cycle_score ?? 0,
+      badge: memberData.scores?.badge ?? memberData.badge ?? null,
+    } as Member
   }, [memberData, primaryDivisionName])
 
   const warnings = useMemo(() => {
@@ -338,7 +342,7 @@ export default function MemberProfilePage() {
                   <QrCode className="mr-1.5 h-3.5 w-3.5 text-zinc-600 dark:text-zinc-300" /> Laptop Sticker QR
                 </Button>
 
-                <Link href="/profile/achievement">
+                <Link href={`/profile/achievement?id=${member.id}`}>
                   <Button variant="outline" size="sm" className="h-9 text-xs">
                     <Award className="mr-1.5 h-3.5 w-3.5" /> Achievement Card
                   </Button>

@@ -89,6 +89,7 @@ async def create_task(body: TaskCreate, db: DbSession, user: RequireUser) -> Tas
         task.division_id = user.member.division_id
     db.add(task)
     await db.flush()
+    await db.refresh(task)
     return TaskOut.model_validate(task)
 
 
@@ -111,4 +112,5 @@ async def update_task(task_id: UUID, body: TaskUpdate, db: DbSession, user: Requ
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(task, field, value)
     await db.flush()
+    await db.refresh(task)
     return TaskOut.model_validate(task)

@@ -10,9 +10,10 @@ import List02 from "@/components/kokonutui/list-02"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { useCurrentUser } from "@/components/user-context"
 import { TASK_CATEGORY_LABELS, PLATFORM_SETTINGS, type PointEvent, type TaskDef, type TaskCategory } from "@/lib/csec-data"
-import { Plus, CheckCircle2, Clock, AlertCircle, Zap, ShieldAlert, KeyRound } from "lucide-react"
+import { Plus, CheckCircle2, Clock, AlertCircle, Zap, ShieldAlert, KeyRound, Search, X } from "lucide-react"
 import { tasksService, pointEventsService, divisionsService, type TaskOut, type PointEventOut, type DivisionOut } from "@/lib/api"
 import { TasksSkeleton } from "@/components/csec/skeletons"
 import { useTasks, useMemberEvents, useDivisions, useCreateClaimMutation } from "@/lib/hooks/use-queries"
@@ -28,6 +29,15 @@ export default function TasksPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedDivisionFilter, setSelectedDivisionFilter] = useState<string>("all")
+  const [taskSearchQuery, setTaskSearchQuery] = useState("")
+  const [debouncedTaskSearch, setDebouncedTaskSearch] = useState("")
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTaskSearch(taskSearchQuery.trim().toLowerCase())
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [taskSearchQuery])
 
   const tasks: TaskOut[] = useMemo(() => {
     return Array.isArray(tasksData) ? tasksData : (tasksData as any)?.items ?? []
@@ -83,6 +93,16 @@ export default function TasksPage() {
 
   const isClubOfficer = currentUser.role === "president" || currentUser.role === "vice_president"
 
+  const totalEligibleTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (!t.active) return false
+      if (!isClubOfficer && t.division_id && !memberDivisionIds.has(t.division_id)) {
+        return false
+      }
+      return true
+    }).length
+  }, [tasks, isClubOfficer, memberDivisionIds])
+
   const visibleTasks = useMemo(() => {
     return tasks
       .filter((t) => {
@@ -104,6 +124,19 @@ export default function TasksPage() {
         ) {
           return false
         }
+        if (debouncedTaskSearch) {
+          const titleMatch = t.title.toLowerCase().includes(debouncedTaskSearch)
+          const descMatch = t.description?.toLowerCase().includes(debouncedTaskSearch)
+          const catLabel = TASK_CATEGORY_LABELS[t.category as TaskCategory] || ""
+          const catMatch =
+            catLabel.toLowerCase().includes(debouncedTaskSearch) ||
+            t.category.toLowerCase().includes(debouncedTaskSearch)
+          const divName = t.division_id ? divisionsMap[t.division_id]?.toLowerCase() : "club-wide"
+          const divMatch = divName?.includes(debouncedTaskSearch)
+          if (!titleMatch && !descMatch && !catMatch && !divMatch) {
+            return false
+          }
+        }
         return true
       })
       .map((t) => ({
@@ -116,7 +149,7 @@ export default function TasksPage() {
         isPenalty: t.is_penalty,
         division_id: t.division_id,
       }))
-  }, [tasks, selectedCategory, selectedDivisionFilter, memberDivisionIds, isClubOfficer])
+  }, [tasks, selectedCategory, selectedDivisionFilter, memberDivisionIds, isClubOfficer, debouncedTaskSearch, divisionsMap])
 
   async function submitClaim(
     task: TaskDef & { division_id?: string | null },
@@ -174,6 +207,49 @@ export default function TasksPage() {
                   <strong>Attendance &amp; Task Integrity:</strong> If you are not actually present in a session or did not complete the duty, please do not submit a claim. Submitting false claims will result in negative point deductions, official warnings, or club dismissal.
                 </span>
               </div>
+            </div>
+
+            {/* Debounced Search Bar & Counter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search tasks by title, description, division..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 h-9 text-xs bg-zinc-50/80 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 rounded-xl"
+                />
+                {taskSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setTaskSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {(debouncedTaskSearch || selectedCategory !== "all" || selectedDivisionFilter !== "all") && (
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span>
+                    Showing <strong>{visibleTasks.length}</strong> of {totalEligibleTasks} tasks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTaskSearchQuery("")
+                      setSelectedCategory("all")
+                      setSelectedDivisionFilter("all")
+                    }}
+                    className="text-violet-600 hover:underline dark:text-violet-400 text-xs font-medium cursor-pointer"
+                  >
+                    Reset filters
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Division filter pills */}
@@ -248,77 +324,103 @@ export default function TasksPage() {
               ))}
             </div>
 
-            {/* Task grid */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {visibleTasks.map((task) => {
-                const isAutoApprove =
-                  Math.abs(task.points) <= PLATFORM_SETTINGS.autoApproveClaimMaxPoints && !task.isPenalty
-                const taskDivName = task.division_id ? divisionsMap[task.division_id] : null
-                const isEligible = !task.division_id || memberDivisionIds.has(task.division_id)
+            {/* Task grid or Empty State */}
+            {visibleTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-400 mb-3">
+                  <Search className="h-5 w-5" />
+                </div>
+                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No tasks found</h4>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 max-w-sm">
+                  {debouncedTaskSearch
+                    ? `We couldn't find any tasks matching "${taskSearchQuery}". Try another keyword or reset filters.`
+                    : "No active tasks match your selected division or category filters."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTaskSearchQuery("")
+                    setSelectedCategory("all")
+                    setSelectedDivisionFilter("all")
+                  }}
+                  className="mt-4 text-xs rounded-xl"
+                >
+                  Reset filters &amp; search
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {visibleTasks.map((task) => {
+                  const isAutoApprove =
+                    Math.abs(task.points) <= PLATFORM_SETTINGS.autoApproveClaimMaxPoints && !task.isPenalty
+                  const taskDivName = task.division_id ? divisionsMap[task.division_id] : null
+                  const isEligible = !task.division_id || memberDivisionIds.has(task.division_id)
 
-                return (
-                  <div
-                    key={task.id}
-                    className="flex flex-col justify-between rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-6 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-0.5 hover:border-violet-500/30 transition-all duration-300"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300">
-                            {TASK_CATEGORY_LABELS[task.category as TaskCategory] || task.category}
+                  return (
+                    <div
+                      key={task.id}
+                      className="flex flex-col justify-between rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-zinc-900/40 backdrop-blur-xl p-6 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-0.5 hover:border-violet-500/30 transition-all duration-300"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300">
+                              {TASK_CATEGORY_LABELS[task.category as TaskCategory] || task.category}
+                            </span>
+                            {taskDivName ? (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
+                                {taskDivName}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
+                                Club-Wide
+                              </span>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/10 tabular-nums">
+                            +{task.points} pts
                           </span>
-                          {taskDivName ? (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
-                              {taskDivName}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
-                              Club-Wide
-                            </span>
-                          )}
                         </div>
-                        <span className="shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/10 tabular-nums">
-                          +{task.points} pts
-                        </span>
+                        <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">{task.title}</h3>
+                        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{task.description}</p>
                       </div>
-                      <h3 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">{task.title}</h3>
-                      <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{task.description}</p>
-                    </div>
 
-                    <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/[0.06] space-y-3">
-                      {task.category === "division_session" ? (
-                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-                          <KeyRound className="h-3.5 w-3.5" /> Requires Whiteboard PIN
-                        </div>
-                      ) : isAutoApprove ? (
-                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-                          <Zap className="h-3.5 w-3.5" /> Auto-approved (low-stakes claim)
-                        </div>
-                      ) : null}
+                      <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/[0.06] space-y-3">
+                        {task.category === "division_session" ? (
+                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                            <KeyRound className="h-3.5 w-3.5" /> Requires Whiteboard PIN
+                          </div>
+                        ) : isAutoApprove ? (
+                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                            <Zap className="h-3.5 w-3.5" /> Auto-approved (low-stakes claim)
+                          </div>
+                        ) : null}
 
-                      {!isEligible ? (
-                        <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-1.5">
-                          <ShieldAlert className="h-3.5 w-3.5 text-zinc-400" />
-                          <span>Restricted to {taskDivName} members</span>
-                        </div>
-                      ) : (
-                        <ClaimDialog
-                          task={task}
-                          taskDivisionName={taskDivName}
-                          memberDivisions={memberDivisions}
-                          onSubmit={(payload) => submitClaim(task, payload)}
-                          trigger={
-                            <Button className="w-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 rounded-xl transition-all duration-200" size="sm">
-                              <Plus className="mr-1.5 h-4 w-4" /> Submit Claim
-                            </Button>
-                          }
-                        />
-                      )}
+                        {!isEligible ? (
+                          <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-1.5">
+                            <ShieldAlert className="h-3.5 w-3.5 text-zinc-400" />
+                            <span>Restricted to {taskDivName} members</span>
+                          </div>
+                        ) : (
+                          <ClaimDialog
+                            task={task}
+                            taskDivisionName={taskDivName}
+                            memberDivisions={memberDivisions}
+                            onSubmit={(payload) => submitClaim(task, payload)}
+                            trigger={
+                              <Button className="w-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 rounded-xl transition-all duration-200" size="sm">
+                                <Plus className="mr-1.5 h-4 w-4" /> Submit Claim
+                              </Button>
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="claims" className="mt-4 space-y-4">

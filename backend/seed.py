@@ -5,11 +5,11 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 
 from app.database import AsyncSessionLocal
-from app.models import Division, Member, Permission, PlatformSetting, Task
-from app.models.enums import MemberRole, PermissionScopeType
+from app.models import Division, Member, Permission, PlatformSetting, Task, PointEvent
+from app.models.enums import MemberRole, PermissionScopeType, PointEventStatus, PointEventType
 
 DIVISIONS_DATA = [
     {"name": "Capacity Building", "description": "Workshops, mentoring, external outreach, peer tutoring, and club leadership."},
@@ -321,6 +321,49 @@ async def run_seed() -> None:
             president.google_id = PRESIDENT_GOOGLE_ID
             president.division_id = dev_division.id if dev_division else president.division_id
             print(f"  [*] Updated President Member: {president.full_name} <{president.email}>")
+
+        # 8. Seed Sample Audit Trail Point Events if none exist
+        pe_count = (await db.execute(select(func.count()).select_from(PointEvent))).scalar() or 0
+        if pe_count == 0 and president:
+            print("  [+] Seeding Initial Sample Audit Log Point Events...")
+            cleaning_task = (await db.execute(select(Task).where(Task.title == "Weekly Lab Cleaning Duty"))).scalars().first()
+            gamenight_task = (await db.execute(select(Task).where(Task.title == "Game Night Attendance"))).scalars().first()
+
+            sample_events = [
+                PointEvent(
+                    member_id=president.id,
+                    task_id=cleaning_task.id if cleaning_task else None,
+                    event_type=PointEventType.CLAIM,
+                    points_delta=15,
+                    reason="Completed scheduled weekly lab hardware & desk cleaning",
+                    status=PointEventStatus.APPROVED,
+                    approved_by=president.id,
+                    academic_year=2026,
+                ),
+                PointEvent(
+                    member_id=president.id,
+                    task_id=gamenight_task.id if gamenight_task else None,
+                    event_type=PointEventType.CLAIM,
+                    points_delta=25,
+                    reason="Attended bi-weekly club game night session",
+                    status=PointEventStatus.APPROVED,
+                    approved_by=president.id,
+                    academic_year=2026,
+                ),
+                PointEvent(
+                    member_id=president.id,
+                    task_id=None,
+                    event_type=PointEventType.MANUAL_ADJUSTMENT,
+                    points_delta=50,
+                    reason="Initial officer orientation buffer points grant",
+                    status=PointEventStatus.APPROVED,
+                    approved_by=president.id,
+                    academic_year=2026,
+                ),
+            ]
+            for ev in sample_events:
+                db.add(ev)
+            print("  [+] Added 3 initial audit trail ledger records.")
 
         await db.commit()
     print("Seeding completed successfully!")

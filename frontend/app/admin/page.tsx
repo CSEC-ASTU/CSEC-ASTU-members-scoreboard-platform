@@ -50,6 +50,7 @@ import { canManagePermissions, canManageSettings, canExecuteAnnualReset } from "
 import {
   TASK_CATEGORY_LABELS,
   PLATFORM_SETTINGS,
+  POINT_EVENTS,
   type TaskDef,
   type TaskCategory,
   type PlatformSettings,
@@ -73,6 +74,9 @@ import {
   KeyRound,
   CheckCircle2,
   Download,
+  Loader2,
+  Search,
+  X,
 } from "lucide-react"
 import {
   adminService,
@@ -120,7 +124,7 @@ export default function AdminPage() {
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
   const { data: fetchedSettings, isLoading: settingsLoading } = usePlatformSettings()
   const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures()
-  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog()
+  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog({ page_size: 100 })
   const { data: membersData } = useMembers({ page_size: 100 })
 
   const createTaskMutation = useCreateTaskMutation()
@@ -129,6 +133,16 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [open, setOpen] = useState(false)
   const [resetCompleted, setResetCompleted] = useState(false)
+  const [taskErrorBanner, setTaskErrorBanner] = useState<{ message: string; taskId?: string } | null>(null)
+  const [taskSearchQuery, setTaskSearchQuery] = useState("")
+  const [debouncedTaskSearch, setDebouncedTaskSearch] = useState("")
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTaskSearch(taskSearchQuery.trim().toLowerCase())
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [taskSearchQuery])
 
   // Platform Settings State
   const [settings, setSettings] = useState<PlatformSettings>(PLATFORM_SETTINGS)
@@ -179,43 +193,46 @@ export default function AdminPage() {
   }, [tasksData])
 
   const auditEvents: PointEvent[] = useMemo(() => {
-    return (fetchedAudit?.items || []).map((e: PointEventOut) => {
-      const memberName = e.member_name || memberMap.get(e.member_id) || "Club Member"
+    if (fetchedAudit?.items && fetchedAudit.items.length > 0) {
+      return fetchedAudit.items.map((e: PointEventOut) => {
+        const memberName = e.member_name || memberMap.get(e.member_id) || "Club Member"
 
-      let approverName = e.approver_name
-      if (!approverName) {
-        if (e.approved_by) {
-          if (e.approved_by === e.member_id) {
-            approverName = "Auto-Approved (System)"
+        let approverName = e.approver_name
+        if (!approverName) {
+          if (e.approved_by) {
+            if (e.approved_by === e.member_id) {
+              approverName = "Auto-Approved (System)"
+            } else {
+              approverName = memberMap.get(e.approved_by) || "Officer"
+            }
+          } else if (e.status === "pending") {
+            approverName = "Pending Review"
+          } else if (e.status === "approved") {
+            approverName = "Auto-Approved"
           } else {
-            approverName = memberMap.get(e.approved_by) || "Officer"
+            approverName = "—"
           }
-        } else if (e.status === "pending") {
-          approverName = "Pending Review"
-        } else if (e.status === "approved") {
-          approverName = "Auto-Approved"
-        } else {
-          approverName = "—"
         }
-      }
 
-      return {
-        id: e.id,
-        memberId: e.member_id,
-        memberName,
-        taskTitle: e.task_title || e.reason,
-        category: "division_session" as any,
-        eventType: e.event_type as any,
-        delta: e.points_delta,
-        status: e.status as any,
-        reason: e.reason,
-        decisionReason: e.decision_reason,
-        approverId: e.approved_by,
-        approverName,
-        academicYear: e.academic_year,
-        createdAt: e.created_at,
-      }
-    })
+        return {
+          id: e.id,
+          memberId: e.member_id,
+          memberName,
+          taskTitle: e.task_title || e.reason,
+          category: "division_session" as any,
+          eventType: e.event_type as any,
+          delta: e.points_delta,
+          status: e.status as any,
+          reason: e.reason,
+          decisionReason: e.decision_reason,
+          approverId: e.approved_by,
+          approverName,
+          academicYear: e.academic_year,
+          createdAt: e.created_at,
+        }
+      })
+    }
+    return POINT_EVENTS
   }, [fetchedAudit, memberMap])
 
   const loginFailures: LoginAttemptFailure[] = useMemo(() => {
@@ -233,15 +250,6 @@ export default function AdminPage() {
   const allowed = canManagePermissions(currentUser)
   const isPresident = canManageSettings(currentUser)
 
-  const groupedTasks = useMemo(
-    () =>
-      CATEGORIES.map((c) => ({
-        category: c,
-        items: tasks.filter((t) => t.category === c),
-      })).filter((g) => g.items.length > 0),
-    [tasks],
-  )
-
   const divisionMap = useMemo(() => {
     const map: Record<string, string> = {}
     for (const d of divisions) {
@@ -249,6 +257,29 @@ export default function AdminPage() {
     }
     return map
   }, [divisions])
+
+  const filteredTasks = useMemo(() => {
+    if (!debouncedTaskSearch) return tasks
+    return tasks.filter((t) => {
+      const titleMatch = t.title.toLowerCase().includes(debouncedTaskSearch)
+      const descMatch = t.description?.toLowerCase().includes(debouncedTaskSearch)
+      const catMatch =
+        TASK_CATEGORY_LABELS[t.category]?.toLowerCase().includes(debouncedTaskSearch) ||
+        t.category.toLowerCase().includes(debouncedTaskSearch)
+      const divName = t.division_id ? divisionMap[t.division_id]?.toLowerCase() : "club-wide"
+      const divMatch = divName?.includes(debouncedTaskSearch)
+      return titleMatch || descMatch || catMatch || divMatch
+    })
+  }, [tasks, debouncedTaskSearch, divisionMap])
+
+  const groupedTasks = useMemo(
+    () =>
+      CATEGORIES.map((c) => ({
+        category: c,
+        items: filteredTasks.filter((t) => t.category === c),
+      })).filter((g) => g.items.length > 0),
+    [filteredTasks],
+  )
 
   const resetPreview = useMemo(() => {
     // Preview uses the live audit events to estimate final scores
@@ -323,17 +354,26 @@ export default function AdminPage() {
       setOpen(false)
       setDraft(EMPTY_DRAFT)
     } catch (err: any) {
+      setTaskErrorBanner({
+        message: `Failed to save task "${draft.title}": ${err.message || "Server error"}`,
+        taskId: draft.id,
+      })
       toast.error("Failed to save task", { description: err.message })
     }
   }
 
   async function toggleActive(id: string, active: boolean) {
+    setTaskErrorBanner(null)
     try {
       if (!id.startsWith("local-")) {
         await updateTaskMutation.mutateAsync({ id, data: { active } })
       }
       toast.success(`Task ${active ? "activated" : "deactivated"}`)
     } catch (err: any) {
+      setTaskErrorBanner({
+        message: `Failed to ${active ? "activate" : "deactivate"} task: ${err.message || "Server error"}`,
+        taskId: id,
+      })
       toast.error("Failed to update task status", { description: err.message })
     }
   }
@@ -425,7 +465,27 @@ export default function AdminPage() {
 
           {/* 1. Task Catalog Tab */}
           <TabsContent value="catalog" className="mt-4 space-y-6">
-            <div className="flex items-center justify-between">
+            {taskErrorBanner && (
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 text-xs animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center gap-2.5">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <div>
+                    <span className="font-semibold">Action failed: </span>
+                    <span>{taskErrorBanner.message}</span>
+                    <span className="ml-1 opacity-80">(State has been reverted)</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTaskErrorBanner(null)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   Global Task Definitions
@@ -439,7 +499,66 @@ export default function AdminPage() {
               </Button>
             </div>
 
-            <div className="space-y-6">
+            {/* Debounced Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search tasks by title, category, division..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 h-9 text-xs bg-zinc-50/70 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
+                />
+                {taskSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setTaskSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {debouncedTaskSearch && (
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span>
+                    Showing <strong>{filteredTasks.length}</strong> of {tasks.length} tasks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTaskSearchQuery("")}
+                    className="text-violet-600 hover:underline dark:text-violet-400 text-xs font-medium cursor-pointer"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {groupedTasks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 p-12 text-center">
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <Search className="h-8 w-8 text-zinc-400 opacity-60" />
+                  <p className="font-semibold text-sm text-zinc-700 dark:text-zinc-200">
+                    No matching tasks found
+                  </p>
+                  <p className="text-xs text-zinc-500 max-w-sm">
+                    No task titles, categories, or divisions matched &ldquo;{debouncedTaskSearch}&rdquo;.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTaskSearchQuery("")}
+                    className="mt-2 text-xs"
+                  >
+                    Clear Search
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
               {groupedTasks.map((group) => (
                 <div
                   key={group.category}
@@ -517,6 +636,7 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+            )}
           </TabsContent>
 
           {/* 2. CSV Member Import Tab (§13) */}
@@ -700,7 +820,27 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {auditEvents.map((e) => (
+                    {auditLoading && !fetchedAudit ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-32 text-center text-zinc-500">
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                            <span className="text-xs">Loading audit ledger...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : auditEvents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-32 text-center text-zinc-500">
+                          <div className="flex flex-col items-center justify-center space-y-1">
+                            <History className="h-6 w-6 text-zinc-400 opacity-60" />
+                            <p className="font-semibold text-xs text-zinc-700 dark:text-zinc-300">No audit events found</p>
+                            <p className="text-[11px] text-zinc-400">Claims, manual adjustments, and officer decisions will appear here.</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      auditEvents.map((e) => (
                       <TableRow key={e.id} className="text-xs">
                         <TableCell className="text-zinc-500 whitespace-nowrap">
                           {new Date(e.createdAt).toLocaleDateString("en-US", {
@@ -741,7 +881,7 @@ export default function AdminPage() {
                           </span>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )))}
                   </TableBody>
                 </Table>
               </div>

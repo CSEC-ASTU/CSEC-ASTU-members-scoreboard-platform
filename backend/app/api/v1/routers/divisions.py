@@ -29,6 +29,7 @@ async def create_division(body: DivisionCreate, db: DbSession, user: RequireUser
     div = Division(name=body.name, description=body.description)
     db.add(div)
     await db.flush()
+    await db.refresh(div)
     return DivisionOut.model_validate(div)
 
 
@@ -54,6 +55,7 @@ async def update_division(
     if body.description is not None:
         div.description = body.description
     await db.flush()
+    await db.refresh(div)
     return DivisionOut.model_validate(div)
 
 

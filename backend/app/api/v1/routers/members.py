@@ -332,10 +332,9 @@ async def member_point_events(
 
 @router.get("/{member_id}/achievement-card", response_model=AchievementCardOut)
 async def achievement_card(member_id: UUID, db: DbSession, user: RequireUser) -> AchievementCardOut:
-    # Phase 1: owner only
-    if user.id != member_id:
-        raise HTTPException(status_code=403, detail="Achievement card is private in Phase 1")
-    m = user.member
+    m = await db.get(Member, member_id)
+    if m is None or not can_see_member(user.member, m, user.permissions):
+        raise HTTPException(status_code=404, detail="Member not found")
     scores = await fetch_member_scores(db, m.id)
     cap = await get_score_cap(db)
     multipliers = await get_badge_multipliers(db)

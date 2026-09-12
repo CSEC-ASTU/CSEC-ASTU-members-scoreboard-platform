@@ -36,11 +36,37 @@ export function AchievementCard({
   const badge = (member as any).badge ?? getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
 
   function copyShareLink() {
-    const url = typeof window !== "undefined" ? `${window.location.origin}/members/${member.id}` : ""
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/profile/achievement?id=${member.id}`
+        : ""
     navigator.clipboard.writeText(url)
     setCopied(true)
     toast.success("Share link copied to clipboard!")
     setTimeout(() => setCopied(false), 2500)
+  }
+
+  async function shareCard() {
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/profile/achievement?id=${member.id}`
+        : ""
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          title: `${member.name}'s Achievement Card · CSEC ASTU`,
+          text: `Check out ${member.name}'s official CSEC ASTU achievement record and score!`,
+          url,
+        })
+        return
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          toast.info("Achievement card ready for LinkedIn and social sharing!")
+        }
+        return
+      }
+    }
+    copyShareLink()
   }
 
   return (
@@ -138,9 +164,7 @@ export function AchievementCard({
           {copied ? "Copied!" : "Copy Share Link"}
         </Button>
         <Button
-          onClick={() => {
-            toast.info("Achievement card ready for LinkedIn and social sharing!")
-          }}
+          onClick={shareCard}
           className="flex-1"
           size="sm"
         >

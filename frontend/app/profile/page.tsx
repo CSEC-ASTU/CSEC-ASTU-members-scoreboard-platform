@@ -20,6 +20,7 @@ import {
   ROLE_LABELS,
   PLATFORM_SETTINGS,
 } from "@/lib/csec-data"
+import { LaptopStickerDialog } from "@/components/csec/laptop-sticker-dialog"
 import {
   Trophy,
   Sparkles,
@@ -37,6 +38,7 @@ import {
   Copy,
   Loader2,
   Trash2,
+  QrCode,
 } from "lucide-react"
 import { authService } from "@/lib/api"
 
@@ -50,6 +52,7 @@ export default function ProfilePage() {
   const [telegramConnectData, setTelegramConnectData] = useState<{ token: string; link: string | null } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [stickerDialogOpen, setStickerDialogOpen] = useState(false)
 
   const { data: divisionsData, isLoading: divsLoading } = useDivisions()
   const { data: settingsData, isLoading: settingsLoading } = usePlatformSettings()
@@ -216,11 +219,20 @@ export default function ProfilePage() {
           title="My Profile &amp; Settings"
           description="Manage your club details, view lifetime annual histories, and export your achievement card."
           action={
-            <Link href="/profile/achievement">
-              <Button size="sm">
-                <Award className="mr-1.5 h-4 w-4" /> Shareable Achievement Card
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStickerDialogOpen(true)}
+              >
+                <QrCode className="mr-1.5 h-4 w-4 text-zinc-600 dark:text-zinc-300" /> Laptop Sticker QR
               </Button>
-            </Link>
+              <Link href="/profile/achievement">
+                <Button size="sm">
+                  <Award className="mr-1.5 h-4 w-4" /> Shareable Achievement Card
+                </Button>
+              </Link>
+            </div>
           }
         />
 
@@ -595,6 +607,22 @@ export default function ProfilePage() {
         </div>
       </div>
       )}
+
+      {/* Laptop Sticker QR Dialog */}
+      <LaptopStickerDialog
+        open={stickerDialogOpen}
+        onOpenChange={setStickerDialogOpen}
+        member={{
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          division: primaryDivisionName,
+          secondaryDivision: secondaryDivisionName,
+          joiningYear: currentUser.joiningYear || 2024,
+          role: currentUser.role,
+          profileImageUrl: currentUser.profileImageUrl,
+        }}
+      />
     </Layout>
   )
 }
