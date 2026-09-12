@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -27,10 +28,13 @@ from app.models import (
 logger = logging.getLogger(__name__)
 
 HELP_TEXT = (
-    "CSEC ASTU bot commands:\n"
-    "/start <token> — connect your account (use the link from the web app)\n"
-    "/status — show whether your Telegram is linked\n"
-    "/help — this message"
+    "🤖 <b>CSEC-ASTU Member Bot</b> 🚀\n"
+    "<i>Your companion for club duties, verified point alerts & recognition!</i>\n\n"
+    "📋 <b>Available Commands:</b>\n"
+    "• <code>/status</code> — Check if your Telegram is linked to your profile\n"
+    "• <code>/help</code> — Show this handy guide\n"
+    "• <code>/start &lt;token&gt;</code> — Link your account from the web dashboard\n\n"
+    "💡 <i>Need to connect? Tap <b>Connect Telegram</b> inside your web profile!</i>"
 )
 
 
@@ -50,7 +54,12 @@ async def send_telegram_message(settings: Settings, chat_id: str, text: str) -> 
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(
                 url,
-                json={"chat_id": chat_id, "text": text, "disable_web_page_preview": True},
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
             )
             if resp.status_code != 200:
                 logger.warning("Telegram send failed: %s %s", resp.status_code, resp.text)
@@ -94,48 +103,73 @@ async def complete_handshake(
 def _compose_message(
     event: PointEvent, member: Member, task: Task | None
 ) -> tuple[NotificationType, str]:
-    name = member.full_name.split()[0] if member.full_name else "there"
-    reason = event.reason.strip()
+    raw_name = member.full_name.split()[0] if member.full_name else "there"
+    name = html.escape(raw_name)
+    reason = html.escape((event.reason or "").strip())
+    sign_pts = f"{event.points_delta:+d}"
 
     if event.event_type == PointEventType.NORMAL_WARNING:
         return NotificationType.NORMAL_WARNING, (
-            f"Hi {name}, a standard warning has been logged on your CSEC ASTU record "
-            f"({event.points_delta:+d} points).\n\nReason: {reason}\n\n"
-            "This penalty has been recorded in the ledger. Please ensure you remain aligned with club responsibilities."
+            f"⚠️ <b>Notice: Standard Warning Logged</b>\n\n"
+            f"Hi <b>{name}</b>, a standard penalty has been recorded on your CSEC ASTU ledger.\n\n"
+            f"🔻 <b>Deduction:</b> <code>{sign_pts} pts</code>\n"
+            f"📌 <b>Reason:</b> <i>{reason}</i>\n\n"
+            "Please ensure you stay aligned with your division commitments. "
+            "Consistent participation is vital for all active club members."
         )
     if event.event_type == PointEventType.YELLOW_WARNING:
         return NotificationType.YELLOW_WARNING, (
-            f"Hi {name}, a yellow warning has been logged on your CSEC ASTU record "
-            f"({event.points_delta:+d} points).\n\nReason: {reason}\n\n"
-            "This is a course-correction notice. Continued issues can lead to a red warning. "
-            "Reach out to your division head if you need clarity."
+            f"🟡 <b>Official Warning: Yellow Flag</b>\n\n"
+            f"Hi <b>{name}</b>, an official yellow warning has been issued on your record.\n\n"
+            f"🔻 <b>Deduction:</b> <code>{sign_pts} pts</code>\n"
+            f"📌 <b>Reason:</b> <i>{reason}</i>\n\n"
+            "⚠️ <i>This is a formal course-correction notice. Continued infractions may escalate to a Red Warning "
+            "or role reassignment. Please contact your Division Head promptly.</i>"
         )
     if event.event_type == PointEventType.RED_WARNING:
         return NotificationType.RED_WARNING, (
-            f"Hi {name}, a red warning has been logged ({event.points_delta:+d} points).\n\n"
-            f"Reason: {reason}\n\n"
-            "This is a last-chance notice before possible role reassignment or layoff. "
-            "Please speak with an officer promptly."
+            f"🚨 <b>URGENT: Red Warning Issued</b>\n\n"
+            f"Hi <b>{name}</b>, a critical red warning has been placed on your account.\n\n"
+            f"🔻 <b>Deduction:</b> <code>{sign_pts} pts</code>\n"
+            f"📌 <b>Reason:</b> <i>{reason}</i>\n\n"
+            "🛑 <b>Action Required:</b> This is your final notice before official membership suspension or layoff. "
+            "Please arrange an immediate meeting with club leadership."
         )
     if event.event_type == PointEventType.LAYOFF:
         return NotificationType.LAYOFF, (
-            f"Hi {name}, your membership status has been set to inactive "
-            f"({event.points_delta:+d} ledger entry).\n\nReason: {reason}\n\n"
-            "If you believe this needs review, contact the club president."
+            f"🛑 <b>Membership Status Update: Inactive</b>\n\n"
+            f"Hi <b>{name}</b>, your membership status in CSEC ASTU has been transitioned to <b>Inactive</b>.\n\n"
+            f"📊 <b>Ledger Adjustment:</b> <code>{sign_pts} pts</code>\n"
+            f"📌 <b>Reason:</b> <i>{reason}</i>\n\n"
+            "If you believe this status requires review or you have mitigating circumstances, "
+            "please reach out directly to the Club President."
         )
 
-    title = task.title if task else "contribution"
-    category = (task.category if task else "") or ""
+    raw_title = task.title if task else "contribution"
+    title = html.escape(raw_title)
+    category = html.escape((task.category if task else "") or "")
+
     if "streak" in title.lower() or "streak" in reason.lower():
         return NotificationType.STREAK, (
-            f"Nice work, {name}! Streak bonus recorded ({event.points_delta:+d}): {title}.\n"
-            "Keep the streak going."
+            f"🔥 <b>Streak Milestone Unlocked!</b> 🔥\n\n"
+            f"Incredible consistency, <b>{name}</b>! You've been awarded a streak bonus:\n\n"
+            f"⚡ <b>Achievement:</b> {title}\n"
+            f"💎 <b>Bonus:</b> <code>{sign_pts} pts</code>\n\n"
+            "<i>Consistency is what makes great engineers. Keep the fire burning!</i> 🚀"
         )
+
+    cat_line = f"\n🏷️ <b>Category:</b> {category.replace('_', ' ').title()}" if category else ""
+    reason_line = f"\n📝 <i>\"{reason}\"</i>" if reason else ""
+
     text = (
-        f"Well done, {name}! You earned {event.points_delta:+d} points for: {title}.\n{reason}"
+        f"🏆 <b>Points Awarded!</b> ⚡\n\n"
+        f"Way to go, <b>{name}</b>! Your claim has been verified and recorded on the ledger:\n\n"
+        f"🎯 <b>Task:</b> {title}\n"
+        f"💎 <b>Points:</b> <code>{sign_pts} pts</code>"
+        f"{cat_line}"
+        f"{reason_line}\n\n"
+        "Check your updated score and rank on the club scoreboard! 🚀"
     )
-    if category:
-        text += f"\nCategory: {category}"
     return NotificationType.MOTIVATIONAL, text
 
 
@@ -254,24 +288,25 @@ async def collect_telegram_gaps(db: AsyncSession) -> dict:
 def format_admin_digest(report: dict) -> str:
     t = report["totals"]
     lines = [
-        "CSEC ASTU — Telegram connection digest",
+        "📊 <b>CSEC ASTU — Telegram Connection Digest</b>",
         "",
-        f"No username set: {t['no_username']}",
-        f"Username set, handshake incomplete: {t['pending_handshake']}",
-        f"Recent delivery failures: {t['failed_delivery']}",
+        f"• No username set: {t['no_username']}",
+        f"• Username set, handshake incomplete: {t['pending_handshake']}",
+        f"• Recent delivery failures: {t['failed_delivery']}",
         "",
     ]
 
     def section(title: str, items: list[dict], limit: int = 15) -> None:
-        lines.append(title)
+        lines.append(f"<b>{title}</b>")
         if not items:
-            lines.append("  (none)")
+            lines.append("  <i>(none)</i>")
         for row in items[:limit]:
-            div = row.get("division_name") or "—"
-            uname = f" @{row['telegram_username']}" if row.get("telegram_username") else ""
-            lines.append(f"  • {row['full_name']}{uname} ({div})")
+            div = html.escape(row.get("division_name") or "—")
+            uname = f" @{html.escape(row['telegram_username'])}" if row.get("telegram_username") else ""
+            full_name = html.escape(row["full_name"])
+            lines.append(f"  • {full_name}{uname} ({div})")
         if len(items) > limit:
-            lines.append(f"  … and {len(items) - limit} more")
+            lines.append(f"  <i>… and {len(items) - limit} more</i>")
         lines.append("")
 
     section("Missing username:", report["no_username"])
@@ -355,32 +390,69 @@ async def handle_bot_command(
                 telegram_username=from_user.get("username"),
             )
             if member:
+                name = html.escape(member.full_name)
                 return (
-                    f"Connected, {member.full_name}! You'll receive warnings and "
-                    "recognition messages here. Use /status anytime."
+                    f"🎉 <b>You're In, {name}!</b> 🚀\n\n"
+                    "🔗 Your Telegram is now securely linked to your <b>CSEC ASTU</b> profile.\n\n"
+                    "✨ <b>What happens next?</b>\n"
+                    "• 🏆 Instant alerts when your point claims are approved\n"
+                    "• 🔥 Streak recognition & milestone celebrations\n"
+                    "• 📢 Official club notices & governance alerts\n\n"
+                    "Type <code>/status</code> anytime to check your connection!"
                 )
             return (
-                "That connect link is invalid or expired. "
-                "Open the web app → Connect Telegram and try again."
+                "⏳ <b>Link Expired or Invalid</b>\n\n"
+                "Handshake tokens are one-time use and expire after 10 minutes for your security.\n\n"
+                "🔄 <b>How to fix:</b>\n"
+                "1. Head over to your profile on the web platform\n"
+                "2. Click <b>Re-link Account</b> to generate a fresh link\n"
+                "3. Tap the link to connect instantly!"
             )
         existing = await db.execute(select(Member).where(Member.telegram_chat_id == str(chat_id)))
         member = existing.scalar_one_or_none()
         if member:
-            return f"You're already linked as {member.full_name}. {HELP_TEXT}"
+            name = html.escape(member.full_name)
+            return (
+                f"👋 <b>Welcome back, {name}!</b>\n\n"
+                "You're already linked and receiving notifications.\n\n"
+                f"{HELP_TEXT}"
+            )
         return (
-            "Welcome to the CSEC ASTU bot.\n"
-            "To link your account, use the Connect Telegram button in the web app."
+            "🤖 <b>Welcome to the CSEC ASTU Bot!</b> 🚀\n\n"
+            "To link your Telegram account to your club profile:\n"
+            "1. Open the <b>CSEC ASTU Web App</b>\n"
+            "2. Go to <b>Profile</b> &rarr; <b>Telegram Notifications</b>\n"
+            "3. Click <b>Connect Telegram</b> and tap the generated link!"
         )
 
     if cmd == "/status":
         existing = await db.execute(select(Member).where(Member.telegram_chat_id == str(chat_id)))
         member = existing.scalar_one_or_none()
         if member:
-            uname = f"@{member.telegram_username}" if member.telegram_username else "(none)"
-            return f"Linked as {member.full_name} ({uname})."
-        return "Not linked yet. Use Connect Telegram in the web app."
+            name = html.escape(member.full_name)
+            uname = (
+                f"@{html.escape(member.telegram_username)}"
+                if member.telegram_username
+                else "<i>(not set)</i>"
+            )
+            return (
+                "✅ <b>Account Linked & Active</b>\n\n"
+                f"👤 <b>Member:</b> {name}\n"
+                f"📱 <b>Username:</b> {uname}\n"
+                "🛡️ <b>Status:</b> Receiving real-time club notifications\n\n"
+                "<i>Keep building, hacking, and earning points!</i> ⚡"
+            )
+        return (
+            "⚠️ <b>Account Not Linked</b>\n\n"
+            "We couldn't find a CSEC ASTU member profile attached to this chat.\n\n"
+            "👉 Open the <b>Web App</b> &rarr; <b>Profile</b> &rarr; click <b>Connect Telegram</b> to link your account!"
+        )
 
     if cmd == "/help":
         return HELP_TEXT
 
-    return "Unknown command. Try /help."
+    return (
+        "🤔 <i>I didn't quite catch that command.</i>\n\n"
+        "Send <code>/help</code> to see everything I can do! 💡"
+    )
+

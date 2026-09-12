@@ -40,11 +40,16 @@ async def preview_annual_reset(db: AsyncSession) -> dict:
         {"year": year, "buffer": buffer},
     )
     members = []
+    current_rank = 1
+    last_score: int | None = None
     for idx, row in enumerate(rows, start=1):
         cycle = int(row.cycle_score)
+        if cycle != last_score:
+            current_rank = idx
+            last_score = cycle
         members.append(
             {
-                "rank": idx,
+                "rank": current_rank,
                 "member_id": str(row.id),
                 "full_name": row.full_name,
                 "final_score": cycle,
@@ -80,15 +85,21 @@ async def execute_annual_reset(db: AsyncSession) -> dict:
              AND pe.academic_year = :year
             WHERE m.is_active = true AND m.google_id IS NOT NULL
             GROUP BY m.id
-            ORDER BY cycle_score DESC
+            ORDER BY cycle_score DESC, m.id ASC
             """
         ),
         {"year": year, "buffer": buffer},
     )
 
     written = 0
+    current_rank = 1
+    last_score = None
     for idx, row in enumerate(rows, start=1):
         cycle = int(row.cycle_score)
+        if cycle != last_score:
+            current_rank = idx
+            last_score = cycle
+
         badge = badge_for_score(cycle, cap, multipliers)
         # Upsert-safe: skip if already snapshotted
         existing = await db.execute(
@@ -104,7 +115,7 @@ async def execute_annual_reset(db: AsyncSession) -> dict:
                 member_id=row.id,
                 academic_year=year,
                 final_score=cycle,
-                final_rank=idx,
+                final_rank=current_rank,
                 badges_earned=[badge] if badge else [],
             )
         )

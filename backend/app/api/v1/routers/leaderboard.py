@@ -68,13 +68,22 @@ async def leaderboard(
     past_map = {str(r.member_id): int(r.past) for r in career_rows}
 
     items: list[LeaderboardItem] = []
+    current_rank = 1
+    last_score_key: tuple[int, int] | None = None
+
     for idx, row in enumerate(rows, start=1):
         cycle = int(row.cycle_score)
         display = int(row.display_score)
+        score_key = (display, cycle)
+
+        if score_key != last_score_key:
+            current_rank = idx
+            last_score_key = score_key
+
         past = past_map.get(str(row.member_id), 0)
         items.append(
             LeaderboardItem(
-                rank=idx,
+                rank=current_rank,
                 member_id=row.member_id,
                 full_name=row.full_name,
                 division_id=row.division_id,

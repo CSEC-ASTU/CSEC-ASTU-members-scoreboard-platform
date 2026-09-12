@@ -42,3 +42,8 @@ For local testing, expose port 8001 with ngrok/cloudflared.
 The main API keeps member-facing routes (`POST /api/v1/members/me/telegram`, admin report)
 and calls this service over HTTP when a ledger event should notify someone.
 See `docs/improvements/09-telegram-phase2.md`.
+
+## Message Templates & Formatting
+For a complete visual catalog of bot messages, emojis, HTML formatting standards, and how to maintain them, see:
+[`docs/telegram-bot-messages.md`](../docs/telegram-bot-messages.md).
+

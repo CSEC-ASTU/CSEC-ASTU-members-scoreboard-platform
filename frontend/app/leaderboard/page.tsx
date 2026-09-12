@@ -152,9 +152,9 @@ export default function LeaderboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 items-end">
                 {/* Order: #2 (Left), #1 Champion (Center), #3 (Right) */}
                 {[
-                  { m: podium[1], rank: 2, order: "order-2 md:order-1", title: "Rank 2", border: "border-zinc-200/80 dark:border-white/[0.08]", bg: "bg-white dark:bg-zinc-900/40", badgeColor: "bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/10" },
-                  { m: podium[0], rank: 1, order: "order-1 md:order-2", title: "Champion", border: "border-zinc-900/30 dark:border-white/20 shadow-xl shadow-black/5 dark:shadow-black/30 md:-translate-y-2", bg: "bg-white dark:bg-zinc-900/60", badgeColor: "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent", iconColor: "text-zinc-900 dark:text-zinc-100" },
-                  { m: podium[2], rank: 3, order: "order-3 md:order-3", title: "Rank 3", border: "border-zinc-200/80 dark:border-white/[0.08]", bg: "bg-white dark:bg-zinc-900/40", badgeColor: "bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/10" },
+                  { m: podium[1], rank: podium[1]?.rank ?? 2, order: "order-2 md:order-1", title: `Rank ${podium[1]?.rank ?? 2}`, border: "border-zinc-200/80 dark:border-white/[0.08]", bg: "bg-white dark:bg-zinc-900/40", badgeColor: "bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/10" },
+                  { m: podium[0], rank: podium[0]?.rank ?? 1, order: "order-1 md:order-2", title: podium[0]?.rank === 1 ? "Champion" : `Rank ${podium[0]?.rank}`, border: "border-zinc-900/30 dark:border-white/20 shadow-xl shadow-black/5 dark:shadow-black/30 md:-translate-y-2", bg: "bg-white dark:bg-zinc-900/60", badgeColor: "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent", iconColor: "text-zinc-900 dark:text-zinc-100" },
+                  { m: podium[2], rank: podium[2]?.rank ?? 3, order: "order-3 md:order-3", title: `Rank ${podium[2]?.rank ?? 3}`, border: "border-zinc-200/80 dark:border-white/[0.08]", bg: "bg-white dark:bg-zinc-900/40", badgeColor: "bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/10" },
                 ].map(({ m, rank, order, border, bg, badgeColor, iconColor }) => (
                   <div
                     key={m.id}
@@ -219,7 +219,7 @@ export default function LeaderboardPage() {
                 <span>Cycle Points</span>
               </div>
               {(podium.length < 3 ? currentRows : rest).map((m, i) => {
-                const rank = podium.length < 3 ? i + 1 : i + 4
+                const rank = m.rank
                 const isMe = m.id === currentUser.id
                 return (
                   <Link
