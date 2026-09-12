@@ -606,3 +606,71 @@ export function AdminSkeleton() {
     </div>
   )
 }
+
+/**
+ * 12. Attendance Matrix & Timeline Page Skeleton
+ */
+export function AttendanceSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header Skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64 rounded-lg" />
+        <Skeleton className="h-4 w-96 rounded" />
+      </div>
+
+      {/* KPI Cards (4 cards) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-zinc-200/80 bg-white p-4 dark:border-white/[0.04] dark:bg-white/[0.02] space-y-2.5"
+          >
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3 w-20 rounded" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </div>
+            <Skeleton className="h-7 w-24 rounded-md" />
+            <Skeleton className="h-3 w-32 rounded" />
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar / Tabs Skeleton */}
+      <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-28 rounded-md" />
+          <Skeleton className="h-8 w-24 rounded-md" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-44 rounded-md" />
+          <Skeleton className="h-8 w-28 rounded-md" />
+        </div>
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="rounded-xl border border-zinc-200/80 bg-white p-4 dark:border-white/[0.04] dark:bg-white/[0.02] space-y-3">
+        <div className="flex items-center justify-between border-b border-zinc-200/60 pb-3 dark:border-white/[0.04]">
+          <Skeleton className="h-4 w-40 rounded" />
+          <Skeleton className="h-4 w-24 rounded" />
+        </div>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between py-2.5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="space-y-1">
+                <Skeleton className="h-3.5 w-36 rounded" />
+                <Skeleton className="h-2.5 w-24 rounded" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
