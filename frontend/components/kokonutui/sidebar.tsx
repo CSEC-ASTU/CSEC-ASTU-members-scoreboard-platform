@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CalendarCheck,
+  Award,
 } from "lucide-react"
 
 import Link from "next/link"
@@ -178,6 +179,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <div className="space-y-1">
                   <NavItem href="/members" icon={Users2}>Members</NavItem>
                   <NavItem href="/claims" icon={History}>My History</NavItem>
+                  <NavItem href="/templates" icon={Award}>Templates</NavItem>
                 </div>
               </div>
 
