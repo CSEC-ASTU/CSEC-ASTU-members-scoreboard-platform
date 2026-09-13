@@ -2,6 +2,12 @@
 from app.schemas.annual import AnnualResetPreview, AnnualResetResult, AnnualSummaryOut
 from app.schemas.attendance import AttendanceSessionCreate, AttendanceSessionOut
 from app.schemas.auth import MeOut, TelegramConnectOut
+from app.schemas.certificates import (
+    CertificateCreate,
+    CertificateOut,
+    CertificatePublicVerify,
+    CertificateRevokeRequest,
+)
 from app.schemas.common import HealthOut, MessageOut, Paginated
 from app.schemas.divisions import DivisionCreate, DivisionOut, DivisionUpdate
 from app.schemas.leaderboard import LeaderboardItem, LeaderboardItemOut, LeaderboardOut

@@ -1,5 +1,6 @@
 from app.models.annual_summary import AnnualSummary
 from app.models.attendance_session import AttendanceSession
+from app.models.certificate import Certificate
 from app.models.division import Division
 from app.models.enums import (
     MemberRole,
@@ -23,6 +24,7 @@ from app.models.task import Task
 __all__ = [
     "AnnualSummary",
     "AttendanceSession",
+    "Certificate",
     "Division",
     "LoginAttemptFailure",
     "Member",

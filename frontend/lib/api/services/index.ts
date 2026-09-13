@@ -8,4 +8,5 @@ export * from "./permissions"
 export * from "./settings"
 export * from "./admin"
 export * from "./attendance"
+export * from "./certificates"
 

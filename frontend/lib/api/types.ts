@@ -215,6 +215,60 @@ export interface AttendanceSessionCreateIn {
   duration_minutes?: number
 }
 
+export interface CertificateOut {
+  id: string
+  cert_code: string
+  member_id: string
+  division_id: string | null
+  division_name: string | null
+  title: string
+  description: string | null
+  certificate_type: string
+  academic_year: number
+  issued_by_id: string | null
+  issuer_name: string | null
+  issued_at: string
+  signature_hash: string
+  drive_file_id: string | null
+  drive_view_link: string | null
+  is_revoked: boolean
+  revoked_reason: string | null
+  revoked_at: string | null
+  member_name: string | null
+  member_student_id: string | null
+  member_department: string | null
+}
+
+export interface CertificatePublicVerify {
+  cert_code: string
+  title: string
+  description: string | null
+  certificate_type: string
+  academic_year: number
+  issued_at: string
+  recipient_name: string
+  recipient_student_id: string | null
+  recipient_department: string | null
+  division_name: string | null
+  issuer_name: string | null
+  drive_view_link: string | null
+  is_valid: boolean
+  is_revoked: boolean
+  revoked_reason: string | null
+  revoked_at: string | null
+  signature_verified: boolean
+  verify_url: string
+}
+
+export interface CertificateCreateIn {
+  member_ids: string[]
+  division_id?: string | null
+  title: string
+  description?: string | null
+  certificate_type?: string
+  academic_year?: number | null
+}
+
 export interface AttendanceSessionStatus {
   status: "present" | "late" | "absent"
   delay_minutes: number | null
