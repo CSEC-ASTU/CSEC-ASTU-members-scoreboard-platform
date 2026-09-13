@@ -228,3 +228,74 @@ async def test_revoke_certificate_authority():
     revoked = await revoke_certificate(db, cert_id=cert_id, officer=vp_member, reason="Valid revocation")
     assert revoked.is_revoked is True
     assert revoked.revoked_reason == "Valid revocation"
+
+
+@pytest.mark.asyncio
+async def test_issue_outsider_certificates_with_dynamic_variables():
+    db = AsyncMock()
+    settings = MagicMock(spec=Settings)
+    settings.jwt_secret_key = "secret"
+    settings.frontend_url = "http://localhost:3000"
+
+    issuer = Member(id=uuid.uuid4(), role=MemberRole.PRESIDENT, full_name="President")
+    div_id = uuid.uuid4()
+    div = Division(id=div_id, name="Cybersecurity")
+    db.get.return_value = div
+
+    from app.schemas.certificates import ExternalRecipient
+
+    create_data = CertificateCreate(
+        title="2026 ASTU CTF Championship",
+        description="National Inter-University Cybersecurity Contest",
+        certificate_type="competition",
+        division_id=div_id,
+        academic_year=2026,
+        external_recipients=[
+            ExternalRecipient(
+                name="Abebe Kebede",
+                email="abebe@aau.edu.et",
+                organization="Addis Ababa University",
+                custom_attributes={"rank": "1st Place", "team_name": "ZeroDayWarriors", "score": 4200},
+            ),
+            ExternalRecipient(
+                name="Bethlehem Tadesse",
+                email="beth@aastu.edu.et",
+                organization="AASTU",
+                custom_attributes={"rank": "2nd Place", "team_name": "CyberKnights"},
+            ),
+        ],
+        event_variables={"track": "Binary Exploitation & Web", "sponsor": "CSEC ASTU"},
+    )
+
+    issued = await issue_certificates(db, data=create_data, issuer=issuer, settings=settings)
+    assert len(issued) == 2
+
+    # Check Abebe's record
+    cert1 = issued[0]
+    assert cert1.member_id is None
+    assert cert1.is_external is True
+    assert cert1.recipient_name == "Abebe Kebede"
+    assert cert1.recipient_email == "abebe@aau.edu.et"
+    assert cert1.recipient_identity == "Addis Ababa University"
+    assert cert1.custom_attributes["rank"] == "1st Place"
+    assert cert1.custom_attributes["team_name"] == "ZeroDayWarriors"
+    assert cert1.custom_attributes["track"] == "Binary Exploitation & Web"
+
+    # Integrity verification must pass
+    assert verify_certificate_integrity(cert1, settings.jwt_secret_key) is True
+
+    # Check public verification for outsider
+    cert1.issuer = issuer
+    cert1.division = div
+    cert1.member = None
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = cert1
+    db.execute.return_value = mock_result
+
+    public_res = await verify_certificate_public(db, cert1.cert_code, settings)
+    assert public_res.is_valid is True
+    assert public_res.is_external is True
+    assert public_res.recipient_name == "Abebe Kebede"
+    assert public_res.recipient_organization == "Addis Ababa University"
+    assert public_res.custom_attributes["rank"] == "1st Place"
+

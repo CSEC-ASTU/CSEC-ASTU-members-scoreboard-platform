@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -15,9 +15,14 @@ class Certificate(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cert_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    member_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("members.id", ondelete="CASCADE"), nullable=False, index=True
+    member_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("members.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    recipient_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    recipient_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recipient_identity: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_external: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    custom_attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     division_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL"), nullable=True
     )
@@ -39,6 +44,6 @@ class Certificate(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    member: Mapped["Member"] = relationship(foreign_keys=[member_id])  # noqa: F821
+    member: Mapped["Member | None"] = relationship(foreign_keys=[member_id])  # noqa: F821
     issuer: Mapped["Member | None"] = relationship(foreign_keys=[issued_by_id])  # noqa: F821
     division: Mapped["Division | None"] = relationship(foreign_keys=[division_id])  # noqa: F821

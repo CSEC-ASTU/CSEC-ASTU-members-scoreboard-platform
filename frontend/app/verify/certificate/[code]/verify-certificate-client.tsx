@@ -143,14 +143,41 @@ export function VerifyCertificateClient({ cert, queriedCode }: Props) {
           </h1>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-400">
-            {cert.recipient_student_id && (
-              <span className="font-mono bg-white/[0.06] px-2.5 py-0.5 rounded-md border border-white/10 text-zinc-300">
-                {cert.recipient_student_id}
+            {cert.is_external ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                <Building2 className="w-3 h-3" />
+                {cert.recipient_organization || "External Participant"}
               </span>
+            ) : (
+              <>
+                {cert.recipient_student_id && (
+                  <span className="font-mono bg-white/[0.06] px-2.5 py-0.5 rounded-md border border-white/10 text-zinc-300">
+                    {cert.recipient_student_id}
+                  </span>
+                )}
+                {cert.recipient_department && <span>· {cert.recipient_department}</span>}
+              </>
             )}
-            {cert.recipient_department && <span>· {cert.recipient_department}</span>}
             <span>· {cert.division_name}</span>
           </div>
+
+          {/* Custom Attributes Badges (e.g. Rank, Team, Track) */}
+          {cert.custom_attributes && Object.keys(cert.custom_attributes).length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              {Object.entries(cert.custom_attributes).map(([k, v]) => {
+                if (k === "student_id" || k === "department" || k === "organization" || !v) return null
+                return (
+                  <span
+                    key={k}
+                    className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/25 text-violet-300 font-medium"
+                  >
+                    <span className="text-zinc-500 capitalize">{k.replace(/_/g, " ")}:</span>
+                    <strong className="text-violet-200">{String(v)}</strong>
+                  </span>
+                )
+              })}
+            </div>
+          )}
 
           <div className="max-w-xl mx-auto pt-2">
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1.5">

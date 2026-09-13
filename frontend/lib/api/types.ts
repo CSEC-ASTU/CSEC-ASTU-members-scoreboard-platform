@@ -218,7 +218,12 @@ export interface AttendanceSessionCreateIn {
 export interface CertificateOut {
   id: string
   cert_code: string
-  member_id: string
+  member_id: string | null
+  recipient_name: string
+  recipient_email: string | null
+  recipient_identity: string | null
+  is_external: boolean
+  custom_attributes?: Record<string, any> | null
   division_id: string | null
   division_name: string | null
   title: string
@@ -249,6 +254,9 @@ export interface CertificatePublicVerify {
   recipient_name: string
   recipient_student_id: string | null
   recipient_department: string | null
+  is_external: boolean
+  recipient_organization: string | null
+  custom_attributes?: Record<string, any> | null
   division_name: string | null
   issuer_name: string | null
   drive_view_link: string | null
@@ -260,13 +268,24 @@ export interface CertificatePublicVerify {
   verify_url: string
 }
 
+export interface ExternalRecipientIn {
+  name: string
+  email?: string | null
+  organization?: string | null
+  custom_attributes?: Record<string, any>
+}
+
 export interface CertificateCreateIn {
-  member_ids: string[]
+  template_id?: string | null
+  member_ids?: string[]
+  external_recipients?: ExternalRecipientIn[]
+  event_variables?: Record<string, any>
   division_id?: string | null
   title: string
   description?: string | null
   certificate_type?: string
   academic_year?: number | null
+  send_email_notifications?: boolean
 }
 
 export interface AttendanceSessionStatus {

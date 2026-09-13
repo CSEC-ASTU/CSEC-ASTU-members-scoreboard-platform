@@ -23,6 +23,7 @@ import {
 import { TemplateCard } from "./components/template-card"
 import { TemplateDetailDialog } from "./components/template-detail-dialog"
 import { ImportTemplateDialog } from "./components/import-template-dialog"
+import { IssueCertificatesDialog } from "./components/issue-certificates-dialog"
 import { DEFAULT_CERTIFICATE_TEMPLATES } from "./default-templates"
 import type { CertificateTemplate, TemplateCategory, SortOption } from "./types"
 import { cn } from "@/lib/utils"
@@ -51,6 +52,8 @@ export default function CertificateTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [issueOpen, setIssueOpen] = useState(false)
+  const [issuingTemplate, setIssuingTemplate] = useState<CertificateTemplate | null>(null)
 
   // Load custom imported templates from localStorage on mount
   useEffect(() => {
@@ -139,15 +142,29 @@ export default function CertificateTemplatesPage() {
               </p>
             </div>
 
-            {/* Import Action Button */}
-            <Button
-              onClick={() => setImportOpen(true)}
-              size="sm"
-              className="h-8 text-xs bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-950 font-medium gap-1.5 shadow-sm"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              <span>Import Canva Template (.pptx)</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setIssuingTemplate(selectedTemplate || allTemplates[0] || null)
+                  setIssueOpen(true)
+                }}
+                size="sm"
+                className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white font-medium gap-1.5 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Issue Certificates</span>
+              </Button>
+
+              <Button
+                onClick={() => setImportOpen(true)}
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.05] font-medium gap-1.5 shadow-sm"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Import Canva (.pptx)</span>
+              </Button>
+            </div>
           </div>
 
           {/* Notion Database Search Input */}
@@ -247,6 +264,10 @@ export default function CertificateTemplatesPage() {
           template={selectedTemplate}
           open={detailOpen}
           onOpenChange={setDetailOpen}
+          onUseForIssuance={(tmpl) => {
+            setIssuingTemplate(tmpl)
+            setIssueOpen(true)
+          }}
         />
 
         {/* ── 5. Import PowerPoint Template Modal ────────────────────────── */}
@@ -254,6 +275,13 @@ export default function CertificateTemplatesPage() {
           open={importOpen}
           onOpenChange={setImportOpen}
           onTemplateImported={handleTemplateImported}
+        />
+
+        {/* ── 6. Certificate Issuance Modal (Members + Outsiders) ────────── */}
+        <IssueCertificatesDialog
+          template={issuingTemplate || selectedTemplate || allTemplates[0] || null}
+          open={issueOpen}
+          onOpenChange={setIssueOpen}
         />
       </div>
     </Layout>
