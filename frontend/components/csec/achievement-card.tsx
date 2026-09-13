@@ -38,18 +38,18 @@ export function AchievementCard({
   function copyShareLink() {
     const url =
       typeof window !== "undefined"
-        ? `${window.location.origin}/profile/achievement?id=${member.id}`
+        ? `${window.location.origin}/share/achievement/${member.id}`
         : ""
     navigator.clipboard.writeText(url)
     setCopied(true)
-    toast.success("Share link copied to clipboard!")
+    toast.success("Public credential link copied to clipboard!")
     setTimeout(() => setCopied(false), 2500)
   }
 
   async function shareCard() {
     const url =
       typeof window !== "undefined"
-        ? `${window.location.origin}/profile/achievement?id=${member.id}`
+        ? `${window.location.origin}/share/achievement/${member.id}`
         : ""
     if (typeof navigator !== "undefined" && (navigator as any).share) {
       try {

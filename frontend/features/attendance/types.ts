@@ -1,5 +1,6 @@
 export interface SelectedCell {
   memberName: string
+  memberId?: string
   dateDisplay: string
   taskTitle: string
   status: "present" | "late" | "absent"

@@ -70,8 +70,13 @@ export function SessionCodeCard({ currentUser, tasks, divisions }: SessionCodeCa
   const createSessionMutation = useCreateAttendanceSessionMutation()
   const endSessionMutation = useEndAttendanceSessionMutation()
 
-  // Eligible attendance tasks
-  const eligibleTasks = tasks.filter((t) => t.category === "division_session" && t.active)
+  // Eligible attendance tasks: category == "division_session" (active tasks prioritized, fallback to title matching)
+  const sessionTasks = tasks.filter(
+    (t) => t.category === "division_session" || t.title.toLowerCase().includes("attendance") || t.title.toLowerCase().includes("session")
+  )
+  const eligibleTasks = sessionTasks.filter((t) => t.active).length > 0
+    ? sessionTasks.filter((t) => t.active)
+    : sessionTasks
 
   // Filter tasks based on selected scope
   const displayTasks = eligibleTasks.filter((t) => {

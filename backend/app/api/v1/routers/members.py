@@ -24,6 +24,7 @@ from app.schemas import (
 from app.services.drive import delete_drive_file_from_url, upload_profile_picture
 from app.services.settings import (
     badge_for_score,
+    fetch_batch_member_scores,
     fetch_member_scores,
     get_badge_multipliers,
     get_current_academic_year,
@@ -76,9 +77,14 @@ async def list_members(
         )
     ).scalars().all()
 
+    active_claimed_ids = [m.id for m in rows if m.google_id]
+    batch_scores = await fetch_batch_member_scores(db, active_claimed_ids)
+
     items = []
     for m in rows:
-        scores = await fetch_member_scores(db, m.id) if m.google_id else {
+        scores = batch_scores.get(m.id, {
+            "cycle_score": 0, "display_score": 0, "career_score": 0
+        }) if m.google_id else {
             "cycle_score": 0, "display_score": 0, "career_score": 0
         }
         can_view_sensitive = can_view_sensitive_info(user.member, m, user.permissions)
@@ -332,9 +338,9 @@ async def member_point_events(
 
 
 @router.get("/{member_id}/achievement-card", response_model=AchievementCardOut)
-async def achievement_card(member_id: UUID, db: DbSession, user: RequireUser) -> AchievementCardOut:
+async def achievement_card(member_id: UUID, db: DbSession) -> AchievementCardOut:
     m = await db.get(Member, member_id)
-    if m is None or not can_see_member(user.member, m, user.permissions):
+    if m is None or not m.is_active:
         raise HTTPException(status_code=404, detail="Member not found")
     scores = await fetch_member_scores(db, m.id)
     cap = await get_score_cap(db)

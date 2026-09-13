@@ -163,14 +163,12 @@ async def create_claim(
             )
 
     year = await get_current_academic_year(db)
-    # If verified by session code or low-stakes non-penalty task
+    # Auto-approval is STRICTLY and solely restricted to verified physical session PINs.
+    # Regular task claims must always undergo human officer verification to prevent self-awarding points.
     is_session_verified = attendance_session is not None
-    auto = (
-        is_session_verified
-        or (abs(task.base_points) <= settings.auto_approve_claim_max_points and not task.is_penalty)
-    )
+    auto = is_session_verified
 
-    decision_msg = "verified whiteboard session code" if is_session_verified else "auto-approved (low-stakes claim)"
+    decision_msg = "verified whiteboard session code" if is_session_verified else None
 
     event = PointEvent(
         member_id=member.id,

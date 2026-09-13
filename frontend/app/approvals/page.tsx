@@ -20,10 +20,10 @@ import { Empty } from "@/components/ui/empty"
 import { MemberAvatar, PointDelta, EventTypePill } from "@/components/csec/ui-bits"
 import { useCurrentUser } from "@/components/user-context"
 import { Check, X, Inbox, ShieldCheck, Download, Filter, Lock } from "lucide-react"
-import { pointEventsService, membersService, tasksService, divisionsService, type PointEventOut, type MemberOut, type TaskOut, type DivisionOut } from "@/lib/api"
+import { pointEventsService, divisionsService, type PointEventOut, type DivisionOut } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { ApprovalsSkeleton } from "@/components/csec/skeletons"
-import { useApprovals, useMembers, useTasks, useDivisions, useApproveClaimsMutation } from "@/lib/hooks/use-queries"
+import { useApprovals, useDivisions, useApproveClaimsMutation } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 import { isOfficer } from "@/lib/permissions"
@@ -33,8 +33,6 @@ export default function ApprovalsPage() {
   const officerAllowed = isOfficer(currentUser)
   const queryClient = useQueryClient()
   const { data: approvalsData, isLoading: approvalsLoading } = useApprovals(isAuthenticated && officerAllowed)
-  const { data: membersData, isLoading: membersLoading } = useMembers({ page_size: 100 })
-  const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
   const approveMutation = useApproveClaimsMutation()
 
@@ -44,27 +42,7 @@ export default function ApprovalsPage() {
   const [rejectReason, setRejectReason] = useState("")
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
 
-  const isInitialLoading =
-    (approvalsLoading && !approvalsData) ||
-    (membersLoading && !membersData) ||
-    (tasksLoading && !tasksData) ||
-    (divisionsLoading && !divisionsData)
-
-  const memberMap = useMemo(() => {
-    const mObj: Record<string, MemberOut> = {}
-    for (const m of membersData?.items || []) {
-      mObj[m.id] = m
-    }
-    return mObj
-  }, [membersData])
-
-  const taskMap = useMemo(() => {
-    const tObj: Record<string, TaskOut> = {}
-    for (const t of tasksData?.items || []) {
-      tObj[t.id] = t
-    }
-    return tObj
-  }, [tasksData])
+  const isInitialLoading = (approvalsLoading && !approvalsData) || (divisionsLoading && !divisionsData)
 
   const divisionsMap = useMemo(() => {
     const dObj: Record<string, string> = {}
@@ -78,12 +56,8 @@ export default function ApprovalsPage() {
 
   const filteredQueue = useMemo(() => {
     if (selectedDiv === "all") return queue
-    return queue.filter((e) => {
-      const task = e.task_id ? taskMap[e.task_id] : null
-      const divId = e.division_id || task?.division_id
-      return divId === selectedDiv
-    })
-  }, [queue, selectedDiv, taskMap])
+    return queue.filter((e) => e.division_id === selectedDiv)
+  }, [queue, selectedDiv])
 
   const selectedIds = useMemo(() => Array.from(selected), [selected])
   const allFilteredSelected =
@@ -117,27 +91,15 @@ export default function ApprovalsPage() {
     const columns: CsvColumn<PointEventOut>[] = [
       { key: "id", label: "Event ID" },
       {
-        key: (e) =>
-          memberMap[e.member_id]?.full_name || e.member_name || "Unknown",
+        key: (e) => e.member_name || "Club Member",
         label: "Submitter Name",
       },
       {
-        key: (e) => memberMap[e.member_id]?.email || "N/A",
-        label: "Submitter Email",
-      },
-      {
-        key: (e) =>
-          (e.task_id ? taskMap[e.task_id]?.title : null) ||
-          e.task_title ||
-          "Claim Duty",
+        key: (e) => e.task_title || e.reason || "Claim Duty",
         label: "Task Title",
       },
       {
-        key: (e) => {
-          const task = e.task_id ? taskMap[e.task_id] : null
-          const divId = e.division_id || task?.division_id
-          return (divId && divisionsMap[divId]) || "Club-Wide"
-        },
+        key: (e) => (e.division_id && divisionsMap[e.division_id]) || "Club-Wide",
         label: "Division",
       },
       { key: "points_delta", label: "Points" },
@@ -256,10 +218,7 @@ export default function ApprovalsPage() {
                   All Divisions ({queue.length})
                 </Button>
                 {divisionsData.map((div) => {
-                  const count = queue.filter((e) => {
-                    const task = e.task_id ? taskMap[e.task_id] : null
-                    return (e.division_id || task?.division_id) === div.id
-                  }).length
+                  const count = queue.filter((e) => e.division_id === div.id).length
                   if (count === 0) return null
                   return (
                     <Button
@@ -311,12 +270,9 @@ export default function ApprovalsPage() {
             <div className="space-y-2">
               {filteredQueue.map((e) => {
                 const isSelected = selected.has(e.id)
-                const submitter = memberMap[e.member_id]
-                const submitterName = submitter?.full_name || e.member_name || "Club Member"
-                const task = e.task_id ? taskMap[e.task_id] : null
-                const taskTitle = task?.title || e.task_title || "Claim Duty"
-
-                const eventDivisionName = (e.division_id && divisionsMap[e.division_id]) || (task?.division_id && divisionsMap[task.division_id]) || null
+                const submitterName = e.member_name || "Club Member"
+                const taskTitle = e.task_title || e.reason || "Claim Duty"
+                const eventDivisionName = (e.division_id && divisionsMap[e.division_id]) || null
 
                 return (
                   <div
@@ -342,7 +298,7 @@ export default function ApprovalsPage() {
                               {submitterName}
                             </div>
                             <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                              {submitter?.department ? `${submitter.department} · ` : ""}Claim
+                              Claim
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">

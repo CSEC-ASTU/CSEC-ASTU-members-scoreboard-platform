@@ -150,6 +150,7 @@ export function AttendanceMatrixTable({
                       className="py-4 px-5 text-center cursor-pointer transition-colors"
                       onClick={() =>
                         onSelectCell({
+                          memberId: row.member_id,
                           memberName: row.full_name,
                           dateDisplay: col.date_display,
                           taskTitle: col.task_title,

@@ -19,17 +19,21 @@ from app.schemas import (
 router = APIRouter()
 
 
-def _can_manage_grant(actor: Member, grant: MemberPermission, perms: list[str]) -> bool:
+async def _can_manage_grant(
+    db: DbSession, actor: Member, grant: MemberPermission, perms: list[str]
+) -> bool:
     if actor.role == MemberRole.PRESIDENT:
         return True
-    if grant.granted_by == actor.id:
-        return True
     if is_club_wide_officer(actor):
+        return True
+    if grant.granted_by == actor.id:
         return True
     if actor.role == MemberRole.DIVISION_HEAD and has_permission(
         perms, "assign_permission", division_id=actor.division_id
     ):
-        return True
+        target = await db.get(Member, grant.member_id)
+        if target and (target.division_id == actor.division_id or target.secondary_division_id == actor.division_id):
+            return True
     return False
 
 
@@ -150,7 +154,7 @@ async def toggle_grant(
     grant = await db.get(MemberPermission, grant_id)
     if grant is None:
         raise HTTPException(status_code=404, detail="Grant not found")
-    if not _can_manage_grant(user.member, grant, user.permissions):
+    if not await _can_manage_grant(db, user.member, grant, user.permissions):
         raise HTTPException(status_code=403, detail="Not permitted")
 
     grant.is_enabled = body.is_enabled
@@ -174,7 +178,7 @@ async def revoke_grant(grant_id: UUID, db: DbSession, user: RequireUser) -> Resp
     grant = await db.get(MemberPermission, grant_id)
     if grant is None:
         raise HTTPException(status_code=404, detail="Grant not found")
-    if not _can_manage_grant(user.member, grant, user.permissions):
+    if not await _can_manage_grant(db, user.member, grant, user.permissions):
         raise HTTPException(status_code=403, detail="Not permitted")
 
     db.add(

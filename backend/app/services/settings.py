@@ -73,42 +73,64 @@ def badge_for_score(cycle_score: int, score_cap: int, multipliers: dict) -> str 
     return "gold"
 
 
-async def fetch_member_scores(db: AsyncSession, member_id) -> dict[str, int]:
-    """Compute scores from ledger + annual summaries (same logic as member_scores view)."""
+async def fetch_batch_member_scores(db: AsyncSession, member_ids: list[UUID]) -> dict[UUID, dict[str, int]]:
+    """Compute scores for multiple members in batch, eliminating N+1 query storms."""
+    if not member_ids:
+        return {}
+
     year = await get_current_academic_year(db)
     cap = await get_score_cap(db)
     buffer = await get_initial_buffer(db)
 
-    cycle_q = await db.execute(
-        text(
-            """
-            SELECT COALESCE(SUM(points_delta), 0) AS cycle_points
-            FROM point_events
-            WHERE member_id = :member_id
-              AND status = 'approved'
-              AND academic_year = :year
-            """
-        ),
-        {"member_id": str(member_id), "year": year},
-    )
-    cycle_points = int(cycle_q.scalar() or 0)
-    cycle_score = buffer + cycle_points
+    str_ids = [str(m) for m in member_ids]
 
-    past_q = await db.execute(
-        text(
-            """
-            SELECT COALESCE(SUM(final_score), 0)
-            FROM annual_summaries
-            WHERE member_id = :member_id
-            """
-        ),
-        {"member_id": str(member_id)},
+    cycle_stmt = text(
+        """
+        SELECT member_id, COALESCE(SUM(points_delta), 0) AS cycle_points
+        FROM point_events
+        WHERE member_id = ANY(:member_ids)
+          AND status = 'approved'
+          AND academic_year = :year
+        GROUP BY member_id
+        """
     )
-    past = int(past_q.scalar() or 0)
-    career = past + cycle_score
-    display = min(cycle_score, cap)
-    return {
-        "cycle_score": cycle_score,
-        "display_score": display,
-        "career_score": career,
-    }
+    cycle_res = await db.execute(cycle_stmt, {"member_ids": str_ids, "year": year})
+    cycle_map = {str(row.member_id): int(row.cycle_points) for row in cycle_res}
+
+    past_stmt = text(
+        """
+        SELECT member_id, 
+               COALESCE(SUM(final_score), 0) AS past_total,
+               COUNT(*) AS past_years_count
+        FROM annual_summaries
+        WHERE member_id = ANY(:member_ids)
+        GROUP BY member_id
+        """
+    )
+    past_res = await db.execute(past_stmt, {"member_ids": str_ids})
+    past_map = {str(row.member_id): (int(row.past_total), int(row.past_years_count)) for row in past_res}
+
+    results: dict[UUID, dict[str, int]] = {}
+    for mid in member_ids:
+        mid_str = str(mid)
+        cycle_pts = cycle_map.get(mid_str, 0)
+        cycle_score = buffer + cycle_pts
+        display_score = min(cycle_score, cap)
+
+        past_total, past_count = past_map.get(mid_str, (0, 0))
+        past_net_points = max(0, past_total - (past_count * buffer))
+        career_score = buffer + past_net_points + cycle_pts
+
+        results[mid] = {
+            "cycle_score": cycle_score,
+            "display_score": display_score,
+            "career_score": career_score,
+        }
+
+    return results
+
+
+async def fetch_member_scores(db: AsyncSession, member_id) -> dict[str, int]:
+    """Compute scores for a single member using batch engine."""
+    res = await fetch_batch_member_scores(db, [member_id])
+    return res.get(member_id, {"cycle_score": 0, "display_score": 0, "career_score": 0})
