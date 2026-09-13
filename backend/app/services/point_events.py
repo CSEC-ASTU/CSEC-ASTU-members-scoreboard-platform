@@ -7,7 +7,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -316,11 +316,20 @@ async def visible_point_events_filter(query, actor: Member):
     if actor.role == MemberRole.PRESIDENT or actor.role == MemberRole.VICE_PRESIDENT:
         return query
     if actor.role == MemberRole.DIVISION_HEAD and actor.division_id:
-        # Division heads see events attributed to their division, OR for tasks scoped to their division
+        # Division heads see their own events, plus events of general members within their division.
+        # Peer division heads and higher officers are filtered out to route DH claims exclusively to executives.
         return query.outerjoin(Task, Task.id == PointEvent.task_id).where(
             or_(
-                PointEvent.division_id == actor.division_id,
-                Task.division_id == actor.division_id,
+                PointEvent.member_id == actor.id,
+                and_(
+                    PointEvent.member.has(Member.role == MemberRole.MEMBER),
+                    or_(
+                        PointEvent.division_id == actor.division_id,
+                        Task.division_id == actor.division_id,
+                        PointEvent.member.has(Member.division_id == actor.division_id),
+                        PointEvent.member.has(Member.secondary_division_id == actor.division_id),
+                    ),
+                ),
             )
         )
     return query.where(PointEvent.member_id == actor.id)

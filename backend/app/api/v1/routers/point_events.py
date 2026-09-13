@@ -113,6 +113,7 @@ async def list_point_events(
                 decision_reason=r.decision_reason,
                 task_title=r.task.title if r.task else None,
                 member_name=r.member.full_name if r.member else None,
+                member_role=r.member.role.value if (r.member and hasattr(r.member.role, "value")) else (str(r.member.role) if r.member else None),
                 approver_name=app_name,
             )
         )

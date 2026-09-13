@@ -48,6 +48,7 @@ class PointEventOut(BaseModel):
     decision_reason: str | None = None
     task_title: str | None = None
     member_name: str | None = None
+    member_role: str | None = None
     approver_name: str | None = None
 
 

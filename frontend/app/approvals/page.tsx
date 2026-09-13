@@ -19,7 +19,8 @@ import {
 import { Empty } from "@/components/ui/empty"
 import { MemberAvatar, PointDelta, EventTypePill } from "@/components/csec/ui-bits"
 import { useCurrentUser } from "@/components/user-context"
-import { Check, X, Inbox, ShieldCheck, Download, Filter, Lock } from "lucide-react"
+import { Check, X, Inbox, ShieldCheck, Download, Filter, Lock, Shield } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { pointEventsService, divisionsService, type PointEventOut, type DivisionOut } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { ApprovalsSkeleton } from "@/components/csec/skeletons"
@@ -52,12 +53,22 @@ export default function ApprovalsPage() {
     return dObj
   }, [divisionsData])
 
+  const isExecutive = currentUser.role === "president" || currentUser.role === "vice_president"
+  const [roleFilter, setRoleFilter] = useState<"all" | "division_head" | "member">("all")
   const [selectedDiv, setSelectedDiv] = useState<string>("all")
 
+  const dhCount = useMemo(() => queue.filter((e) => e.member_role === "division_head").length, [queue])
+
   const filteredQueue = useMemo(() => {
-    if (selectedDiv === "all") return queue
-    return queue.filter((e) => e.division_id === selectedDiv)
-  }, [queue, selectedDiv])
+    return queue.filter((e) => {
+      const matchDiv = selectedDiv === "all" || e.division_id === selectedDiv
+      const matchRole =
+        roleFilter === "all" ||
+        (roleFilter === "division_head" && e.member_role === "division_head") ||
+        (roleFilter === "member" && e.member_role !== "division_head")
+      return matchDiv && matchRole
+    })
+  }, [queue, selectedDiv, roleFilter])
 
   const selectedIds = useMemo(() => Array.from(selected), [selected])
   const allFilteredSelected =
@@ -206,6 +217,45 @@ export default function ApprovalsPage() {
           </Empty>
         ) : (
           <div className="space-y-3">
+            {/* Executive Queue Switcher: Direct routing for Division Head claims (Approach A) */}
+            {isExecutive && (
+              <div className="flex items-center gap-2 pb-1">
+                <span className="text-[11px] font-medium text-zinc-500 flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-amber-500" />
+                  Executive View:
+                </span>
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-zinc-100 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-xs">
+                  <Button
+                    variant={roleFilter === "all" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setRoleFilter("all")}
+                    className="h-6 text-xs px-2.5"
+                  >
+                    All Submissions ({queue.length})
+                  </Button>
+                  <Button
+                    variant={roleFilter === "division_head" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setRoleFilter("division_head")}
+                    className={cn(
+                      "h-6 text-xs px-2.5",
+                      dhCount > 0 && roleFilter !== "division_head" && "text-amber-600 dark:text-amber-400 font-semibold"
+                    )}
+                  >
+                    Division Heads ({dhCount})
+                  </Button>
+                  <Button
+                    variant={roleFilter === "member" ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setRoleFilter("member")}
+                    className="h-6 text-xs px-2.5"
+                  >
+                    General Members ({queue.length - dhCount})
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Division Filter Chips */}
             {divisionsData && divisionsData.length > 0 && (
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -302,6 +352,14 @@ export default function ApprovalsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
+                            {e.member_role === "division_head" && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium"
+                              >
+                                Division Head
+                              </Badge>
+                            )}
                             {eventDivisionName ? (
                               <Badge variant="outline" className="text-[10px]">
                                 {eventDivisionName}

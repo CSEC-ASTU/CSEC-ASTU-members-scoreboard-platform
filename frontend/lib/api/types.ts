@@ -183,6 +183,7 @@ export interface PointEventOut {
   created_at: string
   task_title?: string | null
   member_name?: string | null
+  member_role?: Role | string | null
   approver_name?: string | null
 }
 
