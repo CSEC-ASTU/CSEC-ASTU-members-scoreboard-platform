@@ -15,7 +15,7 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     division_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL"), index=True
     )
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     base_points: Mapped[int] = mapped_column(Integer, nullable=False)

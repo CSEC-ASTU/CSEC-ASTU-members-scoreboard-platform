@@ -14,10 +14,10 @@ class PointEvent(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     member_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("members.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), ForeignKey("members.id", ondelete="CASCADE"), nullable=False, index=True
     )
     task_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL"), index=True
     )
     event_type: Mapped[PointEventType] = mapped_column(
         Enum(PointEventType, name="point_event_type", values_callable=lambda x: [e.value for e in x]),
@@ -36,12 +36,12 @@ class PointEvent(Base):
     )
     academic_year: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     division_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL"), index=True
     )
     attendance_session_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("attendance_sessions.id", ondelete="SET NULL"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Improvement: rejection reason stored separately from original claim reason
     decision_reason: Mapped[str | None] = mapped_column(Text)

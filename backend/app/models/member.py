@@ -13,15 +13,15 @@ class Member(Base):
     __tablename__ = "members"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    google_id: Mapped[str | None] = mapped_column(String(255))
+    google_id: Mapped[str | None] = mapped_column(String(255), index=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     profile_image_url: Mapped[str | None] = mapped_column(Text)
     division_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL"), index=True
     )
     secondary_division_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL")
+        UUID(as_uuid=True), ForeignKey("divisions.id", ondelete="SET NULL"), index=True
     )
     role: Mapped[MemberRole] = mapped_column(
         Enum(MemberRole, name="member_role", values_callable=lambda x: [e.value for e in x]),
@@ -30,7 +30,7 @@ class Member(Base):
     )
     department: Mapped[str | None] = mapped_column(String(150))
     joining_year: Mapped[int | None] = mapped_column(SmallInteger)
-    student_id: Mapped[str | None] = mapped_column(String(50))
+    student_id: Mapped[str | None] = mapped_column(String(50), index=True)
     phone_number: Mapped[str | None] = mapped_column(String(50))
     github_url: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
