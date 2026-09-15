@@ -97,9 +97,8 @@ export default function EventsPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 lg:p-8">
+      <div className="space-y-6">
         {/* Top Hero Section */}
-      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/70 pb-6">
           <div>
             <div className="flex items-center gap-2.5">
@@ -233,7 +232,6 @@ export default function EventsPage() {
             ))}
           </div>
         )}
-      </div>
 
         {/* Create Event Dialog */}
         <CreateEventDialog
