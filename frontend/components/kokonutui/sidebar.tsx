@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CalendarCheck,
+  CalendarDays,
   Award,
 } from "lucide-react"
 
@@ -167,6 +168,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <SectionLabel>Core</SectionLabel>
                 <div className="space-y-1">
                   <NavItem href="/dashboard" icon={LayoutDashboard}>Dashboard</NavItem>
+                  <NavItem href="/events" icon={CalendarDays}>Events</NavItem>
                   <NavItem href="/attendance" icon={CalendarCheck}>Attendance</NavItem>
                   <NavItem href="/tasks" icon={ListChecks}>Tasks</NavItem>
                   <NavItem href="/leaderboard" icon={Trophy}>Leaderboard</NavItem>

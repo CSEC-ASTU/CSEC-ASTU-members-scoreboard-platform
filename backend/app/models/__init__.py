@@ -10,6 +10,7 @@ from app.models.enums import (
     PointEventStatus,
     PointEventType,
 )
+from app.models.event import Event
 from app.models.login_attempt import LoginAttemptFailure
 from app.models.member import Member
 from app.models.member_permission import MemberPermission
@@ -26,6 +27,7 @@ __all__ = [
     "AttendanceSession",
     "Certificate",
     "Division",
+    "Event",
     "LoginAttemptFailure",
     "Member",
     "MemberPermission",

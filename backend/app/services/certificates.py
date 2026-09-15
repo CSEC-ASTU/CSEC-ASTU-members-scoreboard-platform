@@ -15,6 +15,7 @@ from app.config import Settings
 from app.models import Certificate, Division, Member
 from app.models.enums import MemberRole
 from app.schemas.certificates import CertificateCreate, CertificatePublicVerify
+from app.services.apps_script import dispatch_certificate_batch_to_gas
 from app.services.settings import get_current_academic_year
 
 
@@ -190,6 +191,15 @@ async def issue_certificates(
         created_certs.append(cert)
 
     await db.commit()
+
+    if data.send_email_notifications and settings.apps_script_webhook_url:
+        await dispatch_certificate_batch_to_gas(
+            settings=settings,
+            event_name=data.title,
+            certificates=created_certs,
+        )
+        await db.commit()
+
     for c in created_certs:
         await db.refresh(c)
     return created_certs

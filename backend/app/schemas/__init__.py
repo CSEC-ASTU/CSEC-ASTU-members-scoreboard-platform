@@ -10,6 +10,16 @@ from app.schemas.certificates import (
 )
 from app.schemas.common import HealthOut, MessageOut, Paginated
 from app.schemas.divisions import DivisionCreate, DivisionOut, DivisionUpdate
+from app.schemas.events import (
+    EventCreate,
+    EventOut,
+    EventUpdate,
+    LumaAttendeePreview,
+    LumaCSVPreviewRequest,
+    LumaIngestExecuteRequest,
+    LumaIngestExecuteResponse,
+    LumaPreviewResponse,
+)
 from app.schemas.leaderboard import LeaderboardItem, LeaderboardItemOut, LeaderboardOut
 from app.schemas.members import (
     AchievementCardOut,

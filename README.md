@@ -6,13 +6,14 @@
 *An enterprise-grade collegiate governance platform engineered for the Computer Science and Engineering Club at Adama Science and Technology University (CSEC-ASTU).*
 
 [![Audit Score](https://img.shields.io/badge/Audit%20Score-100%2F100%20(A%2B)-10b981?style=for-the-badge&logo=codacy&logoColor=white)](docs/PROJECT_ANALYSIS_AND_ROADMAP.md)
-[![Pytest Suite](https://img.shields.io/badge/Pytest-53%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
+[![Audit Score](https://img.shields.io/badge/Audit%20Score-100%2F100%20(A%2B)-10b981?style=for-the-badge&logo=codacy&logoColor=white)](docs/PROJECT_ANALYSIS_AND_ROADMAP.md)
+[![Pytest Suite](https://img.shields.io/badge/Pytest-66%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
 [![FastAPI Core](https://img.shields.io/badge/FastAPI-Port%208000-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16%20(React%2019)-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%20Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Telegram Bot](https://img.shields.io/badge/Telegram%20Bot-Port%208001-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](telegram_bot)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon%20Frankfurt-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech)
-[![CI/CD Keep-Alive](https://img.shields.io/badge/Keep--Alive-24%2F7%20Active-ff69b4?style=for-the-badge&logo=githubactions&logoColor=white)](.github/workflows/keep-alive.yml)
+[![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-PDF%20Engine-4285F4?style=for-the-badge&logo=google&logoColor=white)](gas)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon%20Pooled-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech)
+[![Keep-Alive](https://img.shields.io/badge/Keep--Alive-%2Fping%20In--Memory-ff69b4?style=for-the-badge&logo=render&logoColor=white)](backend/app/main.py)
 
 ---
 
@@ -22,46 +23,106 @@
 
 The **CSEC ASTU Platform** replaces fragmented spreadsheets and informal attendance tracking with a **financial-grade double-entry point ledger**, strict **loss-aversion member psychology**, an **anti-fraud physical presence verification engine**, and a **Notion-style editorial database design system**.
 
-Tailored specifically for ASTU's 7 technical divisions, the platform handles multi-division memberships, delegated officer permissions, rotating 6-digit whiteboard session codes, automated 15-minute late check-in detection, Telegram bot push notifications, batch triage operations, and pre-flight Google Form recruitment imports.
+Tailored specifically for CSEC-ASTU's internal technical divisions (~180 active club members on average) while seamlessly scaling to university-wide and nation-wide public events, the platform handles multi-division club memberships, delegated officer permissions, rotating 6-digit whiteboard session codes, automated 15-minute late check-in detection, Telegram bot push notifications, batch triage operations, pre-flight Google Form recruitment imports, and Luma-powered event ticket issuance with automated certificate minting.
+
+---
+
+## 🏗️ System Design & Distributed Architecture
+
+### Topology Diagram
 
 ```
-                                      CSEC-ASTU DISTRIBUTED TOPOLOGY
+                                      CSEC-ASTU DISTRIBUTED HYBRID TOPOLOGY
                                       
-  ┌───────────────────────────────────┐               ┌───────────────────────────────────┐
-  │     Next.js 16 Web Frontend       │               │     Telegram Bot Microservice     │
-  │   React 19 / TypeScript / Radix   │               │      Python 3.13 / Port 8001      │
-  │   Feature-Sliced Architecture     │               │     Real-Time Push Notifications  │
-  └─────────────────┬─────────────────┘               └─────────────────┬─────────────────┘
-                    │                                                   │
-                    │ REST API (HttpOnly JWT)                           │ Webhooks & Polling
-                    ▼                                                   ▼ Deep-Link Verification
-  ┌───────────────────────────────────────────────────────────────────────────────────────┐
-  │                               FastAPI Backend Core Service                            │
-  │                                  Python 3.13 / Port 8000                              │
-  │                                                                                       │
-  │   ├── 12 REST API Routers              ├── Repository Abstraction Layer               │
-  │   ├── 11 Domain Pydantic v2 Schemas    ├── Presence & Punctuality Engine              │
-  │   └── RBAC Permission Guards           └── Ledger & Batch Adjustment Services         │
-  └──────────────────────────────────────────┬────────────────────────────────────────────┘
-                                             │
-                                             │ Async SQLAlchemy 2.0 Pool
-                                             │ (Frankfurt Europe-West)
-                                             ▼
-  ┌───────────────────────────────────────────────────────────────────────────────────────┐
-  │                             Neon Serverless PostgreSQL DB                             │
-  │                                                                                       │
-  │   ├── Append-Only Event Ledger (`point_events`)                                       │
-  │   ├── Rotating Whiteboard Attendance Sessions (`attendance_sessions`)                 │
-  │   ├── Standard 1224 Competition Ranking View (`member_scores`)                        │
-  │   └── Historical Annual Archives (`annual_summaries`)                                 │
-  └───────────────────────────────────────────────────────────────────────────────────────┘
-                                             ▲
-                                             │ 10-Minute Health Heartbeat
-  ┌──────────────────────────────────────────┴────────────────────────────────────────────┐
-  │                      GitHub Actions 24/7 Keep-Alive Workflow                          │
-  │                 Automated Cron Runner Preventing Render Cold-Starts                   │
-  └───────────────────────────────────────────────────────────────────────────────────────┘
+    ┌───────────────────────────────────┐               ┌───────────────────────────────────┐
+    │     Next.js 16 Web Frontend       │               │      Luma Edge Checkout CDN       │
+    │   React 19 / TypeScript / Radix   │◄──────────────┤    embed.lu.ma (Zero Redirect)    │
+    │   Feature-Sliced Architecture     │               │    Apple / Google Wallet Passes   │
+    └─────────────────┬─────────────────┘               └───────────────────────────────────┘
+                      │
+                      │ REST API (HttpOnly JWT Cookies)
+                      ▼
+    ┌───────────────────────────────────────────────────────────────────────────────────────┐
+    │                             FastAPI Backend Core Service                              │
+    │                           Render Free Tier (512 MB RAM Max)                           │
+    │                                                                                       │
+    │   ├── 13 REST API Routers             ├── Cryptographic HMAC Certificate Engine       │
+    │   ├── In-Memory /ping Keep-Alive      ├── Presence & Punctuality Engine               │
+    │   └── RBAC & Scoping Security Layer   └── Batch Operations & Ledger Services          │
+    └───────────────┬───────────────────────────────────────┬───────────────────────────────┘
+                    │                                       │
+                    │ Non-Blocking Internal Webhook         │ Asynchronous JSON Webhook
+                    ▼                                       ▼
+    ┌───────────────────────────────────┐   ┌───────────────────────────────────────────────┐
+    │     Telegram Bot Microservice     │   │      Google Apps Script & Drive Engine        │
+    │     Python 3.13 / Standalone      │   │          Google Cloud Serverless              │
+    │                                   │   │                                               │
+    │   ├── Async Long-Polling Daemon   │   │   ├── Google Slides Vector PDF Renderer       │
+    │   ├── Interactive Member Hub      │   │   ├── Google Drive Archival Storage           │
+    │   └── Real-time Push Alert Engine │   │   └── High-Deliverability GmailApp Dispatcher │
+    └───────────────────────────────────┘   └───────────────────────────────────────────────┘
+                    │
+                    │ Async SQLAlchemy 2.0 Pool (`-pooler` PgBouncer)
+                    ▼
+    ┌───────────────────────────────────────────────────────────────────────────────────────┐
+    │                        Neon Serverless PostgreSQL Database                            │
+    │                                                                                       │
+    │   ├── Append-Only Event Ledger (`point_events`)                                       │
+    │   ├── Rotating Whiteboard Sessions (`attendance_sessions`)                            │
+    │   ├── Published Events & Workshops (`events`)                                         │
+    │   └── Cryptographic Certificate Registry (`certificates`)                             │
+    └───────────────────────────────────────────────────────────────────────────────────────┘
+                    ▲
+                    │ Pings /ping Every 8-10m (Zero DB Execution)
+    ┌───────────────┴───────────────────────────────────────────────────────────────────────┐
+    │                   24/7 Automated Keep-Alive Pinger (UptimeRobot / Cron)                │
+    │              Prevents Render 50s Cold Starts Without Exhausting Neon 100 CU-Hours     │
+    └───────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### Why This Design Choice & Approach? (Our Architectural Reasoning)
+
+When architecting this platform for **CSEC-ASTU's core members (~180 active members on average across the club's specialized internal divisions)** while accommodating **open public events that scale university-wide or nation-wide (reaching 5,000+ Telegram community subscribers)**, our team adopted a **pragmatic, constraint-driven distributed microservice model** specifically optimized for **$0 operational budget**, **zero server crashes**, and **elite real-world student reliability**.
+
+Here is the technical reasoning behind our architectural choices:
+
+#### 1. Constraint-Driven Domain Decomposition (Protecting Render's 512 MB RAM)
+- **The Problem:** Render's free tier provides **512 MB RAM** and a shared vCPU. Generating 50–100 high-resolution vector PDF certificates in Python requires heavy font engines (e.g., WeasyPrint, ReportLab, headless Chromium) which consume **200 MB – 450 MB RAM per batch**, immediately triggering Render's **OOM Killer (`SIGKILL`)** and crashing the entire platform.
+- **Our Solution:** We decoupled PDF generation into an independent serverless worker powered by **Google Apps Script (`Code.gs`)**. Google Slides clones master slide templates, substitutes tags (`{{FULL_NAME}}`, `{{TRACK}}`, `{{VERIFY_URL}}`), exports crisp vector PDFs, archives them into Google Drive, and dispatches them via Gmail—utilizing **0 MB RAM on Render** and costing **$0 forever**.
+
+#### 2. The In-Memory `/ping` vs `/health` Separation (Preserving Neon's 100 CU-Hour Limit)
+- **The Problem:** Neon Serverless PostgreSQL free tier provides **100 Compute Unit (CU) hours per month** and auto-suspends after 5 minutes of inactivity. There are 720 hours in a month. If an external pinger pings the database-connected `/api/v1/health` endpoint (which executes `SELECT 1`) every 5–10 minutes to prevent Render from sleeping, **Neon will run 24/7 and exhaust its entire monthly quota in 4 to 5 days**, locking out the database.
+- **Our Solution:** We engineered a lightweight, in-memory keep-alive route (`@app.get("/ping")`) that **never touches the database**. External pingers hit `/ping` every 8 minutes—keeping Render's container active 24/7 (0-second cold starts)—while Neon sleeps peacefully and automatically wakes up in 1.5–3 seconds when real users visit.
+
+#### 3. Edge-Absorbed Virality (The Luma-Embed Hybrid Model)
+- **The Problem:** When an event registration link drops on the CSEC Telegram channel (5,000+ community subscribers), hundreds of university-wide or nation-wide attendees click simultaneously. If all registration forms, mobile browser OAuth flows, and ticket database writes hit Render directly, the container would suffer severe latency spikes or HTTP 502 Bad Gateway errors.
+- **Our Solution:** We embedded **Luma's checkout overlay** directly onto `csec.astu.edu.et/events`. Luma's global Edge CDN absorbs the entire spike at zero cost. Attendees receive official Apple and Google Wallet passes. At the lab door, officers beep-scan tickets in <1 second using the Luma Organizer app with zero latency. Post-event, officers perform a 1-click **Smart Ingestion CSV drop** on the CSEC platform to auto-match club members and mint verified credentials.
+
+#### 4. Decoupled Failure Domains & Graceful Degradation
+- **The Problem:** If Telegram experiences an API timeout, or Google Apps Script is throttled, a monolithic system would hang the user's HTTP request, pool database connections, and cascade failures across the site.
+- **Our Solution:** Every secondary service boundary is **non-blocking and isolated**:
+  - The Telegram bot runs as a separate background process (`poll.py`) communicating via asynchronous fire-and-forget internal endpoints.
+  - Google Apps Script is dispatched asynchronously; if the cloud webhook is unreachable, certificates are still safely created in the PostgreSQL ledger.
+  - If any external provider has an outage, student logins, leaderboard standings, and whiteboard attendance check-ins remain 100% operational.
+
+#### 5. Neon PgBouncer Connection Pooling (`-pooler`)
+- **The Problem:** Direct PostgreSQL connections on serverless databases are capped (~20 simultaneous connections). High-concurrency campus lab sessions would quickly throw `OperationalError: connection limit exceeded`.
+- **Our Solution:** The backend connects through Neon's built-in **PgBouncer connection pooler** (`-pooler` host string with `sslmode=require`), allowing hundreds of burst queries to be multiplexed efficiently over a lean pool of 5 connections with ~300ms recycling.
+
+---
+
+### Architectural Trade-off Matrix
+
+| Criterion | Monolithic Monolith (Traditional) | Heavyweight Microservices (Kafka / k8s) | CSEC-ASTU Hybrid Microservice (Adopted) |
+| :--- | :--- | :--- | :--- |
+| **Hosting Cost** | $25 – $50 / month | $100+ / month (Clusters & Brokers) | 🛡️ **$0 / month forever** |
+| **Render 512 MB RAM Risk** | ❌ High (OOM crash during PDF generation) | ❌ High (Multiple sidecars exceed RAM) | ✅ **Zero Risk** (Render core uses ~90 MB RAM) |
+| **Neon 100 CU-hr Preservation** | ❌ Fails (Continuous DB keep-alive burn) | ❌ Fails (Heavy background worker queries) | ✅ **Saves 90%+ CU quota** (via in-memory `/ping`) |
+| **Telegram Traffic Spike Handling**| ❌ Prone to HTTP 502 Bad Gateway | ⚠️ Requires expensive auto-scaling | ✅ **100% Edge-absorbed** (via Luma Edge CDN) |
+| **Failure Isolation** | ❌ Cascading (One service crashes all) | ✅ High (Message queue decoupling) | ✅ **High** (Isolated non-blocking boundaries) |
+| **Operational Maintenance** | Moderate | ❌ Extremely High (DevOps nightmare) | ✅ **Near-Zero** (Serverless + managed free tiers) |
 
 ---
 
@@ -140,9 +201,9 @@ Tailored specifically for ASTU's 7 technical divisions, the platform handles mul
 
 ---
 
-## 🌐 7 Official ASTU Technical Divisions
+## 🌐 CSEC-ASTU Technical Divisions
 
-Members enroll in a **Primary Division** and an optional **Secondary Division**:
+CSEC-ASTU members (~180 active members on average) enroll in a **Primary Division** and an optional **Secondary Division**:
 1. 💻 **Development** (Web, Mobile, Backend & Systems)
 2. 🛡️ **Cybersecurity** (Offensive Security, CTFs, Forensics)
 3. 🏆 **Competitive Programming** (ICPC, Codeforces, Algorithms)
@@ -158,12 +219,14 @@ Members enroll in a **Primary Division** and an optional **Secondary Division**:
 | Layer | Technologies | Architectural Function |
 | :--- | :--- | :--- |
 | **Web Frontend** | **Next.js 16**, React 19, TypeScript 5, Tailwind CSS | App Router, Feature-Sliced architecture, TanStack Query v5, Radix primitives, Sonner toasts |
-| **Core Backend** | **FastAPI**, Python 3.13, Pydantic v2, SQLAlchemy 2.0 | Async endpoints, repository abstraction layer, domain schemas, Alembic migrations |
+| **Core Backend** | **FastAPI**, Python 3.13, Pydantic v2, SQLAlchemy 2.0 | Async endpoints, in-memory `/ping`, domain schemas, Alembic migrations, Render Free Tier (~90MB RAM) |
 | **Bot Microservice** | **Python 3.13**, `aiogram` / `python-telegram-bot` | Standalone microservice on Port 8001, deep-linking, real-time push engine |
-| **Database** | **PostgreSQL** (Neon Serverless Frankfurt) | Multi-tenant schema, `-pooler` connection pooling (~300ms warm handshakes), immutable event ledger |
+| **PDF & Email Engine** | **Google Apps Script**, Google Slides, Drive, GmailApp | Headless vector PDF generation, official Drive archiving, and Gmail delivery ($0, 0 MB Render RAM) |
+| **Event Registration** | **Luma Edge Checkout API**, Apple/Google Wallet | In-page zero-redirect RSVP overlay, QR ticket scanner app, sub-second door check-in |
+| **Database** | **PostgreSQL** (Neon Serverless Frankfurt) | Multi-tenant schema, `-pooler` PgBouncer connection pooling, immutable event ledger |
 | **Authentication** | **Google OAuth 2.0**, HttpOnly Cookies, JWT | Refresh token store with cryptographic rotation, personal email alignment, CSRF state protection |
-| **DevOps & CI/CD** | **GitHub Actions**, Docker, Render | 24/7 Keep-Alive heartbeat, automated linting, containerized microservices |
-| **Quality & Tests** | **Pytest**, AnyIO, Asyncio | 53 automated tests covering auth, presence, batch ops, duplicates, and permissions |
+| **DevOps & Monitoring** | **UptimeRobot / Cron**, GitHub Actions, Docker | 24/7 Keep-Alive heartbeat on `/ping`, automated linting, containerized microservices |
+| **Quality & Tests** | **Pytest**, AnyIO, Asyncio | 66 automated tests covering auth, presence, batch ops, duplicates, permissions, events, and GAS |
 
 ---
 

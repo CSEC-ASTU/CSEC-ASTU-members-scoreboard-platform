@@ -12,6 +12,7 @@ import {
   FileCode,
   Sparkles,
   Award,
+  FileSpreadsheet,
 } from "lucide-react"
 import {
   Select,
@@ -24,6 +25,7 @@ import { TemplateCard } from "./components/template-card"
 import { TemplateDetailDialog } from "./components/template-detail-dialog"
 import { ImportTemplateDialog } from "./components/import-template-dialog"
 import { IssueCertificatesDialog } from "./components/issue-certificates-dialog"
+import { LumaIngestDialog } from "./components/luma-ingest-dialog"
 import { DEFAULT_CERTIFICATE_TEMPLATES } from "./default-templates"
 import type { CertificateTemplate, TemplateCategory, SortOption } from "./types"
 import { cn } from "@/lib/utils"
@@ -53,6 +55,7 @@ export default function CertificateTemplatesPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [issueOpen, setIssueOpen] = useState(false)
+  const [lumaOpen, setLumaOpen] = useState(false)
   const [issuingTemplate, setIssuingTemplate] = useState<CertificateTemplate | null>(null)
 
   // Load custom imported templates from localStorage on mount
@@ -163,6 +166,16 @@ export default function CertificateTemplatesPage() {
               >
                 <UploadCloud className="w-3.5 h-3.5" />
                 <span>Import Canva (.pptx)</span>
+              </Button>
+
+              <Button
+                onClick={() => setLumaOpen(true)}
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium gap-1.5 shadow-sm"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Import Luma CSV</span>
               </Button>
             </div>
           </div>
@@ -282,6 +295,13 @@ export default function CertificateTemplatesPage() {
           template={issuingTemplate || selectedTemplate || allTemplates[0] || null}
           open={issueOpen}
           onOpenChange={setIssueOpen}
+        />
+
+        {/* ── 7. Smart Luma Attendance Ingestion & Minting Modal ─────────── */}
+        <LumaIngestDialog
+          open={lumaOpen}
+          onOpenChange={setLumaOpen}
+          templates={allTemplates}
         />
       </div>
     </Layout>

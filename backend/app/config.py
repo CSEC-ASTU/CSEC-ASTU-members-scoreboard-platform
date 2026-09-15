@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     google_service_account_file: str = ""
     google_service_account_json: str = ""
 
+    # Google Apps Script PDF Engine & Email Webhook
+    apps_script_webhook_url: str = ""
+    apps_script_secret: str = ""
+
     # Improvement: auto-approve routine low-point claims (PRD §12)
     auto_approve_claim_max_points: int = 10
     profile_picture_max_bytes: int = 2 * 1024 * 1024

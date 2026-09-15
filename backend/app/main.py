@@ -45,6 +45,15 @@ def create_app() -> FastAPI:
             return JSONResponse(status_code=500, content={"detail": str(exc)})
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
+    @app.api_route("/ping", methods=["GET", "HEAD"], tags=["monitoring"])
+    def ping():
+        """
+        Lightweight in-memory keep-alive endpoint for Render.
+        CRITICAL: Never inject a database session here.
+        Keeps Render container warm 24/7 without consuming Neon CU-hours.
+        """
+        return {"status": "alive", "server": "csec-astu-backend"}
+
     app.include_router(api_router, prefix=settings.api_v1_prefix)
     return app
 
