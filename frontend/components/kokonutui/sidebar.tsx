@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   CalendarDays,
   Award,
+  UserRound,
 } from "lucide-react"
 
 import Link from "next/link"
@@ -190,6 +191,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <div>
                   <SectionLabel>Administration</SectionLabel>
                   <div className="space-y-1">
+                    <NavItem href="/profile-requests" icon={UserRound}>Profile Requests</NavItem>
                     {canManagePermissions(currentUser) && (
                       <NavItem href="/permissions" icon={KeyRound}>Permissions</NavItem>
                     )}
@@ -198,6 +200,10 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                         <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                         <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
                       </div>
+                    )}
+                    {/* Division Heads still need claim approvals access */}
+                    {currentUser.role === "division_head" && (
+                      <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                     )}
                   </div>
                 </div>

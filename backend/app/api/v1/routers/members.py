@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func, or_, select
 
 from app.core.permissions import can_see_member, can_view_sensitive_info, has_permission, is_club_wide_officer, is_officer
@@ -21,7 +21,12 @@ from app.schemas import (
     Paginated,
     PointEventOut,
 )
-from app.services.drive import delete_drive_file_from_url, upload_profile_picture
+from app.schemas.profile_changes import (
+    ProfilePictureRemoveIn,
+    ProfilePictureRequestResult,
+    ProfileSelfUpdateResult,
+)
+from app.services.drive import upload_profile_picture
 from app.services.settings import (
     badge_for_score,
     fetch_batch_member_scores,
@@ -141,21 +146,50 @@ async def get_member(member_id: UUID, db: DbSession, user: RequireUser) -> Membe
     )
 
 
-@router.patch("/me", response_model=MemberDetail)
-async def update_me(body: MemberSelfUpdate, db: DbSession, user: RequireUser) -> MemberDetail:
+@router.patch("/me", response_model=ProfileSelfUpdateResult)
+async def update_me(
+    body: MemberSelfUpdate, db: DbSession, user: RequireUser, settings: AppSettings
+) -> ProfileSelfUpdateResult:
+    """Apply non-sensitive fields immediately; queue sensitive fields for President/VP approval."""
+    from app.services import profile_changes as profile_change_service
+    from app.schemas.profile_changes import ProfileChangeRequestOut, ProfileSelfUpdateResult
+
     m = user.member
+
+    # Immediate (non-sensitive) fields
     if body.department is not None:
         m.department = body.department
-    if body.full_name is not None:
-        m.full_name = body.full_name
-    if body.phone_number is not None:
-        m.phone_number = body.phone_number
     if body.github_url is not None:
         m.github_url = body.github_url
     if body.telegram_username is not None:
         m.telegram_username = body.telegram_username
+
     await db.flush()
-    return await get_member(m.id, db, user)
+
+    sensitive: dict[str, str | None] = {}
+    if body.full_name is not None and body.full_name.strip() != (m.full_name or ""):
+        sensitive["full_name"] = body.full_name.strip()
+    if body.phone_number is not None and (body.phone_number or None) != (m.phone_number or None):
+        sensitive["phone_number"] = body.phone_number or None
+
+    pending_out = None
+    message = "Profile updated."
+    if sensitive:
+        req = await profile_change_service.create_text_change_request(
+            db,
+            member=m,
+            proposed=sensitive,
+            reason=body.reason or "",
+            settings=settings,
+        )
+        pending_out = ProfileChangeRequestOut(**profile_change_service.serialize_request(req))
+        message = (
+            "Non-sensitive fields saved. Sensitive changes (name/phone) were submitted for "
+            "President or Vice President approval. Division Heads have been notified."
+        )
+
+    member_detail = await get_member(m.id, db, user)
+    return ProfileSelfUpdateResult(member=member_detail, pending_request=pending_out, message=message)
 
 
 @router.post("/me/profile-picture", dependencies=[Depends(RateLimiter(times=5, seconds=300))])
@@ -164,22 +198,50 @@ async def upload_my_picture(
     user: RequireUser,
     settings: AppSettings,
     file: UploadFile = File(...),
-) -> dict:
-    url = await upload_profile_picture(settings, file, str(user.id))
-    old = user.member.profile_image_url
-    user.member.profile_image_url = url
-    await db.flush()
-    await delete_drive_file_from_url(settings, old)
-    return {"profile_image_url": url}
+    reason: str = Form(..., min_length=3, max_length=1000),
+) -> ProfilePictureRequestResult:
+    """Upload a candidate photo; live avatar stays unchanged until President/VP approval."""
+    from app.services import profile_changes as profile_change_service
+    from app.schemas.profile_changes import ProfileChangeRequestOut, ProfilePictureRequestResult
+
+    url = await upload_profile_picture(settings, file, f"pending_{user.id}")
+    req = await profile_change_service.create_picture_change_request(
+        db,
+        member=user.member,
+        reason=reason,
+        settings=settings,
+        proposed_url=url,
+        remove=False,
+    )
+    return ProfilePictureRequestResult(
+        pending_request=ProfileChangeRequestOut(**profile_change_service.serialize_request(req)),
+        message="Profile photo submitted for approval. Your current photo remains live until approved.",
+    )
 
 
-@router.delete("/me/profile-picture")
-async def delete_my_picture(db: DbSession, user: RequireUser, settings: AppSettings) -> dict:
-    old = user.member.profile_image_url
-    user.member.profile_image_url = None
-    await db.flush()
-    await delete_drive_file_from_url(settings, old)
-    return {"detail": "removed"}
+@router.post("/me/profile-picture/remove", dependencies=[Depends(RateLimiter(times=5, seconds=300))])
+async def request_remove_my_picture(
+    db: DbSession,
+    user: RequireUser,
+    settings: AppSettings,
+    body: ProfilePictureRemoveIn,
+) -> ProfilePictureRequestResult:
+    """Request removal of profile photo (requires President/VP approval)."""
+    from app.services import profile_changes as profile_change_service
+    from app.schemas.profile_changes import ProfileChangeRequestOut, ProfilePictureRequestResult
+
+    req = await profile_change_service.create_picture_change_request(
+        db,
+        member=user.member,
+        reason=body.reason,
+        settings=settings,
+        proposed_url=None,
+        remove=True,
+    )
+    return ProfilePictureRequestResult(
+        pending_request=ProfileChangeRequestOut(**profile_change_service.serialize_request(req)),
+        message="Photo removal submitted for approval. Your current photo remains live until approved.",
+    )
 
 
 @router.patch("/{member_id}", response_model=MemberDetail)

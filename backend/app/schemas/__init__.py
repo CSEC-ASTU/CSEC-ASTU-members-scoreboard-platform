@@ -32,6 +32,13 @@ from app.schemas.members import (
     MemberListItem,
     MemberSelfUpdate,
 )
+from app.schemas.profile_changes import (
+    ProfileChangeRejectIn,
+    ProfileChangeRequestOut,
+    ProfilePictureRemoveIn,
+    ProfilePictureRequestResult,
+    ProfileSelfUpdateResult,
+)
 from app.schemas.permissions import (
     MemberPermissionCreate,
     MemberPermissionOut,
