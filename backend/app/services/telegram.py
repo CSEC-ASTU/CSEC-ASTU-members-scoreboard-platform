@@ -52,3 +52,26 @@ def notify_bot(settings: Settings, event_id: UUID | str) -> None:
     except RuntimeError:
         # No running event loop (e.g. running in a synchronous test environment)
         pass
+
+
+async def broadcast_message(settings: Settings, chat_ids: list[str], text: str) -> None:
+    """Send an arbitrary HTML message to one or more Telegram chats via the bot service."""
+    if not settings.telegram_bot_url or not settings.internal_api_secret or not chat_ids:
+        return
+
+    url = f"{settings.telegram_bot_url.rstrip('/')}/internal/broadcast"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(
+                url,
+                json={"chat_ids": chat_ids, "text": text},
+                headers={"X-Internal-Secret": settings.internal_api_secret},
+            )
+            if resp.status_code != 200:
+                logger.warning(
+                    "Telegram broadcast failed with status %d: %s",
+                    resp.status_code,
+                    resp.text,
+                )
+    except Exception as exc:
+        logger.debug("Telegram broadcast failed: %s", exc)

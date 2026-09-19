@@ -14,6 +14,7 @@ from app.api.v1.routers import (
     members,
     permissions,
     point_events,
+    profile_changes,
     settings,
     tasks,
 )
@@ -37,5 +38,8 @@ api_router.include_router(annual.router, prefix="/annual-summaries", tags=["annu
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(certificates.router, prefix="/certificates", tags=["certificates"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
+api_router.include_router(
+    profile_changes.router, prefix="/profile-change-requests", tags=["profile-change-requests"]
+)
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 

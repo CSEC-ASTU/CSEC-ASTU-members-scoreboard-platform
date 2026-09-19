@@ -66,7 +66,43 @@ export interface MemberSelfUpdateIn {
   phone_number?: string
   github_url?: string
   telegram_username?: string
+  reason?: string
 }
+
+export type ProfileChangeStatus = "pending" | "approved" | "rejected" | "cancelled"
+
+export interface ProfileChangeRequestOut {
+  id: string
+  member_id: string
+  member_full_name?: string | null
+  member_email?: string | null
+  member_role?: Role | null
+  member_division_id?: string | null
+  status: ProfileChangeStatus
+  reason: string
+  proposed_changes: Record<string, string | null>
+  current_snapshot: Record<string, string | null>
+  proposed_profile_image_url?: string | null
+  current_profile_image_url?: string | null
+  remove_profile_image: boolean
+  reviewed_by?: string | null
+  reviewer_full_name?: string | null
+  reviewed_at?: string | null
+  decision_reason?: string | null
+  created_at: string
+}
+
+export interface ProfileSelfUpdateResult {
+  member: MemberDetailOut
+  pending_request: ProfileChangeRequestOut | null
+  message: string
+}
+
+export interface ProfilePictureRequestResult {
+  pending_request: ProfileChangeRequestOut
+  message: string
+}
+
 
 export interface CurrentUserOut {
   id: string

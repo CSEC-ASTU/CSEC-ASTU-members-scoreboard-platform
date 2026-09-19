@@ -12,9 +12,18 @@ import { Badge } from "@/components/ui/badge"
 import { MemberAvatar, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
 import { useCurrentUser } from "@/components/user-context"
 import { membersService } from "@/lib/api/services/members"
-import { useDivisions, usePlatformSettings, useMemberSummaries, useUpdateMeMutation } from "@/lib/hooks/use-queries"
+import { useDivisions, usePlatformSettings, useMemberSummaries, useUpdateMeMutation, useMyPendingProfileChange, useCancelProfileChangeMutation } from "@/lib/hooks/use-queries"
 import { ProfileSkeleton } from "@/components/csec/skeletons"
 import type { AnnualSummaryOut, BadgeTier, DivisionOut } from "@/lib/api/types"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   getMemberBadge,
   ROLE_LABELS,
@@ -44,20 +53,28 @@ import { authService } from "@/lib/api"
 
 export default function ProfilePage() {
   const { currentUser, liveUser, refetchUser } = useCurrentUser()
+  const [fullName, setFullName] = useState(currentUser.name ?? "")
   const [department, setDepartment] = useState(currentUser.department ?? "")
   const [phoneNumber, setPhoneNumber] = useState(currentUser.phoneNumber ?? "")
   const [githubUrl, setGithubUrl] = useState(currentUser.githubUrl ?? "")
+  const [changeReason, setChangeReason] = useState("")
   const [connectingTelegram, setConnectingTelegram] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [telegramConnectData, setTelegramConnectData] = useState<{ token: string; link: string | null } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [stickerDialogOpen, setStickerDialogOpen] = useState(false)
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false)
+  const [photoDialogMode, setPhotoDialogMode] = useState<"upload" | "remove">("upload")
+  const [photoReason, setPhotoReason] = useState("")
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null)
 
   const { data: divisionsData, isLoading: divsLoading } = useDivisions()
   const { data: settingsData, isLoading: settingsLoading } = usePlatformSettings()
   const { data: summariesData, isLoading: summariesLoading } = useMemberSummaries(currentUser.id)
   const updateMeMutation = useUpdateMeMutation()
+  const { data: pendingChange, refetch: refetchPending } = useMyPendingProfileChange(Boolean(currentUser.id))
+  const cancelPendingMutation = useCancelProfileChangeMutation()
 
   const divisions = divisionsData || []
   const annualSummaries = summariesData?.items || []
@@ -65,10 +82,15 @@ export default function ProfilePage() {
   const isLoading = divsLoading || settingsLoading || summariesLoading
 
   useEffect(() => {
+    setFullName(currentUser.name ?? "")
     setDepartment(currentUser.department ?? "")
     setPhoneNumber(currentUser.phoneNumber ?? "")
     setGithubUrl(currentUser.githubUrl ?? "")
-  }, [currentUser.department, currentUser.phoneNumber, currentUser.githubUrl])
+  }, [currentUser.name, currentUser.department, currentUser.phoneNumber, currentUser.githubUrl])
+
+  const sensitiveNameChanged = fullName.trim() !== (currentUser.name ?? "").trim()
+  const sensitivePhoneChanged = (phoneNumber.trim() || "") !== (currentUser.phoneNumber ?? "").trim()
+  const needsApprovalReason = sensitiveNameChanged || sensitivePhoneChanged
 
   const divisionsMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -116,15 +138,33 @@ export default function ProfilePage() {
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
+    if (needsApprovalReason && changeReason.trim().length < 3) {
+      toast.error("Please explain why you are changing your name or phone number")
+      return
+    }
+    if (pendingChange && needsApprovalReason) {
+      toast.error("You already have a pending profile change request. Cancel it first or wait for a decision.")
+      return
+    }
     try {
       setSaving(true)
-      await updateMeMutation.mutateAsync({
+      const result = await updateMeMutation.mutateAsync({
         department: department.trim() || undefined,
-        phone_number: phoneNumber.trim() || undefined,
         github_url: githubUrl.trim() || undefined,
+        ...(sensitiveNameChanged ? { full_name: fullName.trim() } : {}),
+        ...(sensitivePhoneChanged ? { phone_number: phoneNumber.trim() || undefined } : {}),
+        ...(needsApprovalReason ? { reason: changeReason.trim() } : {}),
       })
       await refetchUser()
-      toast.success("Profile updated successfully")
+      await refetchPending()
+      if (result.pending_request) {
+        toast.success("Submitted for approval", {
+          description: result.message,
+        })
+        setChangeReason("")
+      } else {
+        toast.success(result.message || "Profile updated successfully")
+      }
     } catch (err) {
       toast.error("Failed to update profile", {
         description: err instanceof Error ? err.message : "Please try again.",
@@ -134,17 +174,49 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ""
     if (!file) return
+    if (pendingChange) {
+      toast.error("You already have a pending profile change request.")
+      return
+    }
+    setPendingPhotoFile(file)
+    setPhotoDialogMode("upload")
+    setPhotoReason("")
+    setPhotoDialogOpen(true)
+  }
 
+  function handleDeleteAvatar() {
+    if (pendingChange) {
+      toast.error("You already have a pending profile change request.")
+      return
+    }
+    setPendingPhotoFile(null)
+    setPhotoDialogMode("remove")
+    setPhotoReason("")
+    setPhotoDialogOpen(true)
+  }
+
+  async function submitPhotoRequest() {
+    if (photoReason.trim().length < 3) {
+      toast.error("Please provide a reason for this photo change")
+      return
+    }
     try {
       setAvatarUploading(true)
-      await membersService.uploadProfilePicture(file)
-      await refetchUser()
-      toast.success("Profile photo uploaded successfully!")
+      const result =
+        photoDialogMode === "upload" && pendingPhotoFile
+          ? await membersService.uploadProfilePicture(pendingPhotoFile, photoReason.trim())
+          : await membersService.requestRemoveProfilePicture(photoReason.trim())
+      await refetchPending()
+      toast.success("Submitted for approval", { description: result.message })
+      setPhotoDialogOpen(false)
+      setPendingPhotoFile(null)
+      setPhotoReason("")
     } catch (err) {
-      toast.error("Failed to upload avatar", {
+      toast.error("Failed to submit photo request", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
@@ -152,18 +224,16 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleDeleteAvatar() {
+  async function handleCancelPending() {
+    if (!pendingChange) return
     try {
-      setAvatarUploading(true)
-      await membersService.deleteProfilePicture()
-      await refetchUser()
-      toast.success("Profile photo removed")
+      await cancelPendingMutation.mutateAsync(pendingChange.id)
+      await refetchPending()
+      toast.success("Pending profile request cancelled")
     } catch (err) {
-      toast.error("Failed to remove avatar", {
+      toast.error("Failed to cancel request", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
-    } finally {
-      setAvatarUploading(false)
     }
   }
 
@@ -236,6 +306,40 @@ export default function ProfilePage() {
           }
         />
 
+        {pendingChange && (
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  Profile change pending approval
+                </p>
+                <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
+                  Your live profile stays unchanged until the President or Vice President approves.
+                  Reason: <span className="italic">{pendingChange.reason}</span>
+                </p>
+                {pendingChange.proposed_profile_image_url && (
+                  <div className="pt-2 flex items-center gap-3">
+                    <span className="text-[11px] text-amber-700 dark:text-amber-400">Proposed photo:</span>
+                    <MemberAvatar
+                      name={currentUser.name}
+                      imageUrl={pendingChange.proposed_profile_image_url}
+                      size={40}
+                    />
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelPending}
+                disabled={cancelPendingMutation.isPending}
+              >
+                Cancel request
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Profile Card & Avatar */}
         <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/40">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -251,8 +355,8 @@ export default function ProfilePage() {
                     type="file"
                     accept="image/*"
                     className="sr-only"
-                    onChange={handleAvatarUpload}
-                    disabled={avatarUploading}
+                    onChange={handleAvatarFilePick}
+                    disabled={avatarUploading || Boolean(pendingChange)}
                   />
                 </label>
               </div>
@@ -324,8 +428,15 @@ export default function ProfilePage() {
             </h3>
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="full-name" className="text-xs">Full Name (from Google)</Label>
-                <Input id="full-name" value={currentUser.name} disabled className="bg-zinc-50 dark:bg-zinc-800/50" />
+                <Label htmlFor="full-name" className="text-xs">
+                  Full Name <span className="text-amber-600">(requires approval)</span>
+                </Label>
+                <Input
+                  id="full-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={Boolean(pendingChange)}
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -382,12 +493,15 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="phoneNumber" className="text-xs">Phone Number</Label>
+                  <Label htmlFor="phoneNumber" className="text-xs">
+                    Phone Number <span className="text-amber-600">(requires approval)</span>
+                  </Label>
                   <Input
                     id="phoneNumber"
                     value={phoneNumber}
                     placeholder="+251 9..."
                     onChange={(e) => setPhoneNumber(e.target.value)}
+                    disabled={Boolean(pendingChange)}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -401,8 +515,32 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
+              {needsApprovalReason && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="changeReason" className="text-xs">
+                    Reason for sensitive change <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="changeReason"
+                    value={changeReason}
+                    onChange={(e) => setChangeReason(e.target.value)}
+                    placeholder="Explain why you need to update your name or phone number…"
+                    rows={3}
+                    disabled={Boolean(pendingChange)}
+                  />
+                  <p className="text-[11px] text-zinc-500">
+                    Name and phone changes are reviewed by Division Heads and must be approved by the
+                    President or Vice President before going live.
+                  </p>
+                </div>
+              )}
+
+              <Button type="submit" size="sm" disabled={saving || (needsApprovalReason && Boolean(pendingChange))}>
+                {saving
+                  ? "Saving..."
+                  : needsApprovalReason
+                    ? "Submit for Approval"
+                    : "Save Changes"}
               </Button>
             </form>
           </div>
@@ -623,6 +761,40 @@ export default function ProfilePage() {
           profileImageUrl: currentUser.profileImageUrl,
         }}
       />
+
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {photoDialogMode === "upload" ? "Request photo change" : "Request photo removal"}
+            </DialogTitle>
+            <DialogDescription>
+              Profile photos require President or Vice President approval. Division Heads will be
+              notified and can review the before/after images.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="photoReason" className="text-xs">
+              Reason <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="photoReason"
+              value={photoReason}
+              onChange={(e) => setPhotoReason(e.target.value)}
+              placeholder="Why are you changing your profile photo?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPhotoDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submitPhotoRequest} disabled={avatarUploading || photoReason.trim().length < 3}>
+              {avatarUploading ? "Submitting…" : "Submit for Approval"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   )
 }

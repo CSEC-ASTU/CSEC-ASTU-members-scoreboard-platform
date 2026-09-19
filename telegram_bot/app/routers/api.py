@@ -94,3 +94,22 @@ async def internal_weekly_digest(
 ) -> dict:
     return await push_weekly_digest(db, settings=settings, message_text=body.message_text)
 
+
+class BroadcastRequest(BaseModel):
+    chat_ids: list[str]
+    text: str
+
+
+@router.post("/internal/broadcast", dependencies=[Depends(require_internal_secret)])
+async def internal_broadcast(body: BroadcastRequest, settings: AppSettings) -> dict:
+    """Send a free-form HTML message to specific chat IDs (profile-change alerts, etc.)."""
+    sent = 0
+    failed = 0
+    for chat_id in body.chat_ids:
+        ok = await send_telegram_message(settings, chat_id, body.text)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+    return {"sent": sent, "failed": failed, "total": len(body.chat_ids)}
+

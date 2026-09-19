@@ -9,7 +9,9 @@ from app.models.enums import (
     PermissionScopeType,
     PointEventStatus,
     PointEventType,
+    ProfileChangeStatus,
 )
+from app.models.profile_change_request import ProfileChangeRequest
 from app.models.event import Event
 from app.models.login_attempt import LoginAttemptFailure
 from app.models.member import Member
@@ -42,6 +44,8 @@ __all__ = [
     "PointEvent",
     "PointEventStatus",
     "PointEventType",
+    "ProfileChangeRequest",
+    "ProfileChangeStatus",
     "RefreshToken",
     "Task",
 ]

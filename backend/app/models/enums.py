@@ -45,6 +45,13 @@ class NotificationStatus(str, enum.Enum):
     SKIPPED_NO_CHAT_ID = "skipped_no_chat_id"
 
 
+class ProfileChangeStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
 # Seniority for no-self / no-lateral approval (PRD §12)
 ROLE_RANK: dict[MemberRole, int] = {
     MemberRole.MEMBER: 0,

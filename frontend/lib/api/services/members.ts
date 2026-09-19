@@ -7,6 +7,8 @@ import type {
   AnnualSummaryOut,
   Paginated,
   PointEventOut,
+  ProfilePictureRequestResult,
+  ProfileSelfUpdateResult,
   Role,
 } from "../types"
 
@@ -38,25 +40,30 @@ export const membersService = {
     return apiFetch<MemberDetailOut>(`/members/${id}`)
   },
 
-  updateMe: async (data: MemberSelfUpdateIn): Promise<MemberDetailOut> => {
-    return apiFetch<MemberDetailOut>("/members/me", {
+  updateMe: async (data: MemberSelfUpdateIn): Promise<ProfileSelfUpdateResult> => {
+    return apiFetch<ProfileSelfUpdateResult>("/members/me", {
       method: "PATCH",
       body: JSON.stringify(data),
     })
   },
 
-  uploadProfilePicture: async (file: File): Promise<{ profile_image_url: string }> => {
+  uploadProfilePicture: async (
+    file: File,
+    reason: string,
+  ): Promise<ProfilePictureRequestResult> => {
     const formData = new FormData()
     formData.append("file", file)
-    return apiFetch<{ profile_image_url: string }>("/members/me/profile-picture", {
+    formData.append("reason", reason)
+    return apiFetch<ProfilePictureRequestResult>("/members/me/profile-picture", {
       method: "POST",
       body: formData,
     })
   },
 
-  deleteProfilePicture: async (): Promise<{ status: string }> => {
-    return apiFetch<{ status: string }>("/members/me/profile-picture", {
-      method: "DELETE",
+  requestRemoveProfilePicture: async (reason: string): Promise<ProfilePictureRequestResult> => {
+    return apiFetch<ProfilePictureRequestResult>("/members/me/profile-picture/remove", {
+      method: "POST",
+      body: JSON.stringify({ reason }),
     })
   },
 
@@ -102,4 +109,3 @@ export const membersService = {
     return apiFetch<Paginated<AnnualSummaryOut>>("/annual", { params })
   },
 }
-

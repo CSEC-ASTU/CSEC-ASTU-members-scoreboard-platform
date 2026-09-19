@@ -38,6 +38,8 @@ class MemberSelfUpdate(BaseModel):
     phone_number: str | None = None
     github_url: str | None = None
     telegram_username: str | None = None
+    # Required when submitting sensitive fields (full_name, phone_number)
+    reason: str | None = Field(default=None, min_length=3, max_length=1000)
 
 
 class MemberAdminUpdate(BaseModel):
