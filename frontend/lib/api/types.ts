@@ -546,3 +546,93 @@ export interface AnnualSummaryOut {
   badges_earned: string[]
 }
 
+/** Club workshop/event (distinct from point-event EventType). */
+export interface ClubEventOut {
+  id: string
+  title: string
+  slug: string
+  description: string
+  cover_image_url?: string | null
+  luma_url?: string | null
+  luma_event_id?: string | null
+  event_type: string
+  division_id?: string | null
+  division_name?: string | null
+  points_reward: number
+  start_time: string
+  end_time: string
+  location_name: string
+  certificate_template_id?: string | null
+  is_published: boolean
+  created_by?: string | null
+  creator_name?: string | null
+  created_at?: string
+  updated_at?: string | null
+}
+
+export interface ClubEventCreateIn {
+  title: string
+  slug?: string | null
+  description: string
+  cover_image_url?: string | null
+  luma_url?: string | null
+  luma_event_id?: string | null
+  event_type?: string
+  division_id?: string | null
+  points_reward?: number
+  start_time: string
+  end_time: string
+  location_name?: string
+  certificate_template_id?: string | null
+  is_published?: boolean
+}
+
+export interface LumaAttendeePreview {
+  row_index: number
+  name: string
+  email: string | null
+  is_member: boolean
+  member_id: string | null
+  member_student_id: string | null
+  member_division_name: string | null
+  checked_in: boolean
+  custom_attributes: Record<string, unknown>
+}
+
+export interface LumaPreviewOut {
+  total_rows: number
+  checked_in_rows: number
+  detected_members: number
+  detected_externals: number
+  detected_columns: string[]
+  mapped_columns: Record<string, string>
+  attendees: LumaAttendeePreview[]
+}
+
+export interface LumaIngestExecuteAttendee {
+  name: string
+  email?: string | null
+  is_member?: boolean
+  member_id?: string | null
+  custom_attributes?: Record<string, unknown>
+}
+
+export interface LumaIngestExecuteIn {
+  certificate_title: string
+  certificate_template_id?: string | null
+  certificate_type?: string
+  division_id?: string | null
+  academic_year?: number | null
+  award_points?: boolean
+  points_reward?: number
+  mint_certificates?: boolean
+  attendees: LumaIngestExecuteAttendee[]
+}
+
+export interface LumaIngestExecuteOut {
+  points_awarded_count: number
+  certificates_minted_count: number
+  members_awarded: string[]
+  certificate_codes: string[]
+}
+

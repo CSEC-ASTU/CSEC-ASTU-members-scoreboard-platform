@@ -7,7 +7,7 @@ Create Date: 2026-09-19
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
 
 revision = "0010_profile_change_requests"
 down_revision = "0009_create_events"
@@ -16,14 +16,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    profile_change_status = sa.Enum(
+    # Use postgresql.ENUM with create_type=False so create_table does not
+    # emit a second CREATE TYPE (sa.Enum(checkfirst) still races with table DDL).
+    profile_change_status = ENUM(
         "pending",
         "approved",
         "rejected",
         "cancelled",
         name="profile_change_status",
+        create_type=False,
     )
-    profile_change_status.create(op.get_bind(), checkfirst=True)
+    bind = op.get_bind()
+    profile_change_status.create(bind, checkfirst=True)
 
     op.create_table(
         "profile_change_requests",
@@ -66,4 +70,4 @@ def downgrade() -> None:
     op.drop_index("ix_profile_change_requests_status", table_name="profile_change_requests")
     op.drop_index("ix_profile_change_requests_member_id", table_name="profile_change_requests")
     op.drop_table("profile_change_requests")
-    sa.Enum(name="profile_change_status").drop(op.get_bind(), checkfirst=True)
+    ENUM(name="profile_change_status").drop(op.get_bind(), checkfirst=True)

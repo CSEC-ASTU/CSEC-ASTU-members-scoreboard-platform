@@ -48,10 +48,21 @@ def _extract_luma_event_id(url_or_id: str | None) -> str | None:
     trimmed = url_or_id.strip()
     if trimmed.startswith("evt-"):
         return trimmed
-    # Parse e.g. https://lu.ma/event/evt-xxxxx or https://lu.ma/re-101
-    match = re.search(r"(?:event/|lu\.ma/)(evt-[a-zA-Z0-9_-]+|[a-zA-Z0-9_-]+)$", trimmed)
-    if match:
-        return match.group(1)
+
+    # Prefer explicit evt- IDs from luma.com / lu.ma checkout links
+    evt_match = re.search(r"(evt-[a-zA-Z0-9_-]+)", trimmed)
+    if evt_match:
+        return evt_match.group(1)
+
+    # Short links: https://lu.ma/re-101 or https://luma.com/re-101
+    short_match = re.search(
+        r"(?:https?://)?(?:www\.)?(?:lu\.ma|luma\.com)/(?:event/)?([a-zA-Z0-9_-]+)/?(?:\?.*)?$",
+        trimmed,
+        re.IGNORECASE,
+    )
+    if short_match:
+        return short_match.group(1)
+
     return trimmed
 
 

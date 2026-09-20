@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { ApiError, eventsService } from "@/lib/api"
 import type { CertificateTemplate } from "../types"
 
 interface LumaIngestDialogProps {
@@ -92,15 +93,20 @@ export function LumaIngestDialog({
   useEffect(() => {
     async function loadEvents() {
       try {
-        const res = await fetch("/api/v1/events?filter=all&page_size=50")
-        if (res.ok) {
-          const data = await res.json()
-          setEvents(data.items || [])
-          if (data.items?.length > 0 && !selectedEventId) {
-            setSelectedEventId(data.items[0].id)
-            setCertificateTitle(data.items[0].title)
-            setPointsReward(data.items[0].points_reward || 20)
-          }
+        const data = await eventsService.listEvents({ filter: "all", page_size: 50 })
+        const items = data.items || []
+        setEvents(
+          items.map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            points_reward: ev.points_reward,
+            division_id: ev.division_id ?? null,
+          }))
+        )
+        if (items.length > 0 && !selectedEventId) {
+          setSelectedEventId(items[0].id)
+          setCertificateTitle(items[0].title)
+          setPointsReward(items[0].points_reward || 20)
         }
       } catch {
         // ignore
@@ -109,6 +115,7 @@ export function LumaIngestDialog({
     if (open) {
       loadEvents()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload when dialog opens
   }, [open])
 
   // Handle Event selection change
@@ -145,25 +152,18 @@ export function LumaIngestDialog({
 
     try {
       setIsParsing(true)
-      const res = await fetch("/api/v1/events/preview-luma-csv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          csv_text: csvContent,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || "Failed to analyze CSV")
-      }
-
-      const data: PreviewData = await res.json()
+      const data = await eventsService.previewLumaCsv(csvContent)
       setPreviewData(data)
       setStep("preview")
       toast.success(`Detected ${data.total_rows} attendees (${data.detected_members} club members)!`)
-    } catch (err: any) {
-      toast.error(err.message || "Failed to parse CSV")
+    } catch (err: unknown) {
+      const message =
+        err instanceof ApiError
+          ? err.detail
+          : err instanceof Error
+            ? err.message
+            : "Failed to parse CSV"
+      toast.error(message)
     } finally {
       setIsParsing(false)
     }
@@ -182,7 +182,6 @@ export function LumaIngestDialog({
 
     try {
       setIsExecuting(true)
-      // Filter to checked-in attendees
       const validAttendees = previewData.attendees
         .filter((a) => a.checked_in)
         .map((a) => ({
@@ -193,7 +192,7 @@ export function LumaIngestDialog({
           custom_attributes: a.custom_attributes,
         }))
 
-      const payload = {
+      const result = await eventsService.ingestLuma(selectedEventId, {
         certificate_title: certificateTitle.trim() || "CSEC-ASTU Event Attendance",
         certificate_template_id: selectedTemplateId || null,
         certificate_type: "workshop",
@@ -201,26 +200,20 @@ export function LumaIngestDialog({
         points_reward: pointsReward,
         mint_certificates: mintCertificates,
         attendees: validAttendees,
-      }
-
-      const res = await fetch(`/api/v1/events/${selectedEventId}/ingest-luma`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
       })
 
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || "Failed to execute ingestion")
-      }
-
-      const result = await res.json()
       setResultData(result)
       setStep("done")
       toast.success("Attendance successfully ingested and processed!")
       onSuccess?.()
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred during ingestion")
+    } catch (err: unknown) {
+      const message =
+        err instanceof ApiError
+          ? err.detail
+          : err instanceof Error
+            ? err.message
+            : "An error occurred during ingestion"
+      toast.error(message)
     } finally {
       setIsExecuting(false)
     }
@@ -236,13 +229,13 @@ export function LumaIngestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-neutral-900 border-neutral-800 text-neutral-100">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             <FileSpreadsheet className="w-5 h-5 text-primary" />
             Smart Luma Attendance Ingestion & Certificate Minting
           </DialogTitle>
-          <DialogDescription className="text-neutral-400 text-xs">
+          <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-xs">
             Export guest list from Luma Organizer, auto-match CSEC club members, deposit leaderboard points, and mint verified digital certificates.
           </DialogDescription>
         </DialogHeader>
@@ -252,12 +245,12 @@ export function LumaIngestDialog({
             {/* Event selection */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-neutral-300 font-semibold">Target Event *</Label>
+                <Label className="text-xs text-zinc-600 dark:text-zinc-300 font-semibold">Target Event *</Label>
                 {events.length > 0 ? (
                   <select
                     value={selectedEventId}
                     onChange={(e) => handleEventChange(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-200 focus:border-primary focus:outline-none"
+                    className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:border-primary focus:outline-none"
                   >
                     {events.map((ev) => (
                       <option key={ev.id} value={ev.id}>
@@ -273,11 +266,11 @@ export function LumaIngestDialog({
               </div>
 
               <div>
-                <Label className="text-xs text-neutral-300 font-semibold">Certificate Template</Label>
+                <Label className="text-xs text-zinc-600 dark:text-zinc-300 font-semibold">Certificate Template</Label>
                 <select
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-200 focus:border-primary focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:border-primary focus:outline-none"
                 >
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -301,7 +294,7 @@ export function LumaIngestDialog({
                 "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all cursor-pointer",
                 csvFile
                   ? "border-primary/50 bg-primary/5"
-                  : "border-neutral-800 bg-neutral-950/60 hover:border-neutral-700"
+                  : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/60 hover:border-zinc-300 dark:hover:border-zinc-700"
               )}
               onClick={() => document.getElementById("luma-csv-input")?.click()}
             >
@@ -314,22 +307,22 @@ export function LumaIngestDialog({
                   if (e.target.files?.[0]) handleFileChange(e.target.files[0])
                 }}
               />
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-800/80 mb-3 text-primary">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 mb-3 text-primary">
                 <UploadCloud className="w-6 h-6" />
               </div>
               {csvFile ? (
                 <div>
-                  <p className="text-sm font-semibold text-neutral-200">{csvFile.name}</p>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{csvFile.name}</p>
+                  <p className="text-xs text-zinc-500 mt-1">
                     {(csvFile.size / 1024).toFixed(1)} KB — Click to change file
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-semibold text-neutral-300">
+                  <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
                     Drop your Luma exported CSV file here
                   </p>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-zinc-500 mt-1">
                     Supports Luma Guests export (auto-detects Name, Email, University, Track, Check-In)
                   </p>
                 </div>
@@ -342,7 +335,7 @@ export function LumaIngestDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="border-neutral-800 text-neutral-400 hover:text-white text-xs"
+                className="border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white text-xs"
               >
                 Cancel
               </Button>
@@ -364,65 +357,65 @@ export function LumaIngestDialog({
           <div className="space-y-4 pt-1">
             {/* Identity Resolution Summary Cards */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3">
-                <div className="flex items-center gap-1.5 text-xs text-neutral-400 mb-1">
-                  <Users className="w-3.5 h-3.5 text-neutral-400" />
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/70 p-3">
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                  <Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                   Total Attendees
                 </div>
-                <div className="text-xl font-extrabold text-white">
+                <div className="text-xl font-extrabold text-zinc-900 dark:text-white">
                   {previewData.checked_in_rows}
-                  <span className="text-[10px] text-neutral-500 font-normal ml-1">
+                  <span className="text-[10px] text-zinc-500 font-normal ml-1">
                     / {previewData.total_rows} rows
                   </span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3">
-                <div className="flex items-center gap-1.5 text-xs text-emerald-400 mb-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20 p-3">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   Active Members
                 </div>
-                <div className="text-xl font-extrabold text-emerald-300">
+                <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-300">
                   {previewData.detected_members}
-                  <span className="text-[10px] text-emerald-500 font-normal ml-1">matched</span>
+                  <span className="text-[10px] text-emerald-600/70 dark:text-emerald-500 font-normal ml-1">matched</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3">
-                <div className="flex items-center gap-1.5 text-xs text-neutral-400 mb-1">
-                  <Award className="w-3.5 h-3.5 text-neutral-400" />
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/70 p-3">
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                  <Award className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                   External Guests
                 </div>
-                <div className="text-xl font-extrabold text-neutral-300">
+                <div className="text-xl font-extrabold text-zinc-600 dark:text-zinc-300">
                   {previewData.detected_externals}
-                  <span className="text-[10px] text-neutral-500 font-normal ml-1">outsiders</span>
+                  <span className="text-[10px] text-zinc-500 font-normal ml-1">outsiders</span>
                 </div>
               </div>
             </div>
 
             {/* Column mapping chips */}
-            <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/40 p-3 text-xs space-y-1.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/40 p-3 text-xs space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Auto-Detected Column Mapping
               </p>
               <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-md bg-neutral-800 px-2 py-0.5 text-neutral-300">
-                  Name: <strong className="text-white">{previewData.mapped_columns.name}</strong>
+                <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-600 dark:text-zinc-300">
+                  Name: <strong className="text-zinc-900 dark:text-white">{previewData.mapped_columns.name}</strong>
                 </span>
-                <span className="rounded-md bg-neutral-800 px-2 py-0.5 text-neutral-300">
-                  Email: <strong className="text-white">{previewData.mapped_columns.email}</strong>
+                <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-600 dark:text-zinc-300">
+                  Email: <strong className="text-zinc-900 dark:text-white">{previewData.mapped_columns.email}</strong>
                 </span>
-                <span className="rounded-md bg-neutral-800 px-2 py-0.5 text-neutral-300">
-                  Check-in: <strong className="text-white">{previewData.mapped_columns.checkin_status}</strong>
+                <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-600 dark:text-zinc-300">
+                  Check-in: <strong className="text-zinc-900 dark:text-white">{previewData.mapped_columns.checkin_status}</strong>
                 </span>
               </div>
             </div>
 
             {/* Roster Preview Table */}
-            <div className="rounded-xl border border-neutral-800 overflow-hidden">
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
               <div className="max-h-48 overflow-y-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-neutral-950 text-neutral-400 font-semibold border-b border-neutral-800">
+                  <thead className="sticky top-0 bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
                     <tr>
                       <th className="py-2 px-3">Name</th>
                       <th className="py-2 px-3">Email</th>
@@ -430,18 +423,18 @@ export function LumaIngestDialog({
                       <th className="py-2 px-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-800/60 bg-neutral-900/40">
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 bg-zinc-50 dark:bg-zinc-900/40">
                     {previewData.attendees.slice(0, 15).map((att, idx) => (
-                      <tr key={idx} className="hover:bg-neutral-800/40">
-                        <td className="py-2 px-3 font-medium text-neutral-200">{att.name}</td>
-                        <td className="py-2 px-3 text-neutral-400">{att.email || "—"}</td>
+                      <tr key={idx} className="hover:bg-zinc-100 dark:bg-zinc-800/40">
+                        <td className="py-2 px-3 font-medium text-zinc-800 dark:text-zinc-200">{att.name}</td>
+                        <td className="py-2 px-3 text-zinc-500 dark:text-zinc-400">{att.email || "—"}</td>
                         <td className="py-2 px-3">
                           {att.is_member ? (
                             <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20">
                               Club Member ({att.member_student_id || "Active"})
                             </span>
                           ) : (
-                            <span className="inline-flex items-center rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
+                            <span className="inline-flex items-center rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">
                               External Guest
                             </span>
                           )}
@@ -459,32 +452,32 @@ export function LumaIngestDialog({
                 </table>
               </div>
               {previewData.attendees.length > 15 && (
-                <div className="bg-neutral-950/80 px-3 py-1.5 text-center text-[11px] text-neutral-500 border-t border-neutral-800">
+                <div className="bg-white dark:bg-zinc-950/80 px-3 py-1.5 text-center text-[11px] text-zinc-500 border-t border-zinc-200 dark:border-zinc-800">
                   + {previewData.attendees.length - 15} more attendees in queue
                 </div>
               )}
             </div>
 
             {/* Action Confirmation Checkboxes */}
-            <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3 space-y-2 text-xs">
-              <label className="flex items-center gap-2 text-neutral-200 cursor-pointer">
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/70 p-3 space-y-2 text-xs">
+              <label className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={awardPoints}
                   onChange={(e) => setAwardPoints(e.target.checked)}
-                  className="rounded border-neutral-700 bg-neutral-900 text-primary focus:ring-0"
+                  className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-primary focus:ring-0"
                 />
                 <span>
                   Deposit <strong>+{pointsReward} Leaderboard Points</strong> to all {previewData.detected_members} verified CSEC members
                 </span>
               </label>
 
-              <label className="flex items-center gap-2 text-neutral-200 cursor-pointer">
+              <label className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={mintCertificates}
                   onChange={(e) => setMintCertificates(e.target.checked)}
-                  className="rounded border-neutral-700 bg-neutral-900 text-primary focus:ring-0"
+                  className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-primary focus:ring-0"
                 />
                 <span>
                   Mint official digital certificates for all {previewData.checked_in_rows} verified attendees
@@ -498,7 +491,7 @@ export function LumaIngestDialog({
                 type="button"
                 variant="outline"
                 onClick={handleReset}
-                className="border-neutral-800 text-neutral-400 hover:text-white text-xs"
+                className="border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white text-xs"
               >
                 Back to Upload
               </Button>
@@ -522,21 +515,21 @@ export function LumaIngestDialog({
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-white">Batch Processing Completed!</h3>
-              <p className="text-xs text-neutral-400 mt-1">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Batch Processing Completed!</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                 Successfully processed Luma roster and linked credentials.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-3">
-                <div className="text-xs text-neutral-400">Members Awarded</div>
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">Members Awarded</div>
                 <div className="text-xl font-bold text-emerald-400 mt-1">
                   +{resultData.points_awarded_count}
                 </div>
               </div>
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-3">
-                <div className="text-xs text-neutral-400">Certificates Minted</div>
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">Certificates Minted</div>
                 <div className="text-xl font-bold text-primary mt-1">
                   {resultData.certificates_minted_count}
                 </div>
