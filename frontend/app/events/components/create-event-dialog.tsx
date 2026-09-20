@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar, Clock, MapPin, Sparkles, Plus, Loader2, Link as LinkIcon } from "lucide-react"
+import { Sparkles, Loader2, Link as LinkIcon } from "lucide-react"
 import { toast } from "sonner"
+import { ApiError, eventsService } from "@/lib/api"
 import type { EventItem } from "./event-card"
 
 interface CreateEventDialogProps {
@@ -22,6 +23,12 @@ interface CreateEventDialogProps {
   onEventCreated: (event: EventItem) => void
   divisions: Array<{ id: string; name: string }>
 }
+
+const fieldClass =
+  "mt-1 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-zinc-100"
+const labelClass = "text-xs text-zinc-600 dark:text-zinc-300 font-semibold"
+const selectClass =
+  "mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-200 focus:border-zinc-400 dark:focus:border-zinc-600 focus:outline-none"
 
 export function CreateEventDialog({
   open,
@@ -54,36 +61,25 @@ export function CreateEventDialog({
 
     try {
       setLoading(true)
-      const res = await fetch("/api/v1/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formData.title.trim(),
-          description: formData.description.trim(),
-          cover_image_url: formData.cover_image_url.trim() || null,
-          luma_url: formData.luma_url.trim() || null,
-          luma_event_id: formData.luma_event_id.trim() || null,
-          division_id: formData.division_id || null,
-          event_type: formData.event_type,
-          points_reward: parseInt(formData.points_reward, 10) || 20,
-          start_time: new Date(formData.start_time).toISOString(),
-          end_time: new Date(formData.end_time).toISOString(),
-          location_name: formData.location_name.trim(),
-          certificate_template_id: formData.certificate_template_id || null,
-          is_published: true,
-        }),
+      const createdEvent = await eventsService.createEvent({
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        cover_image_url: formData.cover_image_url.trim() || null,
+        luma_url: formData.luma_url.trim() || null,
+        luma_event_id: formData.luma_event_id.trim() || null,
+        division_id: formData.division_id || null,
+        event_type: formData.event_type,
+        points_reward: parseInt(formData.points_reward, 10) || 20,
+        start_time: new Date(formData.start_time).toISOString(),
+        end_time: new Date(formData.end_time).toISOString(),
+        location_name: formData.location_name.trim(),
+        certificate_template_id: formData.certificate_template_id || null,
+        is_published: true,
       })
 
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || "Failed to create event")
-      }
-
-      const createdEvent: EventItem = await res.json()
       toast.success("Event created and published successfully!")
-      onEventCreated(createdEvent)
+      onEventCreated(createdEvent as EventItem)
       onOpenChange(false)
-      // Reset form
       setFormData({
         title: "",
         description: "",
@@ -98,8 +94,14 @@ export function CreateEventDialog({
         location_name: "ASTU Main Campus, Lab 508",
         certificate_template_id: "",
       })
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred while publishing the event")
+    } catch (err: unknown) {
+      const message =
+        err instanceof ApiError
+          ? err.detail
+          : err instanceof Error
+            ? err.message
+            : "An error occurred while publishing the event"
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -107,63 +109,68 @@ export function CreateEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-neutral-900 border-neutral-800 text-neutral-100">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             Publish New Event & Workshop
           </DialogTitle>
-          <DialogDescription className="text-neutral-400 text-xs">
+          <DialogDescription className="text-xs">
             Link with your Luma event page for zero-lag RSVP and seamless post-event certificate minting.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Title */}
           <div>
-            <Label className="text-xs text-neutral-300 font-semibold">Event Title *</Label>
+            <Label className={labelClass}>Event Title *</Label>
             <Input
               required
               placeholder="e.g. Hands-on Reverse Engineering 101"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="mt-1 bg-neutral-950 border-neutral-800 focus:border-primary text-sm"
+              className={fieldClass}
             />
           </div>
 
-          {/* Luma URL & Event ID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold flex items-center gap-1.5">
-                <LinkIcon className="w-3.5 h-3.5 text-rose-400" />
+              <Label className={`${labelClass} flex items-center gap-1.5`}>
+                <LinkIcon className="w-3.5 h-3.5 text-rose-500" />
                 Luma Event URL
               </Label>
               <Input
-                placeholder="https://lu.ma/re-101"
+                placeholder="https://luma.com/event/evt-…"
                 value={formData.luma_url}
-                onChange={(e) => setFormData({ ...formData, luma_url: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                onChange={(e) => {
+                  const luma_url = e.target.value
+                  const evtMatch = luma_url.match(/(evt-[a-zA-Z0-9_-]+)/i)
+                  setFormData({
+                    ...formData,
+                    luma_url,
+                    luma_event_id: evtMatch ? evtMatch[1] : formData.luma_event_id,
+                  })
+                }}
+                className={fieldClass}
               />
             </div>
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">Luma Event ID (Optional)</Label>
+              <Label className={labelClass}>Luma Event ID (Optional)</Label>
               <Input
-                placeholder="evt-xxxxxxxxxx"
+                placeholder="evt-eXR2zsp2U0fuwY0"
                 value={formData.luma_event_id}
                 onChange={(e) => setFormData({ ...formData, luma_event_id: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                className={fieldClass}
               />
             </div>
           </div>
 
-          {/* Scope & Division */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">Division Scoping</Label>
+              <Label className={labelClass}>Division Scoping</Label>
               <select
                 value={formData.division_id}
                 onChange={(e) => setFormData({ ...formData, division_id: e.target.value })}
-                className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 focus:border-primary focus:outline-none"
+                className={selectClass}
               >
                 <option value="">Club-wide (All Divisions)</option>
                 {divisions.map((d) => (
@@ -174,11 +181,11 @@ export function CreateEventDialog({
               </select>
             </div>
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">Audience Scope</Label>
+              <Label className={labelClass}>Audience Scope</Label>
               <select
                 value={formData.event_type}
                 onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}
-                className="mt-1 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 focus:border-primary focus:outline-none"
+                className={selectClass}
               >
                 <option value="external">Public & Club Members</option>
                 <option value="internal">Internal Lab Only</option>
@@ -186,93 +193,79 @@ export function CreateEventDialog({
             </div>
           </div>
 
-          {/* Timing */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">Start Time *</Label>
+              <Label className={labelClass}>Start Time *</Label>
               <Input
                 required
                 type="datetime-local"
                 value={formData.start_time}
                 onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                className={fieldClass}
               />
             </div>
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">End Time *</Label>
+              <Label className={labelClass}>End Time *</Label>
               <Input
                 required
                 type="datetime-local"
                 value={formData.end_time}
                 onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                className={fieldClass}
               />
             </div>
           </div>
 
-          {/* Venue & Points */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <Label className="text-xs text-neutral-300 font-semibold">Location / Venue</Label>
+              <Label className={labelClass}>Location / Venue</Label>
               <Input
                 placeholder="ASTU Main Campus, Lab 508"
                 value={formData.location_name}
                 onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                className={fieldClass}
               />
             </div>
             <div>
-              <Label className="text-xs text-neutral-300 font-semibold">Leaderboard Pts</Label>
+              <Label className={labelClass}>Leaderboard Pts</Label>
               <Input
                 type="number"
                 min="0"
                 max="200"
                 value={formData.points_reward}
                 onChange={(e) => setFormData({ ...formData, points_reward: e.target.value })}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+                className={fieldClass}
               />
             </div>
           </div>
 
-          {/* Banner URL */}
           <div>
-            <Label className="text-xs text-neutral-300 font-semibold">Banner Image URL (16:9)</Label>
+            <Label className={labelClass}>Banner Image URL (16:9)</Label>
             <Input
               placeholder="https://.../event-banner.jpg"
               value={formData.cover_image_url}
               onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+              className={fieldClass}
             />
           </div>
 
-          {/* Description */}
           <div>
-            <Label className="text-xs text-neutral-300 font-semibold">Event Description *</Label>
+            <Label className={labelClass}>Event Description *</Label>
             <Textarea
               required
               rows={3}
               placeholder="Provide event details, prerequisites, and workshop objectives..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-sm"
+              className={fieldClass}
             />
           </div>
 
-          {/* Action buttons */}
-          <div className="pt-3 border-t border-neutral-800 flex justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="border-neutral-800 text-neutral-400 hover:text-white"
-            >
+          <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2.5">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <Button type="submit" disabled={loading} className="gap-2">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               Publish Event
             </Button>

@@ -18,6 +18,7 @@ def test_slugify_and_luma_id_extraction():
 
     assert _extract_luma_event_id("https://lu.ma/re-101") == "re-101"
     assert _extract_luma_event_id("https://lu.ma/event/evt-abcdef12345") == "evt-abcdef12345"
+    assert _extract_luma_event_id("https://luma.com/event/evt-eXR2zsp2U0fuwY0") == "evt-eXR2zsp2U0fuwY0"
     assert _extract_luma_event_id("evt-999888") == "evt-999888"
     assert _extract_luma_event_id(None) is None
 
