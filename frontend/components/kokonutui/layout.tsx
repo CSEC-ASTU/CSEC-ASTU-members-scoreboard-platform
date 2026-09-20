@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useState, useEffect } from "react"
+import { PwaSyncStatusBanner } from "@/components/pwa/sync-status-banner"
 import Sidebar from "./sidebar"
 import TopNav from "./top-nav"
 
@@ -49,6 +50,8 @@ export default function Layout({ children }: LayoutProps) {
         <header className="h-16 border-b border-zinc-200/80 dark:border-white/[0.06] flex-shrink-0">
           <TopNav />
         </header>
+
+        <PwaSyncStatusBanner />
 
         <main className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#09090B]">
           <div className="mx-auto w-full max-w-7xl mt-4 px-4 py-8 sm:px-8 space-y-8">

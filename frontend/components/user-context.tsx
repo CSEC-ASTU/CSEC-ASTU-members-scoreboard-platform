@@ -68,6 +68,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const handleSessionExpired = () => {
       setLiveUser(null)
+      void (async () => {
+        try {
+          const { isPwaStandalone, clearPwaSyncMeta } = await import("@/lib/pwa")
+          if (isPwaStandalone()) {
+            const { clearPwaPersistedQueries } = await import("@/lib/pwa-persister")
+            clearPwaSyncMeta()
+            await clearPwaPersistedQueries()
+          }
+        } catch {
+          // ignore
+        }
+      })()
     }
 
     window.addEventListener("csec:session-expired", handleSessionExpired)
@@ -148,6 +160,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     setLiveUser(null)
+    try {
+      const { isPwaStandalone, clearPwaSyncMeta } = await import("@/lib/pwa")
+      if (isPwaStandalone()) {
+        const { clearPwaPersistedQueries } = await import("@/lib/pwa-persister")
+        clearPwaSyncMeta()
+        await clearPwaPersistedQueries()
+      }
+    } catch {
+      // ignore storage cleanup failures
+    }
     window.location.href = "/login"
   }
 
