@@ -8,7 +8,9 @@ import {
   Loader2,
   CalendarCheck2,
   History,
+  Lock,
 } from "lucide-react"
+import Link from "next/link"
 import { EventCard, type EventItem } from "./components/event-card"
 import { CreateEventDialog } from "./components/create-event-dialog"
 import Layout from "@/components/kokonutui/layout"
@@ -20,7 +22,7 @@ import { ApiError, divisionsService, eventsService } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function EventsPage() {
-  const { currentUser } = useCurrentUser()
+  const { currentUser, isAuthenticated, isLoading: authLoading } = useCurrentUser()
   const officer = currentUser ? isOfficer(currentUser) : false
 
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming")
@@ -81,6 +83,25 @@ export default function EventsPage() {
   return (
     <Layout>
       <div className="space-y-6">
+        {!authLoading && !isAuthenticated && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2.5">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                You are browsing as a guest. Only public events are shown.{" "}
+                <Link href="/login?redirect=/events" className="font-semibold text-amber-700 underline-offset-2 hover:underline dark:text-amber-300">
+                  Sign in
+                </Link>{" "}
+                to see club-only labs, or{" "}
+                <Link href="/events/explore" className="font-semibold text-zinc-800 underline-offset-2 hover:underline dark:text-zinc-200">
+                  view the public events page
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200/80 dark:border-white/[0.06] pb-6">
           <div>
             <div className="flex items-center gap-2.5">

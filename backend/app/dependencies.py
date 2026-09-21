@@ -59,5 +59,19 @@ async def require_user(request: Request, db: DbSession, settings: AppSettings) -
     return user
 
 
+async def optional_user(request: Request, db: DbSession, settings: AppSettings) -> CurrentUser | None:
+    """Return the current user when a valid session cookie exists; otherwise None."""
+    token = request.cookies.get(settings.access_cookie_name)
+    if not token:
+        return None
+    try:
+        user = await _load_user_from_token(db, token)
+        request.state.user = user
+        return user
+    except HTTPException:
+        return None
+
+
 RequireUser = Annotated[CurrentUser, Depends(require_user)]
+OptionalUser = Annotated[CurrentUser | None, Depends(optional_user)]
 

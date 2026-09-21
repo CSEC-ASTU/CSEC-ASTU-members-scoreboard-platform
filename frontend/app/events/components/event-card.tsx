@@ -28,9 +28,11 @@ export interface EventItem {
 interface EventCardProps {
   event: EventItem
   isPast?: boolean
+  /** Base path used when copying a share link (default: /events). */
+  shareBasePath?: string
 }
 
-export function EventCard({ event, isPast = false }: EventCardProps) {
+export function EventCard({ event, isPast = false, shareBasePath = "/events" }: EventCardProps) {
   const [copied, setCopied] = useState(false)
 
   const startDate = new Date(event.start_time)
@@ -41,7 +43,8 @@ export function EventCard({ event, isPast = false }: EventCardProps) {
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const url = typeof window !== "undefined" ? `${window.location.origin}/events#${event.slug}` : ""
+    const url =
+      typeof window !== "undefined" ? `${window.location.origin}${shareBasePath}#${event.slug}` : ""
     try {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(url)
