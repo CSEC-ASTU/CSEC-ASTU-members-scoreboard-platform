@@ -13,6 +13,7 @@ export const eventsService = {
     filter?: "upcoming" | "past" | "all"
     division_id?: string
     search?: string
+    event_type?: "internal" | "external"
     page?: number
     page_size?: number
   }): Promise<Paginated<ClubEventOut>> => {

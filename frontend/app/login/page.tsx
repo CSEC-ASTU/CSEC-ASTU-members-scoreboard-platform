@@ -45,7 +45,7 @@ function LoginForm() {
 
       {/* Top mini navbar */}
       <header className="w-full max-w-5xl flex items-center justify-between z-10">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2.5 group">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs shadow-sm transition-transform group-hover:scale-105">
             CS
           </div>
@@ -124,6 +124,13 @@ function LoginForm() {
 
         {/* Bottom Helper Info */}
         <div className="text-center space-y-2">
+          <p className="text-xs text-zinc-500">
+            Looking for public workshops?{" "}
+            <Link href="/events/explore" className="text-zinc-300 underline-offset-2 hover:underline">
+              Browse open events
+            </Link>{" "}
+            without signing in.
+          </p>
           <p className="text-xs text-zinc-500">
             Having trouble signing in? Reach out to your division lead or club admin.
           </p>

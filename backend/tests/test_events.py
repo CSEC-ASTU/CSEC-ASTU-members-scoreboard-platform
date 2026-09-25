@@ -24,6 +24,37 @@ def test_slugify_and_luma_id_extraction():
 
 
 @pytest.mark.asyncio
+async def test_get_event_hides_internal_from_guests():
+    from app.api.v1.routers.events import get_event
+
+    now = datetime.now(UTC)
+    internal = Event(
+        id=uuid.uuid4(),
+        title="Internal Lab",
+        slug="internal-lab",
+        description="Members only",
+        event_type="internal",
+        points_reward=5,
+        start_time=now,
+        end_time=now,
+        location_name="Lab 1",
+        is_published=True,
+    )
+    internal.division = None
+    internal.creator = None
+
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = internal
+    mock_db.execute.return_value = mock_result
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_event(id_or_slug="internal-lab", db=mock_db, user=None)
+
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_preview_luma_csv_matching():
     # Mock active members in database
     member_alice = Member(

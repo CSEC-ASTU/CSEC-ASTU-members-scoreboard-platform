@@ -13,7 +13,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings
-from app.dependencies import AppSettings, DbSession, RequireUser, get_settings
+from app.dependencies import AppSettings, DbSession, OptionalUser, RequireUser, get_settings
 from app.models import Certificate, Division, Event, Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas.certificates import CertificateCreate, ExternalRecipient
@@ -86,18 +86,26 @@ def _require_officer(user: RequireUser, target_division_id: UUID | None = None) 
 @router.get("", response_model=Paginated[EventOut])
 async def list_events(
     db: DbSession,
+    user: OptionalUser,
     filter_type: str = Query("upcoming", alias="filter"),
     division_id: UUID | None = None,
     search: str | None = None,
+    event_type: str | None = Query(None, pattern="^(internal|external)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> Paginated[EventOut]:
-    """Public list of club events and workshops."""
+    """List club events. Guests only see published external events; members see all published."""
     now = datetime.now(UTC)
     q = select(Event).options(selectinload(Event.division), selectinload(Event.creator))
 
     # By default, public list only shows published events
     q = q.where(Event.is_published.is_(True))
+
+    # Club-only (internal) events are never exposed to unauthenticated visitors
+    if user is None:
+        q = q.where(Event.event_type == "external")
+    elif event_type:
+        q = q.where(Event.event_type == event_type)
 
     if filter_type == "upcoming":
         q = q.where(Event.end_time >= now).order_by(Event.start_time.asc())
@@ -155,8 +163,9 @@ async def list_events(
 async def get_event(
     id_or_slug: str,
     db: DbSession,
+    user: OptionalUser,
 ) -> EventOut:
-    """Retrieve single event details by UUID or slug."""
+    """Retrieve single event details by UUID or slug. Internal events require authentication."""
     q = select(Event).options(selectinload(Event.division), selectinload(Event.creator))
     try:
         event_uuid = UUID(id_or_slug)
@@ -166,6 +175,9 @@ async def get_event(
 
     ev = (await db.execute(q)).scalars().first()
     if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if user is None and ev.event_type == "internal":
         raise HTTPException(status_code=404, detail="Event not found")
 
     return EventOut(
