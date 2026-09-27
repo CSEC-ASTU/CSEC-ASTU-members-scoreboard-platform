@@ -182,7 +182,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <div className="space-y-1">
                   <NavItem href="/members" icon={Users2}>Members</NavItem>
                   <NavItem href="/claims" icon={History}>My History</NavItem>
-                  <NavItem href="/templates" icon={Award}>Templates</NavItem>
                 </div>
               </div>
 
@@ -197,6 +196,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                     )}
                     {canAccessAdmin(currentUser) && (
                       <div>
+                        <NavItem href="/templates" icon={Award}>Templates</NavItem>
                         <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                         <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
                       </div>
