@@ -1,13 +1,9 @@
 import { Inter } from "next/font/google"
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { QueryProvider } from "@/components/providers/query-provider"
-import { PwaSyncProvider } from "@/components/providers/pwa-sync-provider"
-import { UserProvider } from "@/components/user-context"
-import { Toaster } from "@/components/ui/sonner"
+import { AppProviders } from "@/components/providers/app-providers"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 const APP_NAME = "CSEC ASTU"
 const APP_TITLE = "CSEC ASTU — Member Management"
@@ -54,16 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
       <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <QueryProvider>
-            <UserProvider>
-              <PwaSyncProvider>
-                {children}
-              </PwaSyncProvider>
-            </UserProvider>
-          </QueryProvider>
-          <Toaster />
-        </ThemeProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   )

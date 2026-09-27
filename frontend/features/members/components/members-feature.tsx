@@ -4,15 +4,16 @@ import { useEffect, useMemo, useState } from "react"
 import { PageHeader } from "@/components/csec/page-header"
 import { MembersSkeleton } from "@/components/csec/skeletons"
 import { DIVISIONS, ROLE_LABELS, type Role } from "@/lib/csec-data"
-import { Users, Download, SlidersHorizontal, Radar } from "lucide-react"
+import { Users, Download, SlidersHorizontal, Radar, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type MemberOut, type DivisionOut } from "@/lib/api"
 import { useDivisions, useMembers } from "@/hooks/queries"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
 import { BatchAdjustmentDialog } from "@/components/csec/batch-adjustment-dialog"
+import { BatchQrPrintDialog } from "@/components/csec/batch-qr-print-dialog"
 import { InactivityRadar } from "@/components/csec/inactivity-radar"
 import { useCurrentUser } from "@/components/user-context"
-import { isOfficer } from "@/lib/permissions"
+import { canAccessAdmin, isOfficer } from "@/lib/permissions"
 import type { MemberRowItem } from "../types"
 import { MembersFilters } from "./members-filters"
 import { MembersTable } from "./members-table"
@@ -20,6 +21,7 @@ import { MembersTable } from "./members-table"
 export function MembersFeature() {
   const { currentUser } = useCurrentUser()
   const officer = currentUser.role !== "member" && isOfficer(currentUser)
+  const canBatchPrintQr = canAccessAdmin(currentUser)
   const [q, setQ] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
   const [division, setDivision] = useState("all")
@@ -29,6 +31,7 @@ export function MembersFeature() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [viewMode, setViewMode] = useState<"directory" | "radar">("directory")
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
+  const [qrPrintDialogOpen, setQrPrintDialogOpen] = useState(false)
 
   // Debounce search typing
   useEffect(() => {
@@ -137,25 +140,40 @@ export function MembersFeature() {
         title="Members Directory"
         description={`${members.length} members registered across ${DIVISIONS.length} divisions.`}
         action={
-          officer ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCsv}
-                className="h-8 gap-1.5 text-xs bg-white dark:bg-transparent border-zinc-200 dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
-              >
-                <Download className="h-3.5 w-3.5 text-zinc-500" />
-                Export Roster (CSV)
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setBatchDialogOpen(true)}
-                className="h-8 gap-1.5 text-xs bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-950 font-medium shadow-none"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Batch Adjust Points
-              </Button>
+          officer || canBatchPrintQr ? (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {canBatchPrintQr && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQrPrintDialogOpen(true)}
+                  className="h-8 gap-1.5 text-xs bg-white dark:bg-transparent border-zinc-200 dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+                >
+                  <QrCode className="h-3.5 w-3.5 text-zinc-500" />
+                  Print QR Stickers
+                </Button>
+              )}
+              {officer && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCsv}
+                    className="h-8 gap-1.5 text-xs bg-white dark:bg-transparent border-zinc-200 dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+                  >
+                    <Download className="h-3.5 w-3.5 text-zinc-500" />
+                    Export Roster (CSV)
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setBatchDialogOpen(true)}
+                    className="h-8 gap-1.5 text-xs bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-950 font-medium shadow-none"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    Batch Adjust Points
+                  </Button>
+                </>
+              )}
             </div>
           ) : undefined
         }
@@ -229,6 +247,15 @@ export function MembersFeature() {
         <BatchAdjustmentDialog
           open={batchDialogOpen}
           onOpenChange={setBatchDialogOpen}
+          members={members}
+          divisions={divisions}
+        />
+      )}
+
+      {canBatchPrintQr && (
+        <BatchQrPrintDialog
+          open={qrPrintDialogOpen}
+          onOpenChange={setQrPrintDialogOpen}
           members={members}
           divisions={divisions}
         />

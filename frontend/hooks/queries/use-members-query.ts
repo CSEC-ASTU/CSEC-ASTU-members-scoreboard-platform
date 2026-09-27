@@ -32,7 +32,7 @@ export function useMemberEvents(memberId?: string | null) {
   return useQuery({
     queryKey: ["point-events", memberId],
     queryFn: () => pointEventsService.listEvents({ member_id: memberId! }),
-    enabled: Boolean(memberId && memberId !== "guest"),
+    enabled: Boolean(memberId),
     staleTime: 30 * 1000,
   })
 }
@@ -50,7 +50,7 @@ export function useMemberSummaries(memberId?: string | null) {
   return useQuery({
     queryKey: ["member-summaries", memberId],
     queryFn: () => membersService.getAnnualSummaries({ member_id: memberId! }),
-    enabled: Boolean(memberId && memberId !== "guest"),
+    enabled: Boolean(memberId),
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

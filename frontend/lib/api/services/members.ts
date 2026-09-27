@@ -1,6 +1,7 @@
 import { apiFetch } from "../client"
 import type {
   MemberDetailOut,
+  MemberLabVerifyOut,
   MemberOut,
   MemberSelfUpdateIn,
   AchievementCardOut,
@@ -38,6 +39,13 @@ export const membersService = {
 
   getMember: async (id: string): Promise<MemberDetailOut> => {
     return apiFetch<MemberDetailOut>(`/members/${id}`)
+  },
+
+  /** Public lab QR verification — no auth required. */
+  labVerify: async (id: string): Promise<MemberLabVerifyOut> => {
+    return apiFetch<MemberLabVerifyOut>(`/members/${id}/lab-verify`, {
+      skipAuthRefresh: true,
+    })
   },
 
   updateMe: async (data: MemberSelfUpdateIn): Promise<ProfileSelfUpdateResult> => {

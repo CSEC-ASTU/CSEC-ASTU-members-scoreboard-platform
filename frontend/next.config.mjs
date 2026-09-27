@@ -25,6 +25,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Large first compiles of app/layout were timing out the browser chunk loader.
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.output = {
+        ...config.output,
+        chunkLoadTimeout: 300000,
+      }
+    }
+    return config
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_URL ||

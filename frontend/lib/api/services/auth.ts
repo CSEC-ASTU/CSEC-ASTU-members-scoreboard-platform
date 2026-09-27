@@ -1,5 +1,16 @@
-import { apiFetch } from "../client"
+import { apiFetch, ApiError, authRefreshCoordinator } from "../client"
 import type { CurrentUserOut, TelegramConnectOut } from "../types"
+
+const AUTH_TIMEOUT_MS = 8000
+
+function withTimeout(ms: number): AbortSignal {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(ms)
+  }
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), ms)
+  return controller.signal
+}
 
 export const authService = {
   getGoogleLoginUrl: (redirect?: string) => {
@@ -13,9 +24,29 @@ export const authService = {
       : `${base}/auth/google/login`
   },
 
-
+  /**
+   * Resolve the current user quickly.
+   * Uses skipAuthRefresh on the first attempt so anonymous visitors don't wait on a
+   * doomed refresh round-trip; retries once after a successful refresh if needed.
+   */
   getMe: async (): Promise<CurrentUserOut> => {
-    return apiFetch<CurrentUserOut>("/auth/me")
+    try {
+      return await apiFetch<CurrentUserOut>("/auth/me", {
+        skipAuthRefresh: true,
+        signal: withTimeout(AUTH_TIMEOUT_MS),
+      })
+    } catch (err) {
+      const isUnauthorized = err instanceof ApiError && err.status === 401
+      if (!isUnauthorized) throw err
+
+      const refreshed = await authRefreshCoordinator.refreshToken()
+      if (!refreshed) throw err
+
+      return apiFetch<CurrentUserOut>("/auth/me", {
+        skipAuthRefresh: true,
+        signal: withTimeout(AUTH_TIMEOUT_MS),
+      })
+    }
   },
 
   refreshToken: async (): Promise<{ status?: string; detail: string }> => {

@@ -1,14 +1,12 @@
 "use client"
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronRight } from "lucide-react"
 import Profile01 from "./profile-01"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ThemeToggle } from "../theme-toggle"
 import { useCurrentUser } from "@/components/user-context"
-import { MEMBERS, ROLE_LABELS } from "@/lib/csec-data"
 import { MemberAvatar } from "@/components/csec/ui-bits"
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -23,11 +21,13 @@ const SEGMENT_LABELS: Record<string, string> = {
   profile: "My Profile",
   achievement: "Achievement Card",
   login: "Login",
+  events: "Events",
+  attendance: "Attendance",
 }
 
 export default function TopNav() {
   const pathname = usePathname()
-  const { currentUser, setCurrentUserId, isAuthenticated } = useCurrentUser()
+  const { currentUser } = useCurrentUser()
 
   const segments = pathname.split("/").filter(Boolean)
   const crumbs = segments.map((seg, i) => ({
@@ -55,31 +55,12 @@ export default function TopNav() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-        {/* Preview-as switcher for test previewing every role in offline demo mode */}
-        {!isAuthenticated && (
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Demo View as</span>
-            <Select value={currentUser.id} onValueChange={setCurrentUserId}>
-              <SelectTrigger className="h-8 w-[190px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MEMBERS.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.name} · {ROLE_LABELS[m.role]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none rounded-full ring-2 ring-gray-200 dark:ring-[#2B2B30]">
             <MemberAvatar
-              name={currentUser.name}
+              name={currentUser.name || "Member"}
               imageUrl={currentUser.profileImageUrl || currentUser.avatar}
               size={32}
             />

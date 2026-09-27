@@ -60,6 +60,15 @@ export interface MemberDetailOut extends MemberOut {
   google_claimed?: boolean
 }
 
+/** Public laptop-QR verification payload (minimal identity only). */
+export interface MemberLabVerifyOut {
+  id: string
+  full_name: string
+  profile_image_url: string | null
+  is_active: boolean
+  is_member: boolean
+}
+
 export interface MemberSelfUpdateIn {
   department?: string
   full_name?: string

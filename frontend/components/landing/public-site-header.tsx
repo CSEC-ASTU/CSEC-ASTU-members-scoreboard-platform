@@ -11,7 +11,7 @@ interface PublicSiteHeaderProps {
 }
 
 export function PublicSiteHeader({ className, active }: PublicSiteHeaderProps) {
-  const { isAuthenticated, isLoading } = useCurrentUser()
+  const { isAuthenticated } = useCurrentUser()
 
   return (
     <header
@@ -62,14 +62,12 @@ export function PublicSiteHeader({ className, active }: PublicSiteHeaderProps) {
             Connect
           </a>
         )}
-        {!isLoading && (
-          <Link
-            href={isAuthenticated ? "/dashboard" : "/login"}
-            className="ml-1 rounded-lg bg-zinc-100 px-3.5 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white sm:text-sm"
-          >
-            {isAuthenticated ? "Dashboard" : "Member Login"}
-          </Link>
-        )}
+        <Link
+          href={isAuthenticated ? "/dashboard" : "/login"}
+          className="ml-1 rounded-lg bg-zinc-100 px-3.5 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white sm:text-sm"
+        >
+          {isAuthenticated ? "Dashboard" : "Member Login"}
+        </Link>
       </nav>
     </header>
   )

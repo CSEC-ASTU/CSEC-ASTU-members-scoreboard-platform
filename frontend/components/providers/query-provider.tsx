@@ -5,7 +5,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query"
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
+import { persistQueryClient } from "@tanstack/react-query-persist-client"
 import { useEffect, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { isPwaStandalone } from "@/lib/pwa"
@@ -21,7 +21,6 @@ function createQueryClient(pwaMode: boolean) {
         gcTime: pwaMode ? PWA_PERSIST_MAX_AGE : 10 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: 1,
-        // In PWA, prefer cached data when offline instead of treating as hard failure UX.
         networkMode: pwaMode ? "offlineFirst" : "online",
       },
       mutations: {
@@ -41,57 +40,51 @@ function createQueryClient(pwaMode: boolean) {
   })
 }
 
+/**
+ * Stable QueryClientProvider — never swaps provider type after mount.
+ * PWA persistence is wired in useEffect so we don't remount the whole app tree
+ * (that remount caused "state update on a component that hasn't mounted yet").
+ */
 export function QueryProvider({ children }: { children: ReactNode }) {
-  const [pwaMode, setPwaMode] = useState(false)
-  const [ready, setReady] = useState(false)
-  const [queryClient] = useState(() => createQueryClient(false))
-  const [pwaQueryClient] = useState(() => createQueryClient(true))
+  const [queryClient] = useState(() => createQueryClient(true))
 
   useEffect(() => {
-    setPwaMode(isPwaStandalone())
-    setReady(true)
-  }, [])
+    if (!isPwaStandalone()) return
 
-  // SSR + first paint: same as before (in-memory only). Avoids enabling persist for web users.
-  if (!ready || !pwaMode) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  }
-
-  const persister = getPwaPersister(true)
-
-  return (
-    <PersistQueryClientProvider
-      client={pwaQueryClient}
-      persistOptions={{
-        persister,
-        maxAge: PWA_PERSIST_MAX_AGE,
-        buster: "csec-pwa-v1",
-        dehydrateOptions: {
-          shouldDehydrateQuery: (query) => {
-            if (query.state.status !== "success") return false
-            const key = query.queryKey[0]
-            // Persist read-oriented club data only — never auth refresh internals.
-            const allowed = new Set([
-              "divisions",
-              "leaderboard",
-              "members",
-              "member",
-              "member-events",
-              "member-summaries",
-              "point-events",
-              "tasks",
-              "approvals",
-              "permissions",
-              "active-attendance-sessions",
-              "profile-change-requests",
-              "settings",
-            ])
-            return typeof key === "string" && allowed.has(key)
-          },
+    const persister = getPwaPersister(true)
+    const [unsubscribe] = persistQueryClient({
+      queryClient,
+      persister,
+      maxAge: PWA_PERSIST_MAX_AGE,
+      buster: "csec-pwa-v1",
+      dehydrateOptions: {
+        shouldDehydrateQuery: (query) => {
+          if (query.state.status !== "success") return false
+          const key = query.queryKey[0]
+          const allowed = new Set([
+            "divisions",
+            "leaderboard",
+            "members",
+            "member",
+            "member-events",
+            "member-summaries",
+            "point-events",
+            "tasks",
+            "approvals",
+            "permissions",
+            "active-attendance-sessions",
+            "profile-change-requests",
+            "settings",
+          ])
+          return typeof key === "string" && allowed.has(key)
         },
-      }}
-    >
-      {children}
-    </PersistQueryClientProvider>
-  )
+      },
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [queryClient])
+
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }

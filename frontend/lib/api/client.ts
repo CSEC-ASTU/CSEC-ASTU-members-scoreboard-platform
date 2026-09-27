@@ -78,22 +78,31 @@ class AuthRefreshCoordinator {
   private async performRefresh(): Promise<boolean> {
     try {
       const refreshUrl = resolveUrl("/auth/refresh")
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 6000)
       const response = await fetch(refreshUrl, {
         method: "POST",
         credentials: "include",
         headers: {
           Accept: "application/json",
         },
+        signal: controller.signal,
       })
+      clearTimeout(timer)
 
       if (response.ok) {
         return true
       }
 
+      // Real auth rejection (online) — clear the session.
       this.notifySessionExpired()
       return false
     } catch {
-      this.notifySessionExpired()
+      // Network failure / timeout (often offline): do not wipe a still-valid local session.
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        return false
+      }
+      // Aborted/timeout while online — soft failure; don't clear the session.
       return false
     }
   }

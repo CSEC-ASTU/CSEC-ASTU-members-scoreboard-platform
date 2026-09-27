@@ -8,7 +8,7 @@ import { CLUB } from "@/lib/club-content"
 import { PublicSiteHeader } from "./public-site-header"
 
 export function LandingHero() {
-  const { isAuthenticated, isLoading } = useCurrentUser()
+  const { isAuthenticated } = useCurrentUser()
 
   return (
     <section className="relative isolate min-h-[100svh] overflow-hidden">
@@ -85,14 +85,12 @@ export function LandingHero() {
               Browse events
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            {!isLoading && (
-              <Link
-                href={isAuthenticated ? "/dashboard" : "#about"}
-                className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/80 bg-zinc-900/40 px-5 py-3 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-colors hover:border-zinc-500 hover:bg-zinc-900/70"
-              >
-                {isAuthenticated ? "Open dashboard" : "Meet the club"}
-              </Link>
-            )}
+            <Link
+              href={isAuthenticated ? "/dashboard" : "/login"}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/80 bg-zinc-900/40 px-5 py-3 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-colors hover:border-zinc-500 hover:bg-zinc-900/70"
+            >
+              {isAuthenticated ? "Open dashboard" : "Member Login"}
+            </Link>
           </div>
         </div>
 

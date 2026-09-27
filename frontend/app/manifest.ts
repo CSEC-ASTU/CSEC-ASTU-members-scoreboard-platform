@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "CSEC ASTU",
     description:
       "Member management and accountability platform for the CSEC ASTU computer science club.",
-    start_url: "/dashboard",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",

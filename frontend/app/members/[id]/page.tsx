@@ -29,7 +29,7 @@ import {
 import { MemberAvatar, WarningPill, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
 import { PageSkeletonWrapper, MemberDetailSkeleton } from "@/components/csec/skeletons"
 import { IssueWarningDialog } from "@/components/csec/issue-warning-dialog"
-import { SecurityCheckpoint } from "@/components/csec/security-checkpoint"
+import { LabVerifyCard } from "@/components/csec/lab-verify-card"
 import { LaptopStickerDialog } from "@/components/csec/laptop-sticker-dialog"
 import { useCurrentUser } from "@/components/user-context"
 import { canIssueWarning, canManagePermissions, canModifyMemberRole, getAssignableRoles, isOfficer } from "@/lib/permissions"
@@ -77,13 +77,18 @@ export default function MemberProfilePage() {
   const { currentUser, isAuthenticated, isLoading: authLoading } = useCurrentUser()
   const queryClient = useQueryClient()
 
-  const { data: memberData, isLoading: memberLoading, isError: memberError } = useMemberDetail(params.id)
-  const { data: evtsData, isLoading: evtsLoading } = useMemberDetailEvents(params.id)
+  // Only fetch full profile data after auth — public scanners use LabVerifyCard instead.
+  const { data: memberData, isLoading: memberLoading, isError: memberError } = useMemberDetail(
+    isAuthenticated ? params.id : undefined,
+  )
+  const { data: evtsData, isLoading: evtsLoading } = useMemberDetailEvents(
+    isAuthenticated ? params.id : null,
+  )
   const { data: divisionsData, isLoading: divsLoading } = useDivisions()
   const updateMemberMutation = useUpdateMemberRoleOrDeptMutation()
 
   const divisions = divisionsData || []
-  const isLoading = memberLoading || evtsLoading || divsLoading
+  const isLoading = isAuthenticated && (memberLoading || evtsLoading || divsLoading)
   const hasError = memberError
 
   const [warningDialogOpen, setWarningDialogOpen] = useState(false)
@@ -240,20 +245,19 @@ export default function MemberProfilePage() {
     queryClient.invalidateQueries({ queryKey: ["member-events", params.id] })
   }
 
-  // If auth is still resolving, show skeleton
+  // While auth resolves, do NOT mount Layout/AuthGate — that was racing QR scans
+  // into a redirect back to the landing page before the public verify card could render.
   if (authLoading) {
     return (
-      <Layout>
-        <MemberDetailSkeleton />
-      </Layout>
+      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-[#09090B]">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+      </div>
     )
   }
 
-  // Physical Security Checkpoint Gatekeeper:
-  // When an unauthenticated person scans a laptop QR sticker in the lab,
-  // require them to authenticate as a member before showing identity data.
+  // Unauthenticated laptop QR scan: show name, photo, and membership only.
   if (!isAuthenticated) {
-    return <SecurityCheckpoint memberId={params.id} />
+    return <LabVerifyCard memberId={params.id} />
   }
 
   if (isLoading && !adaptedMember) {
