@@ -25,9 +25,10 @@ import {
 import {
   composeQrStickerPng,
   memberVerificationUrl,
+  openPrintWindow,
   qrServerUrl,
   stickerIdFor,
-  truncateStickerName,
+  stickerFirstName,
 } from "@/lib/qr-sticker"
 
 interface LaptopStickerDialogProps {
@@ -63,7 +64,7 @@ export function LaptopStickerDialog({
     [member.id, member.joiningYear],
   )
 
-  const centerName = useMemo(() => truncateStickerName(member.name, 18), [member.name])
+  const firstName = useMemo(() => stickerFirstName(member.name), [member.name])
 
   const handleCopyLink = () => {
     if (typeof navigator !== "undefined") {
@@ -115,7 +116,7 @@ export function LaptopStickerDialog({
   }
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=480,height=720")
+    const printWindow = openPrintWindow(480, 720)
     if (!printWindow) {
       toast.error("Allow pop-ups to print the sticker")
       return
@@ -123,7 +124,7 @@ export function LaptopStickerDialog({
 
     const safeName = member.name.replace(/</g, "&lt;").replace(/>/g, "&gt;")
     const safeDivision = member.division.replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    const safeCenterName = centerName.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    const safeFirstName = firstName.replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
     printWindow.document.write(`<!DOCTYPE html>
 <html>
@@ -144,7 +145,7 @@ export function LaptopStickerDialog({
       width: 72mm;
       border: 1.5px dashed #a1a1aa;
       border-radius: 10px;
-      padding: 10px 12px 14px;
+      padding: 10px 12px 8px;
       text-align: center;
       page-break-inside: avoid;
     }
@@ -166,14 +167,27 @@ export function LaptopStickerDialog({
       margin-bottom: 8px;
     }
     .qr-wrap {
-      position: relative;
       display: inline-flex;
+      flex-direction: column;
+      align-items: center;
       background: #fff;
-      padding: 6px;
+      padding: 6px 6px 7px;
       border: 1px solid #e4e4e7;
       border-radius: 8px;
     }
+    .qr-box { position: relative; }
     .qr-wrap img.qr { width: 48mm; height: 48mm; display: block; }
+    .qr-name {
+      max-width: 48mm;
+      margin-top: 2px;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .center-badge {
       position: absolute;
       inset: 0;
@@ -186,31 +200,13 @@ export function LaptopStickerDialog({
       background: #fff;
       border: 1px solid #e4e4e7;
       border-radius: 6px;
-      padding: 4px 6px 5px;
+      padding: 4px 6px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
       box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
-      max-width: 38%;
     }
-    .center-badge img { width: 18mm; height: auto; display: block; }
-    .center-badge span {
-      font-size: 7px;
-      font-weight: 700;
-      line-height: 1.15;
-      text-align: center;
-      max-width: 100%;
-      word-break: break-word;
-    }
-    .name {
-      margin-top: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
+    .center-badge img { width: 14mm; height: auto; display: block; }
     .division {
-      margin-top: 3px;
+      margin-top: 6px;
       font-size: 10px;
       color: #3f3f46;
     }
@@ -229,15 +225,14 @@ export function LaptopStickerDialog({
     <div class="meta"><span>ASTU CSEC LAB</span><span>${stickerId}</span></div>
     <div class="title">Physical Security Clearance</div>
     <div class="qr-wrap">
-      <img class="qr" src="${qrImageUrl}" alt="QR" />
-      <div class="center-badge">
-        <div>
-          <img src="${window.location.origin}/csec_astu.svg" alt="CSEC ASTU" />
-          <span>${safeCenterName}</span>
+      <div class="qr-box">
+        <img class="qr" src="${qrImageUrl}" alt="QR" />
+        <div class="center-badge">
+          <div><img src="${window.location.origin}/csec_astu.svg" alt="CSEC ASTU" /></div>
         </div>
       </div>
+      <div class="qr-name">${safeFirstName}</div>
     </div>
-    <div class="name">${safeName}</div>
     <div class="division">${safeDivision}</div>
     <div class="hint">Scan to verify lab membership</div>
   </div>
@@ -288,31 +283,26 @@ export function LaptopStickerDialog({
             </span>
           </div>
 
-          {/* QR with CSEC logo + member name under the logo */}
-          <div className="p-3 bg-white rounded-xl shadow-lg border border-zinc-200 my-1 relative group inline-flex items-center justify-center">
-            <img
-              src={qrImageUrl}
-              alt={`QR Code for ${member.name}`}
-              className="w-48 h-48 object-contain"
-            />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="px-2.5 pt-1.5 pb-2 bg-white rounded-lg shadow-md border border-zinc-200/90 flex flex-col items-center justify-center gap-0.5 max-w-[42%]">
-                <img
-                  src="/csec_astu.svg"
-                  alt="CSEC ASTU"
-                  className="w-[48px] h-[35px] object-contain"
-                />
-                <span className="text-[8px] font-bold leading-tight text-zinc-900 text-center tracking-tight">
-                  {centerName}
-                </span>
+          {/* QR with CSEC logo in the centre and the first name printed under it */}
+          <div className="p-3 pb-2 bg-white rounded-xl shadow-lg border border-zinc-200 my-1 inline-flex flex-col items-center">
+            <div className="relative">
+              <img
+                src={qrImageUrl}
+                alt={`QR Code for ${member.name}`}
+                className="w-48 h-48 object-contain"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="px-2 py-1.5 bg-white rounded-lg shadow-md border border-zinc-200/90">
+                  <img src="/csec_astu.svg" alt="CSEC ASTU" className="w-[44px] h-[32px] object-contain" />
+                </div>
               </div>
             </div>
+            <span className="mt-1 max-w-48 truncate text-2xl font-extrabold tracking-tight text-zinc-950">
+              {firstName}
+            </span>
           </div>
 
           <div className="mt-3 space-y-1">
-            <h4 className="text-base font-bold text-white tracking-tight">
-              {member.name}
-            </h4>
             <div className="flex items-center justify-center gap-1.5 flex-wrap">
               <span className="text-xs font-medium text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-700">
                 {member.division}
