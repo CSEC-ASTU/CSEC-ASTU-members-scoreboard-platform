@@ -1,8 +1,11 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_PLACEHOLDER_SECRETS = {"dev-only-change-me", "change-me-to-a-long-random-string"}
 
 
 class Settings(BaseSettings):
@@ -51,6 +54,10 @@ class Settings(BaseSettings):
     internal_api_secret: str = ""
     telegram_bot_username: str = ""
 
+    # Number of reverse proxies in front of the API that append to X-Forwarded-For.
+    # 1 = Render only; 2 = Vercel rewrite -> Render (the /api/proxy setup).
+    trusted_proxy_hops: int = 1
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors(cls, value: object) -> object:
@@ -62,6 +69,16 @@ class Settings(BaseSettings):
             except json.JSONDecodeError:
                 return [part.strip() for part in value.split(",") if part.strip()]
         return value
+
+    @model_validator(mode="after")
+    def require_real_secrets_outside_dev(self) -> "Settings":
+        if self.app_env != "development":
+            if self.jwt_secret_key in _PLACEHOLDER_SECRETS or len(self.jwt_secret_key) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set to a random value of at least 32 characters "
+                    f"when APP_ENV={self.app_env}"
+                )
+        return self
 
 
 @lru_cache

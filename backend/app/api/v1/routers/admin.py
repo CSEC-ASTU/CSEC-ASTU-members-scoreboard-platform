@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from datetime import datetime
 from uuid import UUID
 
@@ -221,7 +222,8 @@ async def dispatch_weekly_performers(
     """
     is_internal_auth = (
         bool(settings.internal_api_secret)
-        and x_internal_secret == settings.internal_api_secret
+        and x_internal_secret is not None
+        and hmac.compare_digest(x_internal_secret, settings.internal_api_secret)
     )
 
     if not is_internal_auth:

@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
     telegram_webhook_secret: str = ""
-    internal_api_secret: str = "change-me-internal-secret"
+    internal_api_secret: str = ""
     telegram_motivational_min_points: int = 40
     # Typed as Any so empty .env values are not JSON-decoded by pydantic-settings
     telegram_admin_chat_ids: Any = Field(default_factory=list)

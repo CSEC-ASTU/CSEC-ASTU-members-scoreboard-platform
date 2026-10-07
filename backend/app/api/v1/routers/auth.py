@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import logging
 import secrets
+import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
@@ -11,7 +16,6 @@ from sqlalchemy import select
 from app.core.permissions import get_effective_permissions
 from app.core.rate_limit import RateLimiter, get_client_ip
 from app.core.security import (
-
     create_access_token,
     issue_refresh_token,
     revoke_all_member_tokens,
@@ -36,11 +40,14 @@ from app.services.settings import (
 router = APIRouter()
 
 
+def _is_secure(settings) -> bool:
+    return settings.cookie_secure or settings.app_env in ("production", "staging")
+
+
 def _set_auth_cookies(response: Response, settings, access: str, refresh: str) -> None:
-    is_secure = settings.cookie_secure or settings.app_env in ("production", "staging")
     common = {
         "httponly": True,
-        "secure": is_secure,
+        "secure": _is_secure(settings),
         "samesite": settings.cookie_samesite,
         "path": "/",
     }
@@ -62,12 +69,6 @@ def _clear_auth_cookies(response: Response, settings) -> None:
     response.delete_cookie(settings.access_cookie_name, path="/")
     response.delete_cookie(settings.refresh_cookie_name, path="/")
 
-
-import base64
-import hashlib
-import hmac
-import logging
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ async def google_login(settings: AppSettings, redirect: str | None = None) -> Re
         "oauth_state",
         state,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=_is_secure(settings),
         samesite=settings.cookie_samesite,
         max_age=600,
         path="/",
@@ -140,7 +141,7 @@ async def google_login(settings: AppSettings, redirect: str | None = None) -> Re
             "post_login_redirect",
             redirect,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=_is_secure(settings),
             samesite=settings.cookie_samesite,
             max_age=600,
             path="/",
@@ -160,26 +161,19 @@ async def google_callback(
     frontend = settings.frontend_url.rstrip("/")
     if error:
         logger.warning("google_callback received oauth error param: %s", error)
-        return RedirectResponse(f"{frontend}/login?error={error}")
+        return RedirectResponse(f"{frontend}/login?{urlencode({'error': error})}")
 
     expected = request.cookies.get("oauth_state")
     signed_valid, redirect_from_state = verify_signed_state(state or "", settings.jwt_secret_key)
     cookie_valid = bool(expected and state and hmac.compare_digest(state, expected))
-    state_valid = signed_valid or cookie_valid
+    # Both checks are required: the signature proves we issued the state, and the
+    # cookie binds it to this browser (prevents login CSRF with a borrowed state).
+    state_valid = signed_valid and cookie_valid
 
-    logger.info(
-        "google_callback hit: code_present=%s, state=%s, signed_valid=%s, cookie_valid=%s, cookies=%s",
-        bool(code),
-        state,
-        signed_valid,
-        cookie_valid,
-        list(request.cookies.keys()),
-    )
     if not code or not state or not state_valid:
         logger.warning(
-            "google_callback invalid_state: code_present=%s, state=%s, signed_valid=%s, cookie_valid=%s",
+            "google_callback invalid_state: code_present=%s, signed_valid=%s, cookie_valid=%s",
             bool(code),
-            state,
             signed_valid,
             cookie_valid,
         )
@@ -194,30 +188,33 @@ async def google_callback(
 
     email = (info.get("email") or "").lower().strip()
     google_id = info.get("sub")
-    logger.info("google_callback profile fetched: email=%s, google_id=%s", email, google_id)
     if not email or not google_id:
-        logger.warning("google_callback missing profile fields: email=%s, google_id=%s", email, google_id)
+        logger.warning(
+            "google_callback missing profile fields: email_present=%s, google_id_present=%s",
+            bool(email),
+            bool(google_id),
+        )
         return RedirectResponse(f"{frontend}/login?error=missing_profile")
 
     result = await db.execute(select(Member).where(Member.email == email))
     member = result.scalar_one_or_none()
 
     if member is None:
-        logger.warning("google_callback member not found: %s", email)
+        logger.warning("google_callback login attempt by unregistered account")
         db.add(
             LoginAttemptFailure(
                 email=email,
                 google_id=google_id,
                 reason="not_registered",
                 user_agent=request.headers.get("user-agent"),
-                ip_address=request.client.host if request.client else None,
+                ip_address=get_client_ip(request),
             )
         )
         await db.flush()
         return RedirectResponse(f"{frontend}/not-registered?{urlencode({'email': email})}")
 
     if not member.is_active:
-        logger.warning("google_callback member is inactive: %s", email)
+        logger.warning("google_callback member is inactive: member_id=%s", member.id)
         return RedirectResponse(f"{frontend}/login?error=inactive")
 
     if member.google_id is None:
@@ -226,12 +223,7 @@ async def google_callback(
         if info.get("name"):
             member.full_name = info["name"]
     elif member.google_id != google_id:
-        logger.warning(
-            "google_callback google_id mismatch: email=%s, db=%s, incoming=%s",
-            email,
-            member.google_id,
-            google_id,
-        )
+        logger.warning("google_callback google_id mismatch: member_id=%s", member.id)
         return RedirectResponse(f"{frontend}/login?error=google_mismatch")
 
     access = create_access_token(member.id, settings)
@@ -244,12 +236,7 @@ async def google_callback(
         if post_redirect and post_redirect.startswith("/") and not post_redirect.startswith("//")
         else f"{frontend}/dashboard"
     )
-    logger.info(
-        "google_callback login success for %s! Redirecting to %s (redirect_from_state=%s)",
-        email,
-        target_url,
-        redirect_from_state,
-    )
+    logger.info("google_callback login success: member_id=%s", member.id)
     response = RedirectResponse(target_url, status_code=status.HTTP_302_FOUND)
     _set_auth_cookies(response, settings, access, refresh)
     response.delete_cookie("oauth_state", path="/")
@@ -271,7 +258,7 @@ async def refresh(request: Request, response: Response, db: DbSession, settings:
     member, new_refresh = rotated
     access = create_access_token(member.id, settings)
     _set_auth_cookies(response, settings, access, new_refresh)
-    logger.info("POST /auth/refresh success for member_id=%s (%s)", member.id, member.email)
+    logger.info("POST /auth/refresh success for member_id=%s", member.id)
     return {"status": "ok", "detail": "refreshed"}
 
 

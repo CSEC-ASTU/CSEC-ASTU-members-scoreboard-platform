@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from typing import Annotated
 from uuid import UUID
 
@@ -26,7 +27,15 @@ def require_internal_secret(
     settings: AppSettings,
     x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
 ) -> None:
-    if not settings.internal_api_secret or x_internal_secret != settings.internal_api_secret:
+    if (
+        not settings.internal_api_secret
+        or (
+            settings.app_env != "development"
+            and settings.internal_api_secret == "change-me-internal-secret"
+        )
+        or x_internal_secret is None
+        or not hmac.compare_digest(x_internal_secret, settings.internal_api_secret)
+    ):
         raise HTTPException(status_code=401, detail="Invalid internal secret")
 
 
