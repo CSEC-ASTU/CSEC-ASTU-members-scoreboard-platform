@@ -219,6 +219,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
+    // Full reload on purpose: drops all in-memory query/user state after logout.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/"
   }, [])
 

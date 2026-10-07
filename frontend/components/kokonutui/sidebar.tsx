@@ -32,6 +32,77 @@ interface SidebarProps {
   setCollapsed: (v: boolean) => void
 }
 
+// ─── NavItem ──────────────────────────────────────────────────────────────
+function NavItem({
+  href,
+  icon: Icon,
+  children,
+  badge,
+  collapsed,
+  onNavigate,
+}: {
+  href: string
+  icon: React.ElementType
+  children: React.ReactNode
+  badge?: number
+  collapsed: boolean
+  onNavigate: () => void
+}) {
+  const pathname = usePathname()
+  const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
+
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={collapsed ? String(children) : undefined}
+      className={cn(
+        "group relative flex items-center rounded-xl transition-all duration-200",
+        collapsed ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2",
+        active
+          ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 font-medium shadow-sm shadow-violet-500/5"
+          : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]",
+      )}
+    >
+      <span className={cn("flex items-center", collapsed ? "justify-center" : "")}>
+        <Icon
+          className={cn(
+            "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+            collapsed ? "" : "mr-3",
+            active ? "text-violet-600 dark:text-violet-400" : "text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200"
+          )}
+        />
+        {!collapsed && <span className="text-sm">{children}</span>}
+      </span>
+
+      {badge !== undefined && badge > 0 && (
+        <span
+          className={cn(
+            "inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-1.5 text-[11px] font-semibold",
+            collapsed
+              ? "absolute -top-1 -right-1 h-4 min-w-[16px] px-0.5 text-[9px]"
+              : "ml-2"
+          )}
+        >
+          {badge}
+        </span>
+      )}
+    </Link>
+  )
+}
+
+// ─── Section label ────────────────────────────────────────────────────────
+function SectionLabel({ children, collapsed }: { children: React.ReactNode; collapsed: boolean }) {
+  if (collapsed) {
+    return <div className="my-2 h-px bg-zinc-200/80 dark:bg-white/[0.06]" />
+  }
+  return (
+    <div className="px-3 mb-2 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+      {children}
+    </div>
+  )
+}
+
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
@@ -44,72 +115,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   function handleNavigation() {
     setIsMobileMenuOpen(false)
   }
-
-  // ─── NavItem ──────────────────────────────────────────────────────────────
-  function NavItem({
-    href,
-    icon: Icon,
-    children,
-    badge,
-  }: {
-    href: string
-    icon: React.ElementType
-    children: React.ReactNode
-    badge?: number
-  }) {
-    const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
-
-    return (
-      <Link
-        href={href}
-        onClick={handleNavigation}
-        title={collapsed ? String(children) : undefined}
-        className={cn(
-          "group relative flex items-center rounded-xl transition-all duration-200",
-          collapsed ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2",
-          active
-            ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 font-medium shadow-sm shadow-violet-500/5"
-            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]",
-        )}
-      >
-        <span className={cn("flex items-center", collapsed ? "justify-center" : "")}>
-          <Icon
-            className={cn(
-              "h-[18px] w-[18px] flex-shrink-0 transition-colors",
-              collapsed ? "" : "mr-3",
-              active ? "text-violet-600 dark:text-violet-400" : "text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200"
-            )}
-          />
-          {!collapsed && <span className="text-sm">{children}</span>}
-        </span>
-
-        {badge !== undefined && badge > 0 && (
-          <span
-            className={cn(
-              "inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-1.5 text-[11px] font-semibold",
-              collapsed
-                ? "absolute -top-1 -right-1 h-4 min-w-[16px] px-0.5 text-[9px]"
-                : "ml-2"
-            )}
-          >
-            {badge}
-          </span>
-        )}
-      </Link>
-    )
-  }
-
-  // ─── Section label ────────────────────────────────────────────────────────
-  function SectionLabel({ children }: { children: React.ReactNode }) {
-    if (collapsed) {
-      return <div className="my-2 h-px bg-zinc-200/80 dark:bg-white/[0.06]" />
-    }
-    return (
-      <div className="px-3 mb-2 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-        {children}
-      </div>
-    )
-  }
+  const navProps = { collapsed, onNavigate: handleNavigation }
 
   return (
     <>
@@ -166,44 +172,44 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
               {/* CORE */}
               <div>
-                <SectionLabel>Core</SectionLabel>
+                <SectionLabel collapsed={collapsed}>Core</SectionLabel>
                 <div className="space-y-1">
-                  <NavItem href="/dashboard" icon={LayoutDashboard}>Dashboard</NavItem>
-                  <NavItem href="/events" icon={CalendarDays}>Events</NavItem>
-                  <NavItem href="/attendance" icon={CalendarCheck}>Attendance</NavItem>
-                  <NavItem href="/tasks" icon={ListChecks}>Tasks</NavItem>
-                  <NavItem href="/leaderboard" icon={Trophy}>Leaderboard</NavItem>
+                  <NavItem {...navProps} href="/dashboard" icon={LayoutDashboard}>Dashboard</NavItem>
+                  <NavItem {...navProps} href="/events" icon={CalendarDays}>Events</NavItem>
+                  <NavItem {...navProps} href="/attendance" icon={CalendarCheck}>Attendance</NavItem>
+                  <NavItem {...navProps} href="/tasks" icon={ListChecks}>Tasks</NavItem>
+                  <NavItem {...navProps} href="/leaderboard" icon={Trophy}>Leaderboard</NavItem>
                 </div>
               </div>
 
               {/* DIRECTORY */}
               <div>
-                <SectionLabel>Directory</SectionLabel>
+                <SectionLabel collapsed={collapsed}>Directory</SectionLabel>
                 <div className="space-y-1">
-                  <NavItem href="/members" icon={Users2}>Members</NavItem>
-                  <NavItem href="/claims" icon={History}>My History</NavItem>
+                  <NavItem {...navProps} href="/members" icon={Users2}>Members</NavItem>
+                  <NavItem {...navProps} href="/claims" icon={History}>My History</NavItem>
                 </div>
               </div>
 
               {/* ADMINISTRATION - Executive & Division Officers Only */}
               {officer && currentUser.role !== "member" && (
                 <div>
-                  <SectionLabel>Administration</SectionLabel>
+                  <SectionLabel collapsed={collapsed}>Administration</SectionLabel>
                   <div className="space-y-1">
-                    <NavItem href="/profile-requests" icon={UserRound}>Profile Requests</NavItem>
+                    <NavItem {...navProps} href="/profile-requests" icon={UserRound}>Profile Requests</NavItem>
                     {canManagePermissions(currentUser) && (
-                      <NavItem href="/permissions" icon={KeyRound}>Permissions</NavItem>
+                      <NavItem {...navProps} href="/permissions" icon={KeyRound}>Permissions</NavItem>
                     )}
                     {canAccessAdmin(currentUser) && (
                       <div>
-                        <NavItem href="/templates" icon={Award}>Templates</NavItem>
-                        <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
-                        <NavItem href="/admin" icon={Settings}>Admin Settings</NavItem>
+                        <NavItem {...navProps} href="/templates" icon={Award}>Templates</NavItem>
+                        <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                        <NavItem {...navProps} href="/admin" icon={Settings}>Admin Settings</NavItem>
                       </div>
                     )}
                     {/* Division Heads still need claim approvals access */}
                     {currentUser.role === "division_head" && (
-                      <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                      <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                     )}
                   </div>
                 </div>
@@ -211,9 +217,9 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               {/* Delegated Approval queue for members who are delegated approvers */}
               {currentUser.role === "member" && (currentUser.permissions || []).some((p) => p.isEnabled && p.permissionKey === "approve_task") && (
                 <div>
-                  <SectionLabel>Queue</SectionLabel>
+                  <SectionLabel collapsed={collapsed}>Queue</SectionLabel>
                   <div className="space-y-1">
-                    <NavItem href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                    <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                   </div>
                 </div>
               )}
