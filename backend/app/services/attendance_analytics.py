@@ -11,11 +11,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import AttendanceSession, Division, Member, PointEvent, Task
+from app.models import AttendanceSession, Member, PointEvent
 from app.models.enums import PointEventStatus
 
 

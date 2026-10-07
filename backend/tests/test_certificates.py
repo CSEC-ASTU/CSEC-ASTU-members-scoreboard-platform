@@ -71,6 +71,7 @@ def test_generate_cert_code_formatting():
 @pytest.mark.asyncio
 async def test_member_cannot_issue_certificates():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     settings = MagicMock(spec=Settings)
 
     member_issuer = Member(
@@ -91,6 +92,7 @@ async def test_member_cannot_issue_certificates():
 @pytest.mark.asyncio
 async def test_division_head_scoping_check():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     settings = MagicMock(spec=Settings)
     dev_div_id = uuid.uuid4()
     cyber_div_id = uuid.uuid4()
@@ -117,6 +119,7 @@ async def test_division_head_scoping_check():
 @pytest.mark.asyncio
 async def test_verify_certificate_public_success():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     settings = MagicMock(spec=Settings)
     settings.jwt_secret_key = "test-secret"
     settings.frontend_url = "https://csec-astu.org"
@@ -174,6 +177,7 @@ async def test_verify_certificate_public_success():
 @pytest.mark.asyncio
 async def test_verify_certificate_public_revoked():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     settings = MagicMock(spec=Settings)
     settings.jwt_secret_key = "test-secret"
     settings.frontend_url = "https://csec-astu.org"
@@ -214,6 +218,7 @@ async def test_verify_certificate_public_revoked():
 @pytest.mark.asyncio
 async def test_revoke_certificate_authority():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     cert_id = uuid.uuid4()
 
     dh_member = Member(id=uuid.uuid4(), role=MemberRole.DIVISION_HEAD)
@@ -233,6 +238,7 @@ async def test_revoke_certificate_authority():
 @pytest.mark.asyncio
 async def test_issue_outsider_certificates_with_dynamic_variables():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     settings = MagicMock(spec=Settings)
     settings.jwt_secret_key = "secret"
     settings.frontend_url = "http://localhost:3000"

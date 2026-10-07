@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AnnualSummary, Member
+from app.models import AnnualSummary
 from app.services.settings import (
     badge_for_score,
     get_badge_multipliers,

@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select
 
-from app.core.permissions import can_see_member, can_view_sensitive_info, has_permission, is_club_wide_officer, is_officer
+from app.core.permissions import can_see_member, can_view_sensitive_info
 from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Division, Member, PermissionGrantHistory, PointEvent

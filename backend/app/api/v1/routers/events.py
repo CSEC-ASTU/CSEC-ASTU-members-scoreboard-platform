@@ -13,8 +13,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings
-from app.dependencies import AppSettings, DbSession, OptionalUser, RequireUser, get_settings
-from app.models import Certificate, Division, Event, Member, PointEvent
+from app.dependencies import DbSession, OptionalUser, RequireUser, get_settings
+from app.models import Event, Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas.certificates import CertificateCreate, ExternalRecipient
 from app.schemas.common import Paginated

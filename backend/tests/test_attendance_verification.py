@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from app.config import Settings
 from app.models import Division, Member, PointEvent, Task
 from app.models.attendance_session import AttendanceSession
-from app.models.enums import MemberRole, PointEventStatus, PointEventType
+from app.models.enums import MemberRole, PointEventStatus
 from app.services.point_events import create_claim
 
 

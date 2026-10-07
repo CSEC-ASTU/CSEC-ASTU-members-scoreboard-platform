@@ -6,7 +6,6 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.v1.routers.events import _extract_luma_event_id, _slugify, preview_luma_csv
-from app.config import Settings
 from app.models import Division, Event, Member
 from app.models.enums import MemberRole
 from app.schemas.events import LumaCSVPreviewRequest
