@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from app.config import Settings
 from app.core.rate_limit import RateLimiter
-from app.dependencies import AppSettings, DbSession, RequireUser, get_settings
-from app.models import Certificate, Division, Member
+from app.dependencies import DbSession, RequireUser, get_settings
+from app.models import Certificate, Member
 from app.models.enums import MemberRole
 from app.schemas.certificates import (
     CertificateCreate,

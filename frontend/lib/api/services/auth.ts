@@ -1,5 +1,6 @@
 import { apiFetch, ApiError, authRefreshCoordinator } from "../client"
 import type { CurrentUserOut, TelegramConnectOut } from "../types"
+import { getClientApiBaseUrl } from "@/lib/backend-url.mjs"
 
 const AUTH_TIMEOUT_MS = 8000
 
@@ -14,11 +15,7 @@ function withTimeout(ms: number): AbortSignal {
 
 export const authService = {
   getGoogleLoginUrl: (redirect?: string) => {
-    const base =
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
-        ? "/api/proxy"
-        : "http://localhost:8000/api/v1")
+    const base = getClientApiBaseUrl()
     return redirect
       ? `${base}/auth/google/login?redirect=${encodeURIComponent(redirect)}`
       : `${base}/auth/google/login`

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.config import Settings
-from app.core.security import hash_token, issue_refresh_token, rotate_refresh_token
+from app.core.security import hash_token, rotate_refresh_token
 from app.models import Member, RefreshToken
 from app.models.enums import MemberRole
 
@@ -42,6 +42,8 @@ async def test_rotate_refresh_token_success(mock_settings, active_member):
     )
 
     db = AsyncMock()
+
+    db.add = MagicMock()  # Session.add is synchronous
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = stored_token
     db.execute.return_value = mock_result
@@ -71,6 +73,8 @@ async def test_rotate_refresh_token_expired(mock_settings, active_member):
     )
 
     db = AsyncMock()
+
+    db.add = MagicMock()  # Session.add is synchronous
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = stored_token
     db.execute.return_value = mock_result
@@ -96,6 +100,8 @@ async def test_rotate_refresh_token_concurrent_grace_window(mock_settings, activ
     )
 
     db = AsyncMock()
+
+    db.add = MagicMock()  # Session.add is synchronous
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = stored_token
     db.execute.return_value = mock_result
@@ -124,6 +130,8 @@ async def test_rotate_refresh_token_stale_revoked_rejected(mock_settings, active
     )
 
     db = AsyncMock()
+
+    db.add = MagicMock()  # Session.add is synchronous
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = stored_token
     db.execute.return_value = mock_result

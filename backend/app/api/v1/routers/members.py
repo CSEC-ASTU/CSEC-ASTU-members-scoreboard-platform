@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select
 
-from app.core.permissions import can_see_member, can_view_sensitive_info, has_permission, is_club_wide_officer, is_officer
+from app.core.permissions import can_see_member, can_view_sensitive_info
 from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Division, Member, PermissionGrantHistory, PointEvent
@@ -16,6 +16,7 @@ from app.schemas import (
     LayoffRequest,
     MemberAdminUpdate,
     MemberDetail,
+    MemberLabVerifyOut,
     MemberListItem,
     MemberSelfUpdate,
     Paginated,
@@ -113,6 +114,25 @@ async def list_members(
             )
         )
     return Paginated(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get(
+    "/{member_id}/lab-verify",
+    response_model=MemberLabVerifyOut,
+    dependencies=[Depends(RateLimiter(times=60, seconds=60))],
+)
+async def lab_verify_member(member_id: UUID, db: DbSession) -> MemberLabVerifyOut:
+    """Public laptop-QR verification: name, photo, and active membership only."""
+    m = await db.get(Member, member_id)
+    if m is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return MemberLabVerifyOut(
+        id=m.id,
+        full_name=m.full_name,
+        profile_image_url=m.profile_image_url,
+        is_active=m.is_active,
+        is_member=True,
+    )
 
 
 @router.get("/{member_id}", response_model=MemberDetail)

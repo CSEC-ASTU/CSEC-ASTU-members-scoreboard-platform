@@ -1,9 +1,19 @@
 import { spawnSync } from "node:child_process"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import { createRequire } from "node:module"
 import withSerwistInit from "@serwist/next"
+import { getBackendOrigin } from "./lib/backend-url.mjs"
+
+const require = createRequire(import.meta.url)
+const { randomUUID } = require("node:crypto")
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const revision =
+  process.env.VERCEL_GIT_COMMIT_SHA ||
   spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout?.trim() ||
-  crypto.randomUUID()
+  randomUUID()
 
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
@@ -22,6 +32,8 @@ const withSerwist = withSerwistInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep tracing rooted at the frontend app even if a parent lockfile exists.
+  outputFileTracingRoot: path.join(__dirname),
   images: {
     unoptimized: true,
   },
@@ -36,9 +48,7 @@ const nextConfig = {
     return config
   },
   async rewrites() {
-    const backendUrl =
-      process.env.BACKEND_URL ||
-      "https://csec-astu-members-scoreboard-platform.onrender.com"
+    const backendUrl = getBackendOrigin()
     return [
       {
         // All /api/proxy/** calls are forwarded to the Render backend's /api/v1/**

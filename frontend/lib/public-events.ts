@@ -1,9 +1,7 @@
 import type { ClubEventOut, Paginated } from "@/lib/api/types"
+import { getBackendOrigin } from "@/lib/backend-url.mjs"
 
-const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
-  "http://localhost:8000"
+const BACKEND_URL = getBackendOrigin()
 
 export async function fetchPublicEvents(options?: {
   filter?: "upcoming" | "past" | "all"

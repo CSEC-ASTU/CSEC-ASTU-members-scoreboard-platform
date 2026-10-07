@@ -29,6 +29,7 @@ from app.schemas.members import (
     LayoffRequest,
     MemberAdminUpdate,
     MemberDetail,
+    MemberLabVerifyOut,
     MemberListItem,
     MemberSelfUpdate,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "ImportUnmatchedDivision",
     "ImportResult",
     "AchievementCardOut",
+    "MemberLabVerifyOut",
     # Divisions
     "DivisionCreate",
     "DivisionUpdate",
@@ -111,4 +113,22 @@ __all__ = [
     "AnnualResetResult",
     "SettingsOut",
     "SettingsUpdate",
+    # Certificates / events / profile changes
+    "CertificateCreate",
+    "CertificateOut",
+    "CertificatePublicVerify",
+    "CertificateRevokeRequest",
+    "EventCreate",
+    "EventOut",
+    "EventUpdate",
+    "LumaAttendeePreview",
+    "LumaCSVPreviewRequest",
+    "LumaIngestExecuteRequest",
+    "LumaIngestExecuteResponse",
+    "LumaPreviewResponse",
+    "ProfileChangeRejectIn",
+    "ProfileChangeRequestOut",
+    "ProfilePictureRemoveIn",
+    "ProfilePictureRequestResult",
+    "ProfileSelfUpdateResult",
 ]

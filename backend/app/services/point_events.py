@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import uuid
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

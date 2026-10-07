@@ -14,6 +14,8 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
+from app.config import get_settings
+
 
 class RateLimitStorage(Protocol):
     """Abstract interface for rate limit storage (Clean Architecture)."""
@@ -82,10 +84,18 @@ default_storage = InMemorySlidingWindowStorage()
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP address, handling proxy headers."""
+    """Extract the client IP, trusting only the proxy-appended end of X-Forwarded-For.
+
+    Each trusted proxy appends the address it received the request from, so the
+    entry ``trusted_proxy_hops`` from the right is the real client. Anything to
+    the left of it is client-supplied and can be spoofed.
+    """
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        hops = [part.strip() for part in forwarded.split(",") if part.strip()]
+        if hops:
+            depth = max(1, get_settings().trusted_proxy_hops)
+            return hops[-min(depth, len(hops))]
     return request.client.host if request.client else "unknown"
 
 
@@ -98,7 +108,7 @@ def get_user_or_ip_key(request: Request) -> str:
         return f"member:{user.id}"
 
     # Cookie decode fallback if require_user has not executed yet
-    token = request.cookies.get("csec_access")
+    token = request.cookies.get(get_settings().access_cookie_name)
     if token:
         try:
             from app.core.security import decode_access_token

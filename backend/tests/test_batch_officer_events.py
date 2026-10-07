@@ -2,10 +2,9 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
 
-from app.models import Division, Member, PointEvent, Task
-from app.models.enums import MemberRole, PointEventStatus, PointEventType
+from app.models import Member
+from app.models.enums import MemberRole, PointEventType
 from app.schemas import BatchOfficerEventCreate
 from app.api.v1.routers.point_events import batch_officer_events
 
@@ -28,6 +27,7 @@ def president_user():
 @pytest.mark.asyncio
 async def test_batch_officer_events_success(president_user):
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     
     m1_id = uuid.uuid4()
     m2_id = uuid.uuid4()
@@ -66,6 +66,7 @@ async def test_batch_officer_events_success(president_user):
 @pytest.mark.asyncio
 async def test_batch_officer_events_normal_warning(president_user):
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     m_id = uuid.uuid4()
     m = Member(id=m_id, email="warned@astu.edu.et", full_name="Warned Member", role=MemberRole.MEMBER)
 

@@ -35,7 +35,6 @@ import { useCurrentUser } from "@/components/user-context"
 import { canIssueWarning, canManagePermissions, canModifyMemberRole, getAssignableRoles, isOfficer } from "@/lib/permissions"
 import {
   ROLE_LABELS,
-  PLATFORM_SETTINGS,
   type PointEvent,
   type Warning,
   type Member,
@@ -67,12 +66,13 @@ import {
   QrCode,
 } from "lucide-react"
 
-import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation } from "@/lib/hooks/use-queries"
+import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation, useEffectiveSettings } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
 
 const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
 
 export default function MemberProfilePage() {
+  const platformSettings = useEffectiveSettings()
   const params = useParams<{ id: string }>()
   const { currentUser, isAuthenticated, isLoading: authLoading } = useCurrentUser()
   const queryClient = useQueryClient()
@@ -465,7 +465,7 @@ export default function MemberProfilePage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/50">
-            <ScoreCapProgress cycleScore={cycleScore} scoreCap={PLATFORM_SETTINGS.scoreCap} />
+            <ScoreCapProgress cycleScore={cycleScore} scoreCap={platformSettings.scoreCap} />
           </div>
         </div>
 

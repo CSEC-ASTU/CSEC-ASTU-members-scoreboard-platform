@@ -1,5 +1,4 @@
 import uuid
-import time
 from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException, Request
@@ -110,9 +109,22 @@ def test_ip_fallback_when_unauthenticated(storage):
     assert key == "ip:203.0.113.195"
 
 
-def test_x_forwarded_for_extraction():
+def test_x_forwarded_for_uses_proxy_appended_entry(monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "trusted_proxy_hops", 1)
     req = MagicMock(spec=Request)
-    req.headers = {"X-Forwarded-For": "198.51.100.4, 10.0.0.1"}
+    # Client spoofed the first entry; the single trusted proxy appended the real IP.
+    req.headers = {"X-Forwarded-For": "1.2.3.4, 198.51.100.4"}
+    assert get_client_ip(req) == "198.51.100.4"
+
+
+def test_x_forwarded_for_two_proxy_hops(monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "trusted_proxy_hops", 2)
+    req = MagicMock(spec=Request)
+    req.headers = {"X-Forwarded-For": "1.2.3.4, 198.51.100.4, 10.0.0.1"}
     assert get_client_ip(req) == "198.51.100.4"
 
 
@@ -233,3 +245,16 @@ async def test_create_claim_pin_lockout_integration(lockout_manager):
     assert exc_lockout.value.status_code == 429
     assert "locked for" in exc_lockout.value.detail
 
+
+
+def test_settings_reject_placeholder_jwt_secret_in_production():
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(app_env="production", jwt_secret_key="dev-only-change-me")
+    with pytest.raises(ValidationError):
+        Settings(app_env="staging", jwt_secret_key="short")
+    Settings(app_env="production", jwt_secret_key="x" * 32)
+    Settings(app_env="development", jwt_secret_key="dev-only-change-me")

@@ -12,15 +12,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useCurrentUser } from "@/components/user-context"
-import { TASK_CATEGORY_LABELS, PLATFORM_SETTINGS, type PointEvent, type TaskDef, type TaskCategory } from "@/lib/csec-data"
+import { TASK_CATEGORY_LABELS, type PointEvent, type TaskDef, type TaskCategory } from "@/lib/csec-data"
 import { Plus, CheckCircle2, Clock, AlertCircle, Zap, ShieldAlert, KeyRound, Search, X } from "lucide-react"
 import { tasksService, pointEventsService, divisionsService, type TaskOut, type PointEventOut, type DivisionOut } from "@/lib/api"
 import { TasksSkeleton } from "@/components/csec/skeletons"
-import { useTasks, useMemberEvents, useDivisions, useCreateClaimMutation } from "@/lib/hooks/use-queries"
+import { useTasks, useMemberEvents, useDivisions, useCreateClaimMutation, useEffectiveSettings } from "@/lib/hooks/use-queries"
 
 const CATEGORIES = Object.keys(TASK_CATEGORY_LABELS) as TaskCategory[]
 
 export default function TasksPage() {
+  const platformSettings = useEffectiveSettings()
   const { currentUser, isAuthenticated } = useCurrentUser()
   const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
   const { data: eventsData, isLoading: eventsLoading } = useMemberEvents(isAuthenticated ? currentUser.id : null)
@@ -353,7 +354,7 @@ export default function TasksPage() {
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {visibleTasks.map((task) => {
                   const isAutoApprove =
-                    Math.abs(task.points) <= PLATFORM_SETTINGS.autoApproveClaimMaxPoints && !task.isPenalty
+                    Math.abs(task.points) <= platformSettings.autoApproveClaimMaxPoints && !task.isPenalty
                   const taskDivName = task.division_id ? divisionsMap[task.division_id] : null
                   const isEligible = !task.division_id || memberDivisionIds.has(task.division_id)
 

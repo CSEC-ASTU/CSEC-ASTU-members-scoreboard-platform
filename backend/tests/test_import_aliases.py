@@ -3,13 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.models import Division, Member
+from app.models import Division
 from app.services.import_members import import_members_csv
 
 
 @pytest.mark.asyncio
 async def test_import_csv_with_google_form_aliases():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     dev_id = uuid.uuid4()
     dev_div = Division(id=dev_id, name="Development")
 
@@ -54,6 +55,7 @@ async def test_import_csv_with_google_form_aliases():
 @pytest.mark.asyncio
 async def test_import_csv_with_optional_secondary_division():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     dev_id = uuid.uuid4()
     sec_id = uuid.uuid4()
     dev_div = Division(id=dev_id, name="Development")
@@ -88,6 +90,7 @@ async def test_import_csv_with_optional_secondary_division():
 @pytest.mark.asyncio
 async def test_import_csv_missing_required_column():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     # Missing github and phone number
     csv_content = (
         "Full Name,Student ID,Personal Email,Department,Joining Year,Primary Division\n"
@@ -108,6 +111,7 @@ async def test_import_csv_missing_required_column():
 @pytest.mark.asyncio
 async def test_import_csv_with_user_exact_division_names():
     db = AsyncMock()
+    db.add = MagicMock()  # Session.add is synchronous
     div_cp = Division(id=uuid.uuid4(), name="Competitive Programming")
     div_dev = Division(id=uuid.uuid4(), name="Development")
     div_cyber = Division(id=uuid.uuid4(), name="Cybersecurity")

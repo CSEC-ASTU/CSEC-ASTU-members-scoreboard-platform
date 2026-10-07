@@ -8,15 +8,16 @@ import {
   getMemberCareerScore,
   getMemberBadge,
   ROLE_LABELS,
-  PLATFORM_SETTINGS,
 } from "@/lib/csec-data"
 import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
+import { useEffectiveSettings } from "@/lib/hooks/use-queries"
 
 export default function Profile01() {
+  const platformSettings = useEffectiveSettings()
   const { currentUser, logout } = useCurrentUser()
   const cycleScore = currentUser.cycleScore ?? getMemberCycleScore(currentUser.id)
   const careerScore = currentUser.careerScore ?? getMemberCareerScore(currentUser.id)
-  const badge = (currentUser.badge as any) ?? getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
+  const badge = (currentUser.badge as any) ?? getMemberBadge(cycleScore, platformSettings.scoreCap)
 
   const facts = [
     {

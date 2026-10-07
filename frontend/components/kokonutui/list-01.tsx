@@ -5,12 +5,12 @@ import { Trophy, ArrowUpRight, TrendingUp, Sparkles, Shield, AlertCircle, Clock,
 import Link from "next/link"
 import { useCurrentUser } from "@/components/user-context"
 import { TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
-import { PLATFORM_SETTINGS } from "@/lib/csec-data"
 import { useEffect, useMemo, useState } from "react"
 import { authService, pointEventsService, type CurrentUserOut, type PointEventOut } from "@/lib/api"
-import { useDivisions } from "@/lib/hooks/use-queries"
+import { useDivisions, useEffectiveSettings } from "@/lib/hooks/use-queries"
 
 export default function List01({ className }: { className?: string }) {
+  const platformSettings = useEffectiveSettings()
   const { currentUser, liveUser, isAuthenticated } = useCurrentUser()
   const [userData, setUserData] = useState<CurrentUserOut | null>(null)
   const [events, setEvents] = useState<PointEventOut[]>([])
@@ -82,7 +82,7 @@ export default function List01({ className }: { className?: string }) {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-3 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10">
                 <Trophy className="h-3.5 w-3.5 text-zinc-500" />
-                Active Cycle {PLATFORM_SETTINGS.currentAcademicYear}
+                Active Cycle {platformSettings.currentAcademicYear}
               </span>
             </div>
             {badge && <TierBadge tier={badge} />}
@@ -98,7 +98,7 @@ export default function List01({ className }: { className?: string }) {
                   {cycleScore}
                 </span>
                 <span className="text-base font-semibold text-zinc-400">
-                  / {PLATFORM_SETTINGS.scoreCap} pts cap
+                  / {platformSettings.scoreCap} pts cap
                 </span>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function List01({ className }: { className?: string }) {
           </div>
 
           <div className="mt-6 space-y-2">
-            <ScoreCapProgress cycleScore={cycleScore} scoreCap={PLATFORM_SETTINGS.scoreCap} />
+            <ScoreCapProgress cycleScore={cycleScore} scoreCap={platformSettings.scoreCap} />
           </div>
         </div>
 
@@ -180,7 +180,7 @@ export default function List01({ className }: { className?: string }) {
               </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2.5 py-0.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-white/10">
-                <Shield className="h-3.5 w-3.5 text-zinc-400" /> Good Standing (+{PLATFORM_SETTINGS.initialBuffer} base)
+                <Shield className="h-3.5 w-3.5 text-zinc-400" /> Good Standing (+{platformSettings.initialBuffer} base)
               </div>
             )}
           </div>

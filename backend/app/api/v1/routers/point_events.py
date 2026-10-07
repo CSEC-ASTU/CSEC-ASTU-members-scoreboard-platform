@@ -7,7 +7,6 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings, get_settings
-from app.core.permissions import can_approve_submitter, has_permission, is_club_wide_officer
 from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser
 from app.models import Member, PointEvent

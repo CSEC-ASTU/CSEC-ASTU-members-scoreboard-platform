@@ -3,15 +3,13 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Award, ShieldCheck, ArrowLeft, Globe } from "lucide-react"
 import { PublicAchievementClient } from "./public-achievement-client"
+import { getBackendOrigin } from "@/lib/backend-url.mjs"
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
-const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
-  "http://localhost:8000"
+const BACKEND_URL = getBackendOrigin()
 
 async function fetchPublicCard(id: string) {
   try {

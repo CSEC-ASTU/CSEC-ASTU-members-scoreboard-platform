@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { AppProviders } from "@/components/providers/app-providers"
 
-const inter = Inter({ subsets: ["latin"], display: "swap" })
+const inter = Inter({ subsets: ["latin"], display: "swap", preload: true })
 
 const APP_NAME = "CSEC ASTU"
 const APP_TITLE = "CSEC ASTU — Member Management"
