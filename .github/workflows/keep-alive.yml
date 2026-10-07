@@ -34,14 +34,11 @@ jobs:
           CLEAN_BOT=$(echo "$BOT_URL" | tr -d '"' | tr -d "'" | xargs)
           CLEAN_BOT="${CLEAN_BOT%/}"
 
-          # Construct health check endpoints (avoid duplicate paths)
-          if [[ "$CLEAN_BACKEND" == *"/api/v1/health"* ]]; then
-            BACKEND_TARGET="$CLEAN_BACKEND"
-          elif [[ "$CLEAN_BACKEND" == *"/api/v1"* ]]; then
-            BACKEND_TARGET="$CLEAN_BACKEND/health"
-          else
-            BACKEND_TARGET="$CLEAN_BACKEND/api/v1/health"
-          fi
+          # Ping the DB-free /ping endpoint so Neon can still scale to zero.
+          # (/api/v1/health runs SQL and would keep the database awake 24/7.)
+          CLEAN_BACKEND="${CLEAN_BACKEND%/api/v1/health}"
+          CLEAN_BACKEND="${CLEAN_BACKEND%/api/v1}"
+          BACKEND_TARGET="$CLEAN_BACKEND/ping"
 
           if [[ "$CLEAN_BOT" == *"/health"* ]]; then
             BOT_TARGET="$CLEAN_BOT"
