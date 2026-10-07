@@ -5,14 +5,13 @@ import { toast } from "sonner"
 import { Award, Sparkles, Share2, Copy, Check, ShieldCheck, Trophy, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
-import { useDivisions } from "@/lib/hooks/use-queries"
+import { useDivisions, useEffectiveSettings } from "@/lib/hooks/use-queries"
 import {
   type Member,
   getMemberCareerScore,
   getMemberCycleScore,
   getMemberBadge,
   ROLE_LABELS,
-  PLATFORM_SETTINGS,
 } from "@/lib/csec-data"
 
 export function AchievementCard({
@@ -22,6 +21,7 @@ export function AchievementCard({
   member: Member
   className?: string
 }) {
+  const platformSettings = useEffectiveSettings()
   const [copied, setCopied] = useState(false)
   const { data: divisions = [] } = useDivisions()
 
@@ -33,7 +33,7 @@ export function AchievementCard({
 
   const careerScore = (member as any).careerScore ?? getMemberCareerScore(member.id)
   const cycleScore = (member as any).cycleScore ?? getMemberCycleScore(member.id)
-  const badge = (member as any).badge ?? getMemberBadge(cycleScore, PLATFORM_SETTINGS.scoreCap)
+  const badge = (member as any).badge ?? getMemberBadge(cycleScore, platformSettings.scoreCap)
 
   function copyShareLink() {
     const url =
@@ -88,7 +88,7 @@ export function AchievementCard({
                 CSEC ASTU
               </div>
               <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                Official Achievement Record · {PLATFORM_SETTINGS.currentAcademicYear}
+                Official Achievement Record · {platformSettings.currentAcademicYear}
               </div>
             </div>
           </div>
@@ -138,7 +138,7 @@ export function AchievementCard({
 
           <div>
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              Current Cycle ({PLATFORM_SETTINGS.currentAcademicYear})
+              Current Cycle ({platformSettings.currentAcademicYear})
             </span>
             <div className="mt-1 flex items-baseline gap-1">
               <Sparkles className="h-4 w-4 text-zinc-400" />
