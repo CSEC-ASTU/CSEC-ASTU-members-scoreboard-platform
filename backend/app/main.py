@@ -1,3 +1,5 @@
+import logging
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -6,6 +8,12 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1 import api_router
 from app.config import get_settings
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("app")
 
 
 @asynccontextmanager
@@ -34,16 +42,27 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):
         # Improvement: propagate/assign X-Request-ID for tracing
-        request_id = request.headers.get("X-Request-ID") or __import__("uuid").uuid4().hex
+        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+        request.state.request_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception):
-        if settings.debug:
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
-        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+        request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex
+        logger.exception(
+            "Unhandled error on %s %s (request_id=%s)",
+            request.method,
+            request.url.path,
+            request_id,
+        )
+        detail = str(exc) if settings.debug else "Internal server error"
+        return JSONResponse(
+            status_code=500,
+            content={"detail": detail},
+            headers={"X-Request-ID": request_id},
+        )
 
     @app.api_route("/ping", methods=["GET", "HEAD"], tags=["monitoring"])
     def ping():

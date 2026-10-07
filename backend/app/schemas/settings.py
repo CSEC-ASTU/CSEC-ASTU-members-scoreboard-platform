@@ -6,6 +6,8 @@ class SettingsOut(BaseModel):
     initial_buffer: int
     current_academic_year: int
     badge_tier_multipliers: dict
+    # Read-only: configured via AUTO_APPROVE_CLAIM_MAX_POINTS on the server.
+    auto_approve_claim_max_points: int
 
 
 class SettingsUpdate(BaseModel):
