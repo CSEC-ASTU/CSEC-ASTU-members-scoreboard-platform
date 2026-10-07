@@ -16,6 +16,7 @@ from app.schemas import (
     LayoffRequest,
     MemberAdminUpdate,
     MemberDetail,
+    MemberLabVerifyOut,
     MemberListItem,
     MemberSelfUpdate,
     Paginated,
@@ -113,6 +114,25 @@ async def list_members(
             )
         )
     return Paginated(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get(
+    "/{member_id}/lab-verify",
+    response_model=MemberLabVerifyOut,
+    dependencies=[Depends(RateLimiter(times=60, seconds=60))],
+)
+async def lab_verify_member(member_id: UUID, db: DbSession) -> MemberLabVerifyOut:
+    """Public laptop-QR verification: name, photo, and active membership only."""
+    m = await db.get(Member, member_id)
+    if m is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return MemberLabVerifyOut(
+        id=m.id,
+        full_name=m.full_name,
+        profile_image_url=m.profile_image_url,
+        is_active=m.is_active,
+        is_member=True,
+    )
 
 
 @router.get("/{member_id}", response_model=MemberDetail)

@@ -29,6 +29,7 @@ from app.schemas.members import (
     LayoffRequest,
     MemberAdminUpdate,
     MemberDetail,
+    MemberLabVerifyOut,
     MemberListItem,
     MemberSelfUpdate,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "ImportUnmatchedDivision",
     "ImportResult",
     "AchievementCardOut",
+    "MemberLabVerifyOut",
     # Divisions
     "DivisionCreate",
     "DivisionUpdate",

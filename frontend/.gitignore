@@ -29,3 +29,10 @@ next-env.d.ts
 # Serwist
 public/sw*
 public/swe-worker*
+
+# Local Storybook / Vitest scaffolds (not part of production deploy)
+.storybook/
+stories/
+vitest.config.ts
+vitest.shims.d.ts
+

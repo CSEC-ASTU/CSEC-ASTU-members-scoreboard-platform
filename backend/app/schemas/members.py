@@ -88,3 +88,13 @@ class AchievementCardOut(BaseModel):
     display_score: int
     badges: list[str]
     profile_image_url: str | None
+
+
+class MemberLabVerifyOut(BaseModel):
+    """Minimal public payload for laptop QR scans (no contact or score data)."""
+
+    id: UUID
+    full_name: str
+    profile_image_url: str | None
+    is_active: bool
+    is_member: bool
