@@ -6,8 +6,7 @@
 *An enterprise-grade collegiate governance platform engineered for the Computer Science and Engineering Club at Adama Science and Technology University (CSEC-ASTU).*
 
 [![Audit Score](https://img.shields.io/badge/Audit%20Score-100%2F100%20(A%2B)-10b981?style=for-the-badge&logo=codacy&logoColor=white)](docs/PROJECT_ANALYSIS_AND_ROADMAP.md)
-[![Audit Score](https://img.shields.io/badge/Audit%20Score-100%2F100%20(A%2B)-10b981?style=for-the-badge&logo=codacy&logoColor=white)](docs/PROJECT_ANALYSIS_AND_ROADMAP.md)
-[![Pytest Suite](https://img.shields.io/badge/Pytest-66%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
+[![Pytest Suite](https://img.shields.io/badge/Pytest-80%20Passing-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
 [![FastAPI Core](https://img.shields.io/badge/FastAPI-Port%208000-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16%20(React%2019)-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
 [![Telegram Bot](https://img.shields.io/badge/Telegram%20Bot-Port%208001-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](telegram_bot)
@@ -185,7 +184,7 @@ Here is the technical reasoning behind our architectural choices:
   - Uses `Personal Email` as `Member.email` so Google OAuth logins match members' personal Google accounts, eliminating student-email lockout loops.
 
 ### 8. 🔄 24/7 Automated Keep-Alive Workflow
-- **Zero Cold-Starts:** Scheduled GitHub Actions runner (`.github/workflows/keep-alive.yml`) pings `/health` endpoints on Render every 10 minutes.
+- **Zero Cold-Starts:** Scheduled GitHub Actions runner (`.github/workflows/keep-alive.yml`) pings the DB-free backend `/ping` and the bot `/health` on Render every 10 minutes.
 - **Dual Service Probes:** Validates both FastAPI Core (Port 8000) and Telegram Bot (Port 8001) with response latency tracking.
 
 ---
@@ -226,7 +225,7 @@ CSEC-ASTU members (~180 active members on average) enroll in a **Primary Divisio
 | **Database** | **PostgreSQL** (Neon Serverless Frankfurt) | Multi-tenant schema, `-pooler` PgBouncer connection pooling, immutable event ledger |
 | **Authentication** | **Google OAuth 2.0**, HttpOnly Cookies, JWT | Refresh token store with cryptographic rotation, personal email alignment, CSRF state protection |
 | **DevOps & Monitoring** | **UptimeRobot / Cron**, GitHub Actions, Docker | 24/7 Keep-Alive heartbeat on `/ping`, automated linting, containerized microservices |
-| **Quality & Tests** | **Pytest**, AnyIO, Asyncio | 66 automated tests covering auth, presence, batch ops, duplicates, permissions, events, and GAS |
+| **Quality & Tests** | **Pytest**, AnyIO, Asyncio | 80 automated tests (77 backend + 3 bot) covering auth, presence, batch ops, duplicates, permissions, events, and GAS |
 
 ---
 
@@ -282,7 +281,7 @@ npm install
 
 # Configure environment variables
 cp .env.example .env.local
-# Set NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+# BACKEND_URL defaults to http://localhost:8000 (see .env.example)
 
 # Start development server (Port 3000)
 npm run dev
