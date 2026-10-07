@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useParams, notFound } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import Layout from "@/components/kokonutui/layout"
@@ -29,7 +29,12 @@ import {
 import { MemberAvatar, WarningPill, TierBadge, ScoreCapProgress } from "@/components/csec/ui-bits"
 import { PageSkeletonWrapper, MemberDetailSkeleton } from "@/components/csec/skeletons"
 import { IssueWarningDialog } from "@/components/csec/issue-warning-dialog"
-import { LabVerifyCard } from "@/components/csec/lab-verify-card"
+import { SecurityCheckpoint } from "@/components/csec/security-checkpoint"
+import {
+  MemberVerificationBanner,
+  NotAMemberNotice,
+  VerificationUnavailable,
+} from "@/components/csec/member-verification"
 import { LaptopStickerDialog } from "@/components/csec/laptop-sticker-dialog"
 import { useCurrentUser } from "@/components/user-context"
 import { canIssueWarning, canManagePermissions, canModifyMemberRole, getAssignableRoles, isOfficer } from "@/lib/permissions"
@@ -41,6 +46,7 @@ import {
   type Role,
 } from "@/lib/csec-data"
 import {
+  ApiError,
   membersService,
   divisionsService,
   type MemberDetailOut,
@@ -77,8 +83,14 @@ export default function MemberProfilePage() {
   const { currentUser, isAuthenticated, isLoading: authLoading } = useCurrentUser()
   const queryClient = useQueryClient()
 
-  // Only fetch full profile data after auth — public scanners use LabVerifyCard instead.
-  const { data: memberData, isLoading: memberLoading, isError: memberError } = useMemberDetail(
+  // Only fetch profile data after auth — logged-out scanners are asked to sign in first.
+  const {
+    data: memberData,
+    isLoading: memberLoading,
+    isError: memberError,
+    error: memberErrorObj,
+    refetch: refetchMember,
+  } = useMemberDetail(
     isAuthenticated ? params.id : undefined,
   )
   const { data: evtsData, isLoading: evtsLoading } = useMemberDetailEvents(
@@ -255,9 +267,24 @@ export default function MemberProfilePage() {
     )
   }
 
-  // Unauthenticated laptop QR scan: show name, photo, and membership only.
+  // Logged-out laptop QR scan: require sign-in, then the login redirect brings them back here.
   if (!isAuthenticated) {
-    return <LabVerifyCard memberId={params.id} />
+    return <SecurityCheckpoint memberId={params.id} />
+  }
+
+  if (hasError) {
+    // 404 = no such member; 422 = malformed ID in the QR/URL. Both mean "not a member".
+    const status = memberErrorObj instanceof ApiError ? memberErrorObj.status : undefined
+    const notAMember = status === 404 || status === 422
+    return (
+      <Layout>
+        {notAMember ? (
+          <NotAMemberNotice />
+        ) : (
+          <VerificationUnavailable onRetry={() => void refetchMember()} />
+        )}
+      </Layout>
+    )
   }
 
   if (isLoading && !adaptedMember) {
@@ -268,8 +295,12 @@ export default function MemberProfilePage() {
     )
   }
 
-  if (hasError || !memberData || !adaptedMember) {
-    return notFound()
+  if (!memberData || !adaptedMember) {
+    return (
+      <Layout>
+        <MemberDetailSkeleton />
+      </Layout>
+    )
   }
 
   const member = adaptedMember
@@ -277,6 +308,8 @@ export default function MemberProfilePage() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto space-y-8 pb-10">
+        <MemberVerificationBanner name={member.name} isActive={member.isActive} />
+
         {/* Full-Page Profile Header */}
         <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8 pt-2">
           {/* Big Prominent Photo */}
