@@ -4,15 +4,13 @@ import { notFound } from "next/navigation"
 import { Award, ShieldCheck, ArrowLeft, Globe } from "lucide-react"
 import { VerifyCertificateClient } from "./verify-certificate-client"
 import type { CertificatePublicVerify } from "@/lib/api/types"
+import { getBackendOrigin } from "@/lib/backend-url.mjs"
 
 interface Props {
   params: Promise<{ code: string }>
 }
 
-const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
-  "http://localhost:8000"
+const BACKEND_URL = getBackendOrigin()
 
 async function fetchCertificate(code: string): Promise<CertificatePublicVerify | null> {
   try {

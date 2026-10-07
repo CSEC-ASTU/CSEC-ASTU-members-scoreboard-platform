@@ -1,6 +1,8 @@
 // Centralized HTTP API client with cookie credentials, error normalization,
 // and transparent token refresh orchestration (Clean Architecture).
 
+import { getClientApiBaseUrl } from "@/lib/backend-url.mjs"
+
 export class ApiError extends Error {
   status: number
   detail: string
@@ -16,13 +18,8 @@ export class ApiError extends Error {
 }
 
 // In production on Vercel: requests go to /api/proxy/* (same domain → no cross-origin cookie issues)
-// Vercel rewrites /api/proxy/* → https://csec-astu-members-scoreboard-platform.onrender.com/api/v1/*
 // In local development: falls back directly to localhost:8000
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
-    ? "/api/proxy"
-    : "http://localhost:8000/api/v1")
+const BASE_URL = getClientApiBaseUrl()
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>
