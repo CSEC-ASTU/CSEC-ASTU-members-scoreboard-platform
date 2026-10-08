@@ -42,7 +42,8 @@ export function SecurityCheckpoint({ memberId }: SecurityCheckpointProps) {
             Member Verification
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Sign in with your university Google account to view this member&apos;s profile.
+            Sign in with your CSEC Google account to check whether this person is a club member and view
+            their profile.
           </p>
         </div>
 

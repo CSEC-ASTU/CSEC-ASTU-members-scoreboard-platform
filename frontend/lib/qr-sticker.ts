@@ -12,6 +12,20 @@ export function qrServerUrl(data: string, size = 320): string {
   )}&margin=12&ecc=H`
 }
 
+/**
+ * Open a blank window to write a printable sticker sheet into.
+ *
+ * Do NOT pass "noopener" in the features string: with it, window.open() always
+ * returns null, so the sheet can never be written and printing silently fails.
+ * Instead we sever the back-reference ourselves once we have the handle.
+ * Must be called synchronously from a click handler or pop-up blockers will block it.
+ */
+export function openPrintWindow(width: number, height: number): Window | null {
+  const printWindow = window.open("", "_blank", `width=${width},height=${height}`)
+  if (printWindow) printWindow.opener = null
+  return printWindow
+}
+
 export function stickerIdFor(memberId: string, joiningYear: number | null | undefined): string {
   const cleanId = memberId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()
   const year = joiningYear || new Date().getFullYear()
@@ -22,6 +36,12 @@ export function truncateStickerName(name: string, maxLen = 22): string {
   const trimmed = name.trim()
   if (trimmed.length <= maxLen) return trimmed
   return `${trimmed.slice(0, maxLen - 1).trimEnd()}…`
+}
+
+/** First name only, for the large label printed under the QR code. */
+export function stickerFirstName(fullName: string, maxLen = 14): string {
+  const first = fullName.trim().split(/\s+/)[0] || fullName.trim()
+  return truncateStickerName(first, maxLen)
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -52,9 +72,9 @@ function roundRect(
 }
 
 /**
- * Composites QR + CSEC logo + member name into a PNG blob.
- * Name sits under the logo inside the center white badge (preferred),
- * with a fallback name strip under the QR if the name is very long.
+ * Composites QR + CSEC logo + the member's first name into a PNG blob.
+ * The logo sits alone in the centre badge; the first name is printed large
+ * in a band directly under the QR so it stays readable.
  */
 export async function composeQrStickerPng(opts: {
   memberId: string
@@ -64,11 +84,11 @@ export async function composeQrStickerPng(opts: {
   const size = opts.size ?? 600
   const verificationUrl = memberVerificationUrl(opts.memberId)
   const qrUrl = qrServerUrl(verificationUrl, size)
-  const displayName = truncateStickerName(opts.memberName, 28)
+  const firstName = stickerFirstName(opts.memberName)
 
   const [qrImg, logoImg] = await Promise.all([loadImage(qrUrl), loadImage("/csec_astu.svg")])
 
-  const nameBand = 56
+  const nameBand = Math.round(size * 0.16)
   const canvas = document.createElement("canvas")
   canvas.width = size
   canvas.height = size + nameBand
@@ -82,9 +102,9 @@ export async function composeQrStickerPng(opts: {
   // QR
   ctx.drawImage(qrImg, 0, 0, size, size)
 
-  // Center white badge: logo + name under logo
-  const badgeW = Math.round(size * 0.3)
-  const badgeH = Math.round(size * 0.28)
+  // Center white badge: logo only (keeps the QR easy to scan)
+  const badgeW = Math.round(size * 0.28)
+  const badgeH = Math.round(size * 0.22)
   const badgeX = (size - badgeW) / 2
   const badgeY = (size - badgeH) / 2
   const radius = Math.round(size * 0.027)
@@ -96,25 +116,18 @@ export async function composeQrStickerPng(opts: {
   ctx.lineWidth = Math.max(2, Math.round(size * 0.007))
   ctx.stroke()
 
-  const logoW = Math.round(badgeW * 0.78)
+  const logoW = Math.round(badgeW * 0.8)
   const logoH = Math.round(logoW * (39.57 / 54.4))
   const logoX = (size - logoW) / 2
-  const logoY = badgeY + Math.round(badgeH * 0.1)
+  const logoY = badgeY + (badgeH - logoH) / 2
   ctx.drawImage(logoImg, logoX, logoY, logoW, logoH)
 
-  // Name under logo inside the badge
-  ctx.fillStyle = "#18181b"
+  // First name, large, directly under the QR
+  ctx.fillStyle = "#09090b"
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
-  const fontSize = Math.max(11, Math.round(size * 0.028))
-  ctx.font = `700 ${fontSize}px system-ui, -apple-system, Segoe UI, sans-serif`
-  const nameY = logoY + logoH + Math.round((badgeY + badgeH - (logoY + logoH)) / 2) + 2
-  ctx.fillText(displayName, size / 2, nameY, badgeW - 16)
-
-  // Name strip under the full QR (always present for printed stickers)
-  ctx.fillStyle = "#09090b"
-  ctx.font = `700 ${Math.round(size * 0.038)}px system-ui, -apple-system, Segoe UI, sans-serif`
-  ctx.fillText(opts.memberName.trim(), size / 2, size + nameBand / 2, size - 24)
+  ctx.font = `800 ${Math.round(size * 0.09)}px system-ui, -apple-system, Segoe UI, sans-serif`
+  ctx.fillText(firstName, size / 2, size + nameBand / 2 - Math.round(size * 0.01), size - 32)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

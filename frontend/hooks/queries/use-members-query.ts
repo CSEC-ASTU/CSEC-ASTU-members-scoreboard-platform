@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
-import { membersService, pointEventsService, type Role, type MemberSelfUpdateIn } from "@/lib/api"
+import { ApiError, membersService, pointEventsService, type Role, type MemberSelfUpdateIn } from "@/lib/api"
 
 export function useMembers(params?: {
   page?: number
@@ -25,6 +25,9 @@ export function useMemberDetail(memberId?: string) {
     queryFn: () => membersService.getMember(memberId!),
     enabled: Boolean(memberId),
     staleTime: 60 * 1000,
+    // "Not a member" (404) and malformed IDs (422) are definitive — don't retry them.
+    retry: (failureCount, error) =>
+      !(error instanceof ApiError && (error.status === 404 || error.status === 422)) && failureCount < 1,
   })
 }
 

@@ -27,13 +27,14 @@ import { ROLE_LABELS, type Role } from "@/lib/csec-data"
 import { useMembers } from "@/hooks/queries"
 import {
   memberVerificationUrl,
+  openPrintWindow,
   qrServerUrl,
   stickerIdFor,
-  truncateStickerName,
+  stickerFirstName,
 } from "@/lib/qr-sticker"
 
-/** Stickers per printed A4 page (3 columns × 3 rows). */
-const STICKERS_PER_PAGE = 9
+/** Stickers per printed A4 page (3 columns × 4 rows; each sticker is ~64mm tall). */
+const STICKERS_PER_PAGE = 12
 
 interface BatchQrPrintDialogProps {
   open: boolean
@@ -149,7 +150,7 @@ export function BatchQrPrintDialog({
       return
     }
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700")
+    const printWindow = openPrintWindow(900, 700)
     if (!printWindow) {
       toast.error("Allow pop-ups to print QR stickers")
       return
@@ -163,21 +164,20 @@ export function BatchQrPrintDialog({
         const sid = stickerIdFor(m.id, m.joining_year)
         const divisionName =
           (m.division_id && divisionMap[m.division_id]) || m.division_name || "General"
-        const centerName = truncateStickerName(m.full_name, 16)
+        const firstName = stickerFirstName(m.full_name)
         return `
         <article class="sticker">
           <div class="meta"><span>ASTU CSEC LAB</span><span>${escapeHtml(sid)}</span></div>
           <div class="title">Physical Security Clearance</div>
           <div class="qr-wrap">
-            <img class="qr" src="${qr}" alt="QR" />
-            <div class="center-badge">
-              <div>
-                <img src="${origin}/csec_astu.svg" alt="CSEC ASTU" />
-                <span>${escapeHtml(centerName)}</span>
+            <div class="qr-box">
+              <img class="qr" src="${qr}" alt="QR" />
+              <div class="center-badge">
+                <div><img src="${origin}/csec_astu.svg" alt="CSEC ASTU" /></div>
               </div>
             </div>
+            <div class="qr-name">${escapeHtml(firstName)}</div>
           </div>
-          <div class="name">${escapeHtml(m.full_name)}</div>
           <div class="division">${escapeHtml(divisionName)}</div>
         </article>`
       })
@@ -201,17 +201,16 @@ export function BatchQrPrintDialog({
     .sheet {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 6mm 5mm;
+      gap: 4mm 5mm;
       align-content: start;
     }
     .sticker {
       border: 1.25px dashed #a1a1aa;
       border-radius: 8px;
-      padding: 5px 6px 8px;
+      padding: 5px 6px 6px;
       text-align: center;
       page-break-inside: avoid;
       break-inside: avoid;
-      min-height: 78mm;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -235,14 +234,27 @@ export function BatchQrPrintDialog({
       margin-bottom: 4px;
     }
     .qr-wrap {
-      position: relative;
       display: inline-flex;
+      flex-direction: column;
+      align-items: center;
       background: #fff;
-      padding: 3px;
+      padding: 3px 3px 4px;
       border: 1px solid #e4e4e7;
       border-radius: 6px;
     }
+    .qr-box { position: relative; }
     .qr-wrap img.qr { width: 42mm; height: 42mm; display: block; }
+    .qr-name {
+      max-width: 42mm;
+      margin-top: 1px;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .center-badge {
       position: absolute;
       inset: 0;
@@ -255,31 +267,12 @@ export function BatchQrPrintDialog({
       background: #fff;
       border: 1px solid #e4e4e7;
       border-radius: 5px;
-      padding: 3px 4px 4px;
+      padding: 3px 4px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1px;
-      max-width: 40%;
     }
-    .center-badge img { width: 12mm; height: auto; display: block; }
-    .center-badge span {
-      font-size: 5.5px;
-      font-weight: 700;
-      line-height: 1.1;
-      text-align: center;
-      word-break: break-word;
-    }
-    .name {
-      margin-top: 5px;
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 1.2;
-      max-width: 100%;
-      padding: 0 2px;
-    }
+    .center-badge img { width: 11mm; height: auto; display: block; }
     .division {
-      margin-top: 2px;
+      margin-top: 4px;
       font-size: 8px;
       color: #3f3f46;
     }
@@ -299,8 +292,14 @@ export function BatchQrPrintDialog({
     window.onload = function () {
       var imgs = Array.prototype.slice.call(document.images);
       var pending = imgs.length;
+      var printed = false;
+      function printOnce() {
+        if (printed) return;
+        printed = true;
+        window.print();
+      }
       function maybePrint() {
-        if (pending <= 0) setTimeout(function () { window.print(); }, 200);
+        if (pending <= 0) setTimeout(printOnce, 200);
       }
       if (!pending) { maybePrint(); return; }
       imgs.forEach(function (img) {
@@ -309,7 +308,8 @@ export function BatchQrPrintDialog({
           img.onload = img.onerror = function () { pending--; maybePrint(); };
         }
       });
-      setTimeout(function () { window.print(); }, 4000);
+      // Fallback if a QR image hangs: print anyway, but only once.
+      setTimeout(printOnce, 4000);
     };
   </script>
 </body>
@@ -328,7 +328,7 @@ export function BatchQrPrintDialog({
           </DialogTitle>
           <DialogDescription className="text-xs">
             Select members, then print stickers in batches — {STICKERS_PER_PAGE} per A4 page
-            (3×3 grid). President &amp; Vice President only.
+            (3×4 grid). President &amp; Vice President only.
           </DialogDescription>
         </DialogHeader>
 
