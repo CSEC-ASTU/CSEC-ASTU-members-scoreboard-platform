@@ -67,3 +67,17 @@ async def test_event_end_must_be_after_start(make_member, client_for):
         assert bad_edit.status_code == 422
         good_edit = await api.put(f"/events/{ok.json()['id']}", json={"end_time": (start + timedelta(hours=5)).isoformat()})
         assert good_edit.status_code == 200, good_edit.text
+
+
+async def test_task_points_sign_matches_task_kind(make_member, client_for):
+    vp = await make_member(MemberRole.VICE_PRESIDENT)
+    async with client_for(vp) as api:
+        base = {"title": "Points rule", "category": "general"}
+        assert (await api.post("/tasks", json={**base, "base_points": -10})).status_code == 422
+        assert (await api.post("/tasks", json={**base, "base_points": 0})).status_code == 422
+        assert (await api.post("/tasks", json={**base, "base_points": 5, "is_penalty": True})).status_code == 422
+        assert (await api.post("/tasks", json={**base, "base_points": -5, "is_penalty": True})).status_code == 201
+        ok = await api.post("/tasks", json={**base, "base_points": 15})
+        assert ok.status_code == 201
+        assert (await api.patch(f"/tasks/{ok.json()['id']}", json={"base_points": -3})).status_code == 422
+        assert (await api.patch(f"/tasks/{ok.json()['id']}", json={"base_points": 20})).status_code == 200
