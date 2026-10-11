@@ -29,6 +29,9 @@ import { LumaIngestDialog } from "./components/luma-ingest-dialog"
 import { DEFAULT_CERTIFICATE_TEMPLATES } from "./default-templates"
 import type { CertificateTemplate, TemplateCategory, SortOption } from "./types"
 import { cn } from "@/lib/utils"
+import { Lock } from "lucide-react"
+import { useCurrentUser } from "@/components/user-context"
+import { canManagePermissions } from "@/lib/permissions"
 
 const CATEGORIES: TemplateCategory[] = [
   "All",
@@ -44,6 +47,9 @@ const CATEGORIES: TemplateCategory[] = [
 const STORAGE_KEY = "csec_custom_certificate_templates_v1"
 
 export default function CertificateTemplatesPage() {
+  const { currentUser } = useCurrentUser()
+  // Issuing certificates is limited to officers (division heads within their division).
+  const allowed = canManagePermissions(currentUser)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("All")
   const [sortOption, setSortOption] = useState<SortOption>("popular")
@@ -129,6 +135,20 @@ export default function CertificateTemplatesPage() {
         return 0
       })
   }, [allTemplates, selectedCategory, selectedDivision, searchQuery, sortOption])
+
+  if (!allowed) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center gap-2 py-24 text-center">
+          <Lock className="h-8 w-8 text-zinc-400" />
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Officers Only</h1>
+          <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+            Certificate templates and issuing are available to club officers.
+          </p>
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout>
