@@ -1,9 +1,17 @@
-"""Database Seed Script for CSEC ASTU Platform."""
+"""Database Seed Script for CSEC ASTU Platform.
+
+Usage (from the backend directory):
+  python seed.py                                   # divisions, tasks, permissions, settings
+  python seed.py --president-email someone@astu.edu.et --president-name "Full Name"
+
+No personal data is stored in this file: the president is passed on the command line.
+Their Google account is linked automatically on first sign-in (like every member).
+"""
 
 from __future__ import annotations
 
+import argparse
 import asyncio
-from datetime import UTC, datetime
 
 from sqlalchemy import delete, select, func
 
@@ -187,12 +195,7 @@ EXTRA_DIVISION_TASKS: dict[str, list[dict]] = {
     ],
 }
 
-PRESIDENT_EMAIL = "milkessahabtamukebu@gmail.com"
-PRESIDENT_NAME = "Milkessa Habtamu"
-PRESIDENT_GOOGLE_ID = "103201334684228447710"
-
-
-async def run_seed() -> None:
+async def run_seed(president_email: str | None = None, president_name: str | None = None) -> None:
     print("Starting database seeding...")
     async with AsyncSessionLocal() as db:
         # 1. Seed / Update Divisions
@@ -303,16 +306,18 @@ async def run_seed() -> None:
                 db.add(task)
                 print(f"        * {task.title} ({task.base_points} pts)")
 
-        # 7. Seed President Member
-        res = await db.execute(select(Member).where(Member.email == PRESIDENT_EMAIL))
-        president = res.scalar_one_or_none()
+        # 7. Seed President Member (only when given on the command line)
+        president = None
         dev_division = divisions_map.get("Development")
+        if president_email:
+            president_email = president_email.strip().lower()
+            res = await db.execute(select(Member).where(Member.email == president_email))
+            president = res.scalar_one_or_none()
 
-        if not president:
+        if president_email and not president:
             president = Member(
-                full_name=PRESIDENT_NAME,
-                email=PRESIDENT_EMAIL,
-                google_id=PRESIDENT_GOOGLE_ID,
+                full_name=(president_name or president_email.split("@")[0]).strip(),
+                email=president_email,
                 role=MemberRole.PRESIDENT,
                 department="Software Engineering",
                 joining_year=2022,
@@ -321,10 +326,9 @@ async def run_seed() -> None:
             )
             db.add(president)
             print(f"  [+] Created President Member: {president.full_name} <{president.email}>")
-        else:
+        elif president:
             president.role = MemberRole.PRESIDENT
             president.is_active = True
-            president.google_id = PRESIDENT_GOOGLE_ID
             president.division_id = dev_division.id if dev_division else president.division_id
             print(f"  [*] Updated President Member: {president.full_name} <{president.email}>")
 
@@ -376,4 +380,8 @@ async def run_seed() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_seed())
+    parser = argparse.ArgumentParser(description="Seed the CSEC ASTU database")
+    parser.add_argument("--president-email", help="Email of the club president to create/promote")
+    parser.add_argument("--president-name", help="Full name of the president (used when creating)")
+    args = parser.parse_args()
+    asyncio.run(run_seed(args.president_email, args.president_name))
