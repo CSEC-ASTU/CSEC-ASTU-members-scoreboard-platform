@@ -50,3 +50,10 @@ Both are `httpOnly`, `SameSite=Lax`. Set `COOKIE_SECURE=true` in production.
 ## Improvements
 
 See `../docs/improvements/` for additions beyond the original Phase 1 docs.
+
+## Deploying (Render)
+
+Set the service's **Start Command** to `./start.sh` (root directory `backend`). It runs
+`alembic upgrade head` before starting uvicorn, so new migrations are applied on every deploy.
+Without it, migrations must be run by hand against the production `DATABASE_URL`, and any
+missed migration makes the matching endpoints return 500 (this happened with `events`).
