@@ -31,7 +31,7 @@ This Google Apps Script Web App offloads 100% of certificate PDF generation and 
 2. Click **New Project** and name it `CSEC-ASTU Certificate Engine`.
 3. Paste the contents of `gas/Code.gs` into `Code.gs`.
 4. In **Project Settings** $\rightarrow$ **Script Properties**, add:
-   - `CSEC_APPS_SCRIPT_SECRET`: Any strong secret token (e.g. `csec-gas-secret-xxxx`).
+   - `CSEC_APPS_SCRIPT_SECRET`: a random value of **24+ characters** (generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`). Without it the web app rejects every request. Put the same value in the backend's `APPS_SCRIPT_SECRET`.
    - `MASTER_SLIDE_ID`: Your Google Slide Template ID from Step 1.
    - `OUTPUT_DRIVE_FOLDER_ID`: Your Google Drive Folder ID from Step 1.
 5. Click **Deploy** $\rightarrow$ **New Deployment**:
@@ -48,7 +48,7 @@ This Google Apps Script Web App offloads 100% of certificate PDF generation and 
 In your Render Dashboard (or local `backend/.env`), add:
 ```env
 APPS_SCRIPT_WEBHOOK_URL=https://script.google.com/macros/s/AKfycb.../exec
-APPS_SCRIPT_SECRET=csec-gas-secret-xxxx
+APPS_SCRIPT_SECRET=<same 24+ character random value as the CSEC_APPS_SCRIPT_SECRET script property>
 ```
 
 When certificates are minted on `/templates` or attendance is ingested from Luma, the backend will automatically call Google Apps Script to:

@@ -120,10 +120,13 @@ Ensure the `DATABASE_URL` environment variable on Render connects through **Neon
  * Deployed as a Google Apps Script Web App
  */
 
-// Configuration Constants
-const SCRIPT_SECRET = "YOUR_SHARED_SECRET_KEY"; // Set matching CSEC_APPS_SCRIPT_SECRET
-const MASTER_TEMPLATE_SLIDE_ID = "YOUR_GOOGLE_SLIDE_TEMPLATE_ID";
-const OUTPUT_DRIVE_FOLDER_ID = "YOUR_GOOGLE_DRIVE_FOLDER_ID";
+// Configuration: NEVER paste secrets into the script source. Set them in
+// Project Settings -> Script Properties (see gas/Code.gs for the full version,
+// which refuses all requests until CSEC_APPS_SCRIPT_SECRET is configured).
+const PROPS = PropertiesService.getScriptProperties();
+const SCRIPT_SECRET = PROPS.getProperty("CSEC_APPS_SCRIPT_SECRET") || "";
+const MASTER_TEMPLATE_SLIDE_ID = PROPS.getProperty("MASTER_SLIDE_ID") || "";
+const OUTPUT_DRIVE_FOLDER_ID = PROPS.getProperty("OUTPUT_DRIVE_FOLDER_ID") || "";
 
 /**
  * HTTP POST Webhook Receiver

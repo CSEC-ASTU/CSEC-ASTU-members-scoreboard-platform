@@ -26,7 +26,9 @@ def _parse_chat_ids(value: object) -> list[str]:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", hide_input_in_errors=True
+    )
 
     app_name: str = "CSEC ASTU Telegram Bot"
     app_env: Literal["development", "staging", "production"] = "development"
@@ -34,7 +36,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8001
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/csec_astu"
+    # Required, no default: never fall back to credentials written in the repository.
+    database_url: str
 
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
