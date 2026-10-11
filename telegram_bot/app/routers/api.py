@@ -23,16 +23,17 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 
 
+# Published in .env.example; never accept it as a real secret (in any environment).
+_PLACEHOLDER_SECRETS = {"change-me-internal-secret", "change-me-long-random-secret"}
+
+
 def require_internal_secret(
     settings: AppSettings,
     x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
 ) -> None:
     if (
         not settings.internal_api_secret
-        or (
-            settings.app_env != "development"
-            and settings.internal_api_secret == "change-me-internal-secret"
-        )
+        or settings.internal_api_secret in _PLACEHOLDER_SECRETS
         or x_internal_secret is None
         or not hmac.compare_digest(x_internal_secret, settings.internal_api_secret)
     ):
@@ -55,9 +56,11 @@ async def telegram_webhook(
     settings: AppSettings,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ) -> dict:
-    if not settings.telegram_webhook_secret:
+    if not settings.telegram_webhook_secret or settings.telegram_webhook_secret in _PLACEHOLDER_SECRETS:
         raise HTTPException(status_code=503, detail="Telegram webhook is not configured")
-    if x_telegram_bot_api_secret_token != settings.telegram_webhook_secret:
+    if x_telegram_bot_api_secret_token is None or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token, settings.telegram_webhook_secret
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook secret")
 
     payload = await request.json()
