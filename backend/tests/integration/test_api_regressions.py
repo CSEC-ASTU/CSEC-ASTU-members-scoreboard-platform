@@ -47,3 +47,23 @@ async def test_revoke_certificate_returns_full_certificate(make_member, client_f
 
         verify = (await api.get(f"/certificates/verify/{issued.json()[0]['cert_code']}")).json()
         assert verify["is_valid"] is False and verify["is_revoked"] is True
+
+
+async def test_event_end_must_be_after_start(make_member, client_for):
+    from datetime import UTC, datetime, timedelta
+
+    vp = await make_member(MemberRole.VICE_PRESIDENT)
+    start = datetime.now(UTC) + timedelta(days=2)
+    body = {"title": "Order Test", "description": "checking times", "start_time": start.isoformat()}
+    async with client_for(vp) as api:
+        bad = await api.post("/events", json={**body, "end_time": (start - timedelta(hours=1)).isoformat()})
+        assert bad.status_code == 422
+        same = await api.post("/events", json={**body, "end_time": start.isoformat()})
+        assert same.status_code == 422
+        ok = await api.post("/events", json={**body, "end_time": (start + timedelta(hours=2)).isoformat()})
+        assert ok.status_code == 201, ok.text
+        # An edit that moves only the end before the existing start is rejected too
+        bad_edit = await api.put(f"/events/{ok.json()['id']}", json={"end_time": (start - timedelta(hours=3)).isoformat()})
+        assert bad_edit.status_code == 422
+        good_edit = await api.put(f"/events/{ok.json()['id']}", json={"end_time": (start + timedelta(hours=5)).isoformat()})
+        assert good_edit.status_code == 200, good_edit.text
