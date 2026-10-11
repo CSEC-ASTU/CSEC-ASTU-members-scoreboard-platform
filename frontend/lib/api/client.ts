@@ -3,6 +3,29 @@
 
 import { getClientApiBaseUrl } from "@/lib/backend-url.mjs"
 
+/**
+ * FastAPI returns validation errors (422) as a list of {loc, msg} objects.
+ * Turn them into one readable sentence instead of raw JSON.
+ */
+export function formatErrorDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail
+  if (Array.isArray(detail)) {
+    const messages = detail.map((item) => {
+      if (item && typeof item === "object" && "msg" in item) {
+        const msg = String((item as { msg: unknown }).msg).replace(/^Value error, /, "")
+        const loc = (item as { loc?: unknown[] }).loc
+        const field = Array.isArray(loc) ? loc.filter((p) => p !== "body" && typeof p === "string").pop() : undefined
+        return field && !msg.toLowerCase().includes(String(field).replace(/_/g, " ")) && !msg.includes(String(field))
+          ? `${String(field).replace(/_/g, " ")}: ${msg}`
+          : msg
+      }
+      return String(item)
+    })
+    return [...new Set(messages)].join("; ")
+  }
+  return JSON.stringify(detail)
+}
+
 export class ApiError extends Error {
   status: number
   detail: string
@@ -171,7 +194,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     try {
       const errorData = await response.json()
       if (errorData.detail) {
-        detail = typeof errorData.detail === "string" ? errorData.detail : JSON.stringify(errorData.detail)
+        detail = formatErrorDetail(errorData.detail)
       }
     } catch {
       // Non-JSON error body
