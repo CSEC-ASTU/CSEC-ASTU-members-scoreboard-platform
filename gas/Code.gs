@@ -8,10 +8,26 @@
  * - Sends branded certificate emails with Drive links and PDF attachments via Gmail.
  */
 
-// Configuration Constants (Configure in Apps Script Project Settings -> Script Properties)
-const SCRIPT_SECRET = PropertiesService.getScriptProperties().getProperty("CSEC_APPS_SCRIPT_SECRET") || "YOUR_SHARED_SECRET_KEY";
-const MASTER_TEMPLATE_SLIDE_ID = PropertiesService.getScriptProperties().getProperty("MASTER_SLIDE_ID") || "YOUR_GOOGLE_SLIDE_TEMPLATE_ID";
-const OUTPUT_DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty("OUTPUT_DRIVE_FOLDER_ID") || "YOUR_GOOGLE_DRIVE_FOLDER_ID";
+// Configuration (Apps Script Project Settings -> Script Properties). There are deliberately
+// NO fallback values: this file is public, so a fallback secret would let anyone send email
+// from the club's Gmail. Without CSEC_APPS_SCRIPT_SECRET every request is rejected.
+const PROPS = PropertiesService.getScriptProperties();
+const SCRIPT_SECRET = PROPS.getProperty("CSEC_APPS_SCRIPT_SECRET") || "";
+const MASTER_TEMPLATE_SLIDE_ID = PROPS.getProperty("MASTER_SLIDE_ID") || "";
+const OUTPUT_DRIVE_FOLDER_ID = PROPS.getProperty("OUTPUT_DRIVE_FOLDER_ID") || "";
+const MIN_SECRET_LENGTH = 24;
+
+function isSecretConfigured() {
+  return SCRIPT_SECRET.length >= MIN_SECRET_LENGTH;
+}
+
+/** Constant-time comparison so the secret can't be recovered from response timing. */
+function secretsMatch(provided, expected) {
+  if (typeof provided !== "string" || provided.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
 
 /**
  * HTTP GET Webhook Health Check
@@ -23,9 +39,9 @@ function doGet(e) {
     service: "CSEC-ASTU Certificate & PDF Engine",
     version: "2.0",
     configured: {
-      has_secret: !!SCRIPT_SECRET && SCRIPT_SECRET !== "YOUR_SHARED_SECRET_KEY",
-      has_slide_template: !!MASTER_TEMPLATE_SLIDE_ID && MASTER_TEMPLATE_SLIDE_ID !== "YOUR_GOOGLE_SLIDE_TEMPLATE_ID",
-      has_output_folder: !!OUTPUT_DRIVE_FOLDER_ID && OUTPUT_DRIVE_FOLDER_ID !== "YOUR_GOOGLE_DRIVE_FOLDER_ID"
+      has_secret: isSecretConfigured(),
+      has_slide_template: !!MASTER_TEMPLATE_SLIDE_ID,
+      has_output_folder: !!OUTPUT_DRIVE_FOLDER_ID
     }
   })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -51,8 +67,14 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
-    // 1. Security Authentication Check
-    if (!data.secret || data.secret !== SCRIPT_SECRET) {
+    // 1. Security Authentication Check (refuse everything until a real secret is configured)
+    if (!isSecretConfigured()) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Not configured: set the CSEC_APPS_SCRIPT_SECRET script property (24+ random characters)"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (!secretsMatch(data.secret, SCRIPT_SECRET)) {
       return ContentService.createTextOutput(JSON.stringify({
         status: "error",
         message: "Unauthorized: Invalid or missing script secret"
