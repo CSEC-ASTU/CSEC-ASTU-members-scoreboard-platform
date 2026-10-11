@@ -144,6 +144,9 @@ async def grant_permission(
         )
     )
     await db.flush()
+    # Reload server-generated columns (created_at/updated_at); reading expired
+    # attributes synchronously in model_validate raises MissingGreenlet.
+    await db.refresh(grant)
     return MemberPermissionOut.model_validate(grant)
 
 
@@ -170,6 +173,9 @@ async def toggle_grant(
         )
     )
     await db.flush()
+    # Reload server-generated columns (created_at/updated_at); reading expired
+    # attributes synchronously in model_validate raises MissingGreenlet.
+    await db.refresh(grant)
     return MemberPermissionOut.model_validate(grant)
 
 

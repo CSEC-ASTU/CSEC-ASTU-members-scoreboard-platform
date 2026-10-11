@@ -41,6 +41,10 @@ jobs:
         run: alembic upgrade head
       - name: Models match migrations (no schema drift)
         run: python -m app.scripts.check_schema_drift
+      - name: API integration tests (real Postgres)
+        run: pytest -q tests/integration
+        env:
+          RUN_DB_TESTS: "1"
 
   telegram-bot:
     runs-on: ubuntu-latest
