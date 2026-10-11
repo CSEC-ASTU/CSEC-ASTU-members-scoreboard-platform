@@ -4,25 +4,22 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.config import get_settings
+from app.db_migrations import sync_database_url
 from app.database import Base
 from app import models  # noqa: F401 — register metadata
 
 config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# When migrations run inside the app (app.db_migrations), keep the app's logging setup.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
-settings = get_settings()
-# Alembic uses sync driver
-sync_url = (
-    settings.database_url
-    .replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-    .replace("ssl=require", "sslmode=require")
-    .replace("?ssl=", "?sslmode=")
-    .replace("&ssl=", "&sslmode=")
-)
-config.set_main_option("sqlalchemy.url", sync_url)
+# Alembic uses the sync driver. Respect a URL set programmatically (app.db_migrations);
+# otherwise (CLI use) take it from the app settings instead of alembic.ini's placeholder.
+_INI_PLACEHOLDER_URL = "driver://user:pass@localhost/dbname"
+if config.get_main_option("sqlalchemy.url") in (None, "", _INI_PLACEHOLDER_URL):
+    config.set_main_option("sqlalchemy.url", sync_database_url(get_settings().database_url))
 
 
 def run_migrations_offline() -> None:
