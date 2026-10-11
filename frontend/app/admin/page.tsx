@@ -154,7 +154,6 @@ export default function AdminPage() {
         scoreCap: fetchedSettings.score_cap,
         initialBuffer: fetchedSettings.initial_buffer,
         currentAcademicYear: fetchedSettings.current_academic_year,
-        autoApproveClaimMaxPoints: 10,
         badgeTierMultipliers: fetchedSettings.badge_tier_multipliers,
       })
     }
@@ -721,20 +720,6 @@ export default function AdminPage() {
                         setSettings({ ...settings, currentAcademicYear: Number(e.target.value) })
                       }
                     />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="auto-approve-cap" className="text-xs">Auto-Approve Threshold (pts)</Label>
-                    <Input
-                      id="auto-approve-cap"
-                      type="number"
-                      value={settings.autoApproveClaimMaxPoints}
-                      disabled={!isPresident}
-                      onChange={(e) =>
-                        setSettings({ ...settings, autoApproveClaimMaxPoints: Number(e.target.value) })
-                      }
-                    />
-                    <p className="text-[11px] text-zinc-500">Improvement 03: Routine claims ≤ threshold auto-clear.</p>
                   </div>
                 </div>
 

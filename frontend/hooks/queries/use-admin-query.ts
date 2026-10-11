@@ -24,8 +24,6 @@ export function useEffectiveSettings(): PlatformSettings {
       scoreCap: data?.score_cap ?? PLATFORM_SETTINGS.scoreCap,
       initialBuffer: data?.initial_buffer ?? PLATFORM_SETTINGS.initialBuffer,
       currentAcademicYear: data?.current_academic_year ?? PLATFORM_SETTINGS.currentAcademicYear,
-      autoApproveClaimMaxPoints:
-        data?.auto_approve_claim_max_points ?? PLATFORM_SETTINGS.autoApproveClaimMaxPoints,
       badgeTierMultipliers: {
         ...PLATFORM_SETTINGS.badgeTierMultipliers,
         ...data?.badge_tier_multipliers,
