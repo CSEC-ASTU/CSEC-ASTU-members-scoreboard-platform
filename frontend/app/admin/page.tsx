@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCurrentUser } from "@/components/user-context"
-import { canManagePermissions, canManageSettings, canExecuteAnnualReset } from "@/lib/permissions"
+import { canAccessAdmin, canManagePermissions, canManageSettings, canExecuteAnnualReset } from "@/lib/permissions"
 import {
   TASK_CATEGORY_LABELS,
   PLATFORM_SETTINGS,
@@ -123,8 +123,10 @@ export default function AdminPage() {
   const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
   const { data: fetchedSettings, isLoading: settingsLoading } = usePlatformSettings()
-  const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures()
-  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog({ page_size: 100 })
+  // Audit log and login failures are President/VP-only on the API; don't request them otherwise.
+  const canSeeSecurityLogs = canAccessAdmin(currentUser)
+  const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures(undefined, canSeeSecurityLogs)
+  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog({ page_size: 100 }, canSeeSecurityLogs)
   const { data: membersData } = useMembers({ page_size: 100 })
 
   const createTaskMutation = useCreateTaskMutation()
@@ -154,7 +156,6 @@ export default function AdminPage() {
         scoreCap: fetchedSettings.score_cap,
         initialBuffer: fetchedSettings.initial_buffer,
         currentAcademicYear: fetchedSettings.current_academic_year,
-        autoApproveClaimMaxPoints: 10,
         badgeTierMultipliers: fetchedSettings.badge_tier_multipliers,
       })
     }
@@ -721,20 +722,6 @@ export default function AdminPage() {
                         setSettings({ ...settings, currentAcademicYear: Number(e.target.value) })
                       }
                     />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="auto-approve-cap" className="text-xs">Auto-Approve Threshold (pts)</Label>
-                    <Input
-                      id="auto-approve-cap"
-                      type="number"
-                      value={settings.autoApproveClaimMaxPoints}
-                      disabled={!isPresident}
-                      onChange={(e) =>
-                        setSettings({ ...settings, autoApproveClaimMaxPoints: Number(e.target.value) })
-                      }
-                    />
-                    <p className="text-[11px] text-zinc-500">Improvement 03: Routine claims ≤ threshold auto-clear.</p>
                   </div>
                 </div>
 

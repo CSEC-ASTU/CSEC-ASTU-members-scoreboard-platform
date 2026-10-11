@@ -489,8 +489,6 @@ export interface PlatformSettingsOut {
   score_cap: number
   initial_buffer: number
   current_academic_year: number
-  /** Read-only, server-configured. Optional for older backends. */
-  auto_approve_claim_max_points?: number
   badge_tier_multipliers: {
     gold: number
     platinum: number

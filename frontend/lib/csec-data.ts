@@ -71,7 +71,6 @@ export interface PlatformSettings {
   scoreCap: number
   initialBuffer: number
   currentAcademicYear: number
-  autoApproveClaimMaxPoints: number // Improvement 03
   badgeTierMultipliers: {
     gold: number // 1.0x cap (2500)
     platinum: number // 1.5x cap (3750)
@@ -83,7 +82,6 @@ export const PLATFORM_SETTINGS: PlatformSettings = {
   scoreCap: 2500,
   initialBuffer: 50,
   currentAcademicYear: 2026,
-  autoApproveClaimMaxPoints: 10,
   badgeTierMultipliers: {
     gold: 1.0,
     platinum: 1.5,

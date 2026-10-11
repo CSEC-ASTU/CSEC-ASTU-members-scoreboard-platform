@@ -3,19 +3,24 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { permissionsService, type MemberPermissionCreateIn } from "@/lib/api"
 
-export function useMemberPermissions(params?: { page?: number; page_size?: number; member_id?: string }) {
+export function useMemberPermissions(
+  params?: { page?: number; page_size?: number; member_id?: string },
+  enabled = true,
+) {
   return useQuery({
     queryKey: ["permissions", params],
     queryFn: () => permissionsService.getMemberPermissions(params),
+    enabled,
     placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   })
 }
 
-export function usePermissionCatalog() {
+export function usePermissionCatalog(enabled = true) {
   return useQuery({
     queryKey: ["permission-catalog"],
     queryFn: () => permissionsService.getCatalog(),
+    enabled,
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 }

@@ -24,8 +24,6 @@ export function useEffectiveSettings(): PlatformSettings {
       scoreCap: data?.score_cap ?? PLATFORM_SETTINGS.scoreCap,
       initialBuffer: data?.initial_buffer ?? PLATFORM_SETTINGS.initialBuffer,
       currentAcademicYear: data?.current_academic_year ?? PLATFORM_SETTINGS.currentAcademicYear,
-      autoApproveClaimMaxPoints:
-        data?.auto_approve_claim_max_points ?? PLATFORM_SETTINGS.autoApproveClaimMaxPoints,
       badgeTierMultipliers: {
         ...PLATFORM_SETTINGS.badgeTierMultipliers,
         ...data?.badge_tier_multipliers,
@@ -35,18 +33,20 @@ export function useEffectiveSettings(): PlatformSettings {
   )
 }
 
-export function useAuditLog(params?: { page?: number; page_size?: number }) {
+export function useAuditLog(params?: { page?: number; page_size?: number }, enabled = true) {
   return useQuery({
     queryKey: ["audit-log", params],
     queryFn: () => adminService.getAuditLog(params),
+    enabled,
     staleTime: 30 * 1000,
   })
 }
 
-export function useLoginFailures(params?: { page?: number; page_size?: number }) {
+export function useLoginFailures(params?: { page?: number; page_size?: number }, enabled = true) {
   return useQuery({
     queryKey: ["login-failures", params],
     queryFn: () => adminService.getLoginFailures(params),
+    enabled,
     staleTime: 30 * 1000,
   })
 }

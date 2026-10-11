@@ -114,6 +114,6 @@ export const membersService = {
     page?: number
     page_size?: number
   }): Promise<Paginated<AnnualSummaryOut>> => {
-    return apiFetch<Paginated<AnnualSummaryOut>>("/annual", { params })
+    return apiFetch<Paginated<AnnualSummaryOut>>("/annual-summaries", { params })
   },
 }
