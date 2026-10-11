@@ -15,7 +15,6 @@ from app.services.point_events import create_claim
 @pytest.fixture
 def mock_settings():
     settings = MagicMock(spec=Settings)
-    settings.auto_approve_claim_max_points = 10
     return settings
 
 

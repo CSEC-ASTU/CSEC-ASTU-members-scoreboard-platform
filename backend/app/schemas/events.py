@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EventBase(BaseModel):
@@ -25,7 +25,11 @@ class EventBase(BaseModel):
 
 
 class EventCreate(EventBase):
-    pass
+    @model_validator(mode="after")
+    def end_after_start(self) -> "EventCreate":
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
 
 
 class EventUpdate(BaseModel):

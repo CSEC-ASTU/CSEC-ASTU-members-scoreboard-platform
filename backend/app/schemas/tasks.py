@@ -1,6 +1,15 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+def points_sign_error(base_points: int, is_penalty: bool) -> str | None:
+    """Claims add base_points to the member's score, so the sign must match the task kind."""
+    if is_penalty and base_points >= 0:
+        return "Penalty tasks must have negative points"
+    if not is_penalty and base_points <= 0:
+        return "Points must be greater than 0 (use a penalty task or a warning to deduct points)"
+    return None
 
 
 class TaskCreate(BaseModel):
@@ -12,6 +21,13 @@ class TaskCreate(BaseModel):
     is_repeatable: bool = True
     is_penalty: bool = False
     active: bool = True
+
+    @model_validator(mode="after")
+    def check_points_sign(self) -> "TaskCreate":
+        error = points_sign_error(self.base_points, self.is_penalty)
+        if error:
+            raise ValueError(error)
+        return self
 
 
 class TaskUpdate(BaseModel):

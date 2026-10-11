@@ -314,6 +314,8 @@ async def update_event(
         ev.start_time = data.start_time
     if data.end_time is not None:
         ev.end_time = data.end_time
+    if ev.end_time <= ev.start_time:
+        raise HTTPException(status_code=422, detail="The event must end after it starts.")
     if data.location_name is not None:
         ev.location_name = data.location_name.strip()
     if data.certificate_template_id is not None:

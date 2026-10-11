@@ -27,6 +27,38 @@ from app.services.certificates import (
 router = APIRouter()
 
 
+def _certificate_out(c: Certificate) -> CertificateOut:
+    """Single serializer for every certificate response (member, issuer and division loaded)."""
+    return CertificateOut(
+        id=c.id,
+        cert_code=c.cert_code,
+        member_id=c.member_id,
+        recipient_name=c.recipient_name or (c.member.full_name if c.member else "Recipient"),
+        recipient_email=c.recipient_email or (c.member.email if c.member else None),
+        recipient_identity=c.recipient_identity or (c.member.student_id if c.member else None),
+        is_external=c.is_external,
+        custom_attributes=c.custom_attributes,
+        division_id=c.division_id,
+        division_name=c.division.name if c.division else None,
+        title=c.title,
+        description=c.description,
+        certificate_type=c.certificate_type,
+        academic_year=c.academic_year,
+        issued_by_id=c.issued_by_id,
+        issuer_name=c.issuer.full_name if c.issuer else None,
+        issued_at=c.issued_at,
+        signature_hash=c.signature_hash,
+        drive_file_id=c.drive_file_id,
+        drive_view_link=c.drive_view_link,
+        is_revoked=c.is_revoked,
+        revoked_reason=c.revoked_reason,
+        revoked_at=c.revoked_at,
+        member_name=c.member.full_name if c.member else None,
+        member_student_id=c.member.student_id if c.member else None,
+        member_department=c.member.department if c.member else None,
+    )
+
+
 @router.get("/verify/{code}", response_model=CertificatePublicVerify, dependencies=[Depends(RateLimiter(times=60, seconds=60))])
 async def verify_certificate(
     code: str,
@@ -57,34 +89,7 @@ async def get_my_certificates(
     certs = res.scalars().all()
 
     return [
-        CertificateOut(
-            id=c.id,
-            cert_code=c.cert_code,
-            member_id=c.member_id,
-            recipient_name=c.recipient_name or (c.member.full_name if c.member else "Recipient"),
-            recipient_email=c.recipient_email or (c.member.email if c.member else None),
-            recipient_identity=c.recipient_identity or (c.member.student_id if c.member else None),
-            is_external=c.is_external,
-            custom_attributes=c.custom_attributes,
-            division_id=c.division_id,
-            division_name=c.division.name if c.division else None,
-            title=c.title,
-            description=c.description,
-            certificate_type=c.certificate_type,
-            academic_year=c.academic_year,
-            issued_by_id=c.issued_by_id,
-            issuer_name=c.issuer.full_name if c.issuer else None,
-            issued_at=c.issued_at,
-            signature_hash=c.signature_hash,
-            drive_file_id=c.drive_file_id,
-            drive_view_link=c.drive_view_link,
-            is_revoked=c.is_revoked,
-            revoked_reason=c.revoked_reason,
-            revoked_at=c.revoked_at,
-            member_name=c.member.full_name if c.member else None,
-            member_student_id=c.member.student_id if c.member else None,
-            member_department=c.member.department if c.member else None,
-        )
+        _certificate_out(c)
         for c in certs
     ]
 
@@ -149,34 +154,7 @@ async def list_certificates(
     ).scalars().all()
 
     items = [
-        CertificateOut(
-            id=c.id,
-            cert_code=c.cert_code,
-            member_id=c.member_id,
-            recipient_name=c.recipient_name or (c.member.full_name if c.member else "Recipient"),
-            recipient_email=c.recipient_email or (c.member.email if c.member else None),
-            recipient_identity=c.recipient_identity or (c.member.student_id if c.member else None),
-            is_external=c.is_external,
-            custom_attributes=c.custom_attributes,
-            division_id=c.division_id,
-            division_name=c.division.name if c.division else None,
-            title=c.title,
-            description=c.description,
-            certificate_type=c.certificate_type,
-            academic_year=c.academic_year,
-            issued_by_id=c.issued_by_id,
-            issuer_name=c.issuer.full_name if c.issuer else None,
-            issued_at=c.issued_at,
-            signature_hash=c.signature_hash,
-            drive_file_id=c.drive_file_id,
-            drive_view_link=c.drive_view_link,
-            is_revoked=c.is_revoked,
-            revoked_reason=c.revoked_reason,
-            revoked_at=c.revoked_at,
-            member_name=c.member.full_name if c.member else None,
-            member_student_id=c.member.student_id if c.member else None,
-            member_department=c.member.department if c.member else None,
-        )
+        _certificate_out(c)
         for c in rows
     ]
 
@@ -212,34 +190,7 @@ async def create_certificates(
     ).scalars().all()
 
     return [
-        CertificateOut(
-            id=c.id,
-            cert_code=c.cert_code,
-            member_id=c.member_id,
-            recipient_name=c.recipient_name or (c.member.full_name if c.member else "Recipient"),
-            recipient_email=c.recipient_email or (c.member.email if c.member else None),
-            recipient_identity=c.recipient_identity or (c.member.student_id if c.member else None),
-            is_external=c.is_external,
-            custom_attributes=c.custom_attributes,
-            division_id=c.division_id,
-            division_name=c.division.name if c.division else None,
-            title=c.title,
-            description=c.description,
-            certificate_type=c.certificate_type,
-            academic_year=c.academic_year,
-            issued_by_id=c.issued_by_id,
-            issuer_name=c.issuer.full_name if c.issuer else None,
-            issued_at=c.issued_at,
-            signature_hash=c.signature_hash,
-            drive_file_id=c.drive_file_id,
-            drive_view_link=c.drive_view_link,
-            is_revoked=c.is_revoked,
-            revoked_reason=c.revoked_reason,
-            revoked_at=c.revoked_at,
-            member_name=c.member.full_name if c.member else None,
-            member_student_id=c.member.student_id if c.member else None,
-            member_department=c.member.department if c.member else None,
-        )
+        _certificate_out(c)
         for c in reloaded
     ]
 
@@ -272,26 +223,4 @@ async def revoke_issued_certificate(
     ).scalars().first()
     assert c is not None
 
-    return CertificateOut(
-        id=c.id,
-        cert_code=c.cert_code,
-        member_id=c.member_id,
-        division_id=c.division_id,
-        division_name=c.division.name if c.division else None,
-        title=c.title,
-        description=c.description,
-        certificate_type=c.certificate_type,
-        academic_year=c.academic_year,
-        issued_by_id=c.issued_by_id,
-        issuer_name=c.issuer.full_name if c.issuer else None,
-        issued_at=c.issued_at,
-        signature_hash=c.signature_hash,
-        drive_file_id=c.drive_file_id,
-        drive_view_link=c.drive_view_link,
-        is_revoked=c.is_revoked,
-        revoked_reason=c.revoked_reason,
-        revoked_at=c.revoked_at,
-        member_name=c.member.full_name if c.member else None,
-        member_student_id=c.member.student_id if c.member else None,
-        member_department=c.member.department if c.member else None,
-    )
+    return _certificate_out(c)

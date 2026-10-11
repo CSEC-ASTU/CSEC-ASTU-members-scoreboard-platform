@@ -10,6 +10,7 @@ from app.dependencies import DbSession, RequireUser
 from app.models import Task
 from app.models.enums import MemberRole
 from app.schemas import Paginated, TaskCreate, TaskOut, TaskUpdate
+from app.schemas.tasks import points_sign_error
 
 router = APIRouter()
 
@@ -111,6 +112,9 @@ async def update_task(task_id: UUID, body: TaskUpdate, db: DbSession, user: Requ
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(task, field, value)
+    sign_error = points_sign_error(task.base_points, task.is_penalty)
+    if sign_error:
+        raise HTTPException(status_code=422, detail=sign_error)
     await db.flush()
     await db.refresh(task)
     return TaskOut.model_validate(task)
