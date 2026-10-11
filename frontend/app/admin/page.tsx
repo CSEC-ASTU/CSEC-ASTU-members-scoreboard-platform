@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCurrentUser } from "@/components/user-context"
-import { canManagePermissions, canManageSettings, canExecuteAnnualReset } from "@/lib/permissions"
+import { canAccessAdmin, canManagePermissions, canManageSettings, canExecuteAnnualReset } from "@/lib/permissions"
 import {
   TASK_CATEGORY_LABELS,
   PLATFORM_SETTINGS,
@@ -123,8 +123,10 @@ export default function AdminPage() {
   const { data: tasksData, isLoading: tasksLoading } = useTasks({ page_size: 100 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
   const { data: fetchedSettings, isLoading: settingsLoading } = usePlatformSettings()
-  const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures()
-  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog({ page_size: 100 })
+  // Audit log and login failures are President/VP-only on the API; don't request them otherwise.
+  const canSeeSecurityLogs = canAccessAdmin(currentUser)
+  const { data: fetchedFailures, isLoading: failuresLoading } = useLoginFailures(undefined, canSeeSecurityLogs)
+  const { data: fetchedAudit, isLoading: auditLoading } = useAuditLog({ page_size: 100 }, canSeeSecurityLogs)
   const { data: membersData } = useMembers({ page_size: 100 })
 
   const createTaskMutation = useCreateTaskMutation()

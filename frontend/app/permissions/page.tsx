@@ -82,8 +82,8 @@ export default function PermissionsPage() {
   const allowed = canManagePermissions(currentUser)
   const canAssign = canAssignRoles(currentUser)
 
-  const { data: grantsData, isLoading: grantsLoading } = useMemberPermissions({ page_size: 100 })
-  const { data: catalogData, isLoading: catalogLoading } = usePermissionCatalog()
+  const { data: grantsData, isLoading: grantsLoading } = useMemberPermissions({ page_size: 100 }, allowed)
+  const { data: catalogData, isLoading: catalogLoading } = usePermissionCatalog(allowed)
   const { data: membersData, isLoading: membersLoading } = useMembers({ page_size: 100 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
 

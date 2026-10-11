@@ -33,18 +33,20 @@ export function useEffectiveSettings(): PlatformSettings {
   )
 }
 
-export function useAuditLog(params?: { page?: number; page_size?: number }) {
+export function useAuditLog(params?: { page?: number; page_size?: number }, enabled = true) {
   return useQuery({
     queryKey: ["audit-log", params],
     queryFn: () => adminService.getAuditLog(params),
+    enabled,
     staleTime: 30 * 1000,
   })
 }
 
-export function useLoginFailures(params?: { page?: number; page_size?: number }) {
+export function useLoginFailures(params?: { page?: number; page_size?: number }, enabled = true) {
   return useQuery({
     queryKey: ["login-failures", params],
     queryFn: () => adminService.getLoginFailures(params),
+    enabled,
     staleTime: 30 * 1000,
   })
 }
