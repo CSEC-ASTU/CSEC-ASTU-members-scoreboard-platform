@@ -257,4 +257,21 @@ def test_settings_reject_placeholder_jwt_secret_in_production():
     with pytest.raises(ValidationError):
         Settings(app_env="staging", jwt_secret_key="short")
     Settings(app_env="production", jwt_secret_key="x" * 32)
-    Settings(app_env="development", jwt_secret_key="dev-only-change-me")
+    # Public placeholders are rejected in development too (APP_ENV defaults to development)
+    with pytest.raises(ValidationError):
+        Settings(app_env="development", jwt_secret_key="dev-only-change-me")
+    with pytest.raises(ValidationError):
+        Settings(jwt_secret_key="change-me-to-a-long-random-string")
+
+
+def test_settings_require_database_url_and_jwt_secret(monkeypatch):
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(ValidationError) as exc:
+        Settings(_env_file=None)
+    missing = {err["loc"][0] for err in exc.value.errors()}
+    assert {"jwt_secret_key", "database_url"} <= missing
