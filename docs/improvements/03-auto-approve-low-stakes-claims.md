@@ -1,5 +1,10 @@
 # 03 — Auto-approve low-stakes claims
 
+> **Status: superseded — not implemented.** Auto-approving regular claims let members award
+> themselves points without any check (see `docs/AUDIT_REMEDIATION_PLAN.md` §1.1), so only claims
+> backed by a verified 6-digit attendance session code are auto-approved. Every other claim goes
+> to an officer. The `AUTO_APPROVE_CLAIM_MAX_POINTS` setting was removed.
+
 **Source:** PRD §12 "Keeping the officer workload light" item 2  
 **Decision:** Implement with a configurable point threshold.
 
