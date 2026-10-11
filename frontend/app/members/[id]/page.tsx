@@ -44,6 +44,7 @@ import {
   type Warning,
   type Member,
   type Role,
+  type BadgeTier,
 } from "@/lib/csec-data"
 import {
   ApiError,
@@ -72,7 +73,7 @@ import {
   QrCode,
 } from "lucide-react"
 
-import { useMemberDetail, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation, useEffectiveSettings } from "@/lib/hooks/use-queries"
+import { useMemberDetail, useMemberSummaries, useMemberDetailEvents, useDivisions, useUpdateMemberRoleOrDeptMutation, useEffectiveSettings } from "@/lib/hooks/use-queries"
 import { useQueryClient } from "@tanstack/react-query"
 
 const ROLES: Role[] = ["member", "division_head", "vice_president", "president"]
@@ -199,7 +200,17 @@ export default function MemberProfilePage() {
   const cycleScore = memberData?.scores?.cycle_score ?? memberData?.cycle_score ?? 50
   const careerScore = memberData?.scores?.career_score ?? memberData?.career_score ?? 50
   const badge = memberData?.scores?.badge ?? memberData?.badge ?? null
-  const annualSummaries: any[] = []
+  // The API only returns another member's history to officers (others get their own), so
+  // only ask when the viewer is an officer or looking at their own profile.
+  const canSeeHistory = isAuthenticated && (isOfficer(currentUser) || currentUser.id === params.id)
+  const { data: summariesData } = useMemberSummaries(canSeeHistory ? params.id : null)
+  const annualSummaries = (summariesData?.items ?? []).map((s) => ({
+    id: s.id,
+    academicYear: s.academic_year,
+    finalRank: s.final_rank,
+    finalScore: s.final_score,
+    badgesEarned: (s.badges_earned?.[0] ?? null) as BadgeTier | null,
+  }))
 
   const isSelf = currentUser.id === memberData?.id
   const officerCanWarn = adaptedMember ? canIssueWarning(currentUser, adaptedMember) : false
