@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # to credentials that are visible in the repository.
     database_url: str
     jwt_secret_key: str
+    # Apply Alembic migrations (and repair missing tables/columns) when the app starts.
+    run_migrations_on_startup: bool = True
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 14

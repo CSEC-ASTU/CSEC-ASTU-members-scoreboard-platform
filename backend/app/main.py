@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -18,6 +19,11 @@ logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if get_settings().run_migrations_on_startup:
+        from app.db_migrations import ensure_schema
+
+        # Runs Alembic (sync) off the event loop; never raises, result shown on /health.
+        await asyncio.to_thread(ensure_schema)
     yield
 
 

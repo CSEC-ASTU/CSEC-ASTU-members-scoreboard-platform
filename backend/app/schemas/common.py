@@ -19,3 +19,9 @@ class HealthOut(BaseModel):
     status: str
     database: str
     academic_year: int | None = None
+    # Startup migration check (see app.db_migrations); None when it hasn't run.
+    schema_ok: bool | None = None
+    schema_revision: str | None = None
+    schema_head: str | None = None
+    schema_repaired: list[str] = []
+    schema_issues: list[str] = []

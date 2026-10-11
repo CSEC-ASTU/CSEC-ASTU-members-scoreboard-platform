@@ -11,3 +11,4 @@ import secrets
 
 os.environ.setdefault("JWT_SECRET_KEY", secrets.token_urlsafe(48))
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://localhost:5432/csec_unit_tests_unused")
+os.environ.setdefault("RUN_MIGRATIONS_ON_STARTUP", "false")
