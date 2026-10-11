@@ -81,3 +81,22 @@ async def test_task_points_sign_matches_task_kind(make_member, client_for):
         assert ok.status_code == 201
         assert (await api.patch(f"/tasks/{ok.json()['id']}", json={"base_points": -3})).status_code == 422
         assert (await api.patch(f"/tasks/{ok.json()['id']}", json={"base_points": 20})).status_code == 200
+
+
+async def test_unusual_stored_email_does_not_break_directory_or_me(make_member, client_for):
+    """A single stored email that strict validators reject used to 500 /members for everyone."""
+    from app.database import AsyncSessionLocal
+    from app.models import Member
+
+    odd = await make_member()
+    async with AsyncSessionLocal() as db:
+        m = await db.get(Member, odd.id)
+        m.email = f"odd-{odd.id.hex[:6]}@club.test"  # reserved TLD, rejected by EmailStr
+        await db.commit()
+    viewer = await make_member()
+    async with client_for(viewer) as api:
+        listing = await api.get("/members", params={"page_size": 100})
+        assert listing.status_code == 200, listing.text
+    async with client_for(odd) as api:
+        me = await api.get("/auth/me")
+        assert me.status_code == 200, me.text

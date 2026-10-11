@@ -1,6 +1,6 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import MemberRole
 
 
@@ -9,7 +9,9 @@ class MemberListItem(BaseModel):
 
     id: UUID
     full_name: str
-    email: EmailStr
+    # Plain str: emails are validated on the way in; re-validating stored values on output
+    # let one unusual address 500 the whole members directory.
+    email: str
     profile_image_url: str | None
     division_id: UUID | None
     secondary_division_id: UUID | None = None
