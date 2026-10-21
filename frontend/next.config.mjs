@@ -47,6 +47,15 @@ const nextConfig = {
     }
     return config
   },
+  async redirects() {
+    return [
+      {
+        source: "/scoreboard",
+        destination: "/leaderboard",
+        permanent: true,
+      },
+    ]
+  },
   async rewrites() {
     const backendUrl = getBackendOrigin()
     return [

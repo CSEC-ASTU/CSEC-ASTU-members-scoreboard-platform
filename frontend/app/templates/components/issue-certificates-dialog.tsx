@@ -97,8 +97,10 @@ export function IssueCertificatesDialog({
 
   // Generation State
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [sendEmailNotifications, setSendEmailNotifications] = useState(true)
   const [issuedCertificates, setIssuedCertificates] = useState<CertificateOut[]>([])
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [templateSlideId, setTemplateSlideId] = useState("")
 
   // Initialize form when template changes
   useEffect(() => {
@@ -106,6 +108,17 @@ export function IssueCertificatesDialog({
       setTitle(template.title)
       setDescription(template.description)
       setCertificateType(template.category.toLowerCase())
+
+      // Resolve initial slide ID from googleSlideId or driveFileUrl or template.id
+      let initialSlideId = template.googleSlideId || ""
+      if (!initialSlideId && template.driveFileUrl) {
+        const m = template.driveFileUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)
+        if (m) initialSlideId = m[1]
+      }
+      if (!initialSlideId && template.id && !template.id.startsWith("custom-")) {
+        initialSlideId = template.id
+      }
+      setTemplateSlideId(initialSlideId)
     }
   }, [template])
 
@@ -292,8 +305,32 @@ export function IssueCertificatesDialog({
         }
       })
 
+      // Resolve active Google Slide template ID from input, template object, or drive URL
+      let cleanSlideId = templateSlideId.trim()
+      const slideMatch = cleanSlideId.match(/\/d\/([a-zA-Z0-9-_]+)/)
+      if (slideMatch) {
+        cleanSlideId = slideMatch[1]
+      }
+      if (!cleanSlideId && template?.googleSlideId) {
+        cleanSlideId = template.googleSlideId
+      }
+      if (!cleanSlideId && template?.driveFileUrl) {
+        const m = template.driveFileUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)
+        if (m) cleanSlideId = m[1]
+      }
+      if (!cleanSlideId && template?.id && !template.id.startsWith("custom-")) {
+        cleanSlideId = template.id
+      }
+
+      if (!cleanSlideId || cleanSlideId.startsWith("custom-")) {
+        toast.error("Please enter your Google Slides ID or link under 'Template Slide Source' before issuing.")
+        setActiveTab("details")
+        setIsSubmitting(false)
+        return
+      }
+
       const payload = {
-        template_id: template?.id,
+        template_id: cleanSlideId || null,
         title: title.trim(),
         description: description.trim() || null,
         certificate_type: certificateType,
@@ -301,7 +338,7 @@ export function IssueCertificatesDialog({
         member_ids: Array.from(selectedMemberIds),
         external_recipients: externalRecipients,
         event_variables: eventVarDict,
-        send_email_notifications: false,
+        send_email_notifications: sendEmailNotifications,
       }
 
       const res = await certificatesService.createCertificates(payload)
@@ -465,6 +502,44 @@ export function IssueCertificatesDialog({
                     ))}
                   </select>
                   <p className="text-[11px] text-zinc-500">Division granting the recognition.</p>
+                </div>
+              </div>
+
+              {/* Active Template & Slide Link Card */}
+              <div className="rounded-xl border border-zinc-200 dark:border-white/[0.08] bg-zinc-50/60 dark:bg-white/[0.02] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-violet-500" />
+                      Template Slide Source
+                    </h4>
+                    <p className="text-[11px] text-zinc-500">
+                      The Google Slides presentation that will be cloned and populated for each recipient.
+                    </p>
+                  </div>
+                  {templateSlideId && (
+                    <a
+                      href={`https://docs.google.com/presentation/d/${templateSlideId.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1] || templateSlideId}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:underline"
+                    >
+                      <span>Open in Slides</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Input
+                    value={templateSlideId}
+                    onChange={(e) => setTemplateSlideId(e.target.value)}
+                    placeholder="Google Slides ID or presentation link (e.g. 1GNfah9O6eJv1uDlpFWtF3oqdhJflHCQ6)"
+                    className="h-8 text-xs font-mono bg-white dark:bg-[#131317] border-zinc-200 dark:border-white/10"
+                  />
+                  <p className="text-[10px] text-zinc-400">
+                    Auto-replaces: <code className="text-zinc-600 dark:text-zinc-300">{"{{FULL_NAME}}"}</code>, <code className="text-zinc-600 dark:text-zinc-300">{"{{EVENT_NAME}}"}</code>, <code className="text-zinc-600 dark:text-zinc-300">{"{{CERTIFICATE_ID}}"}</code>, <code className="text-zinc-600 dark:text-zinc-300">{"{{ISSUE_DATE}}"}</code>, <code className="text-zinc-600 dark:text-zinc-300">{"{{VERIFY_URL}}"}</code>
+                  </p>
                 </div>
               </div>
 
@@ -855,8 +930,34 @@ export function IssueCertificatesDialog({
                     </div>
                   </div>
 
+                  <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/[0.08] bg-zinc-50 dark:bg-white/[0.02] flex items-center justify-between gap-4 text-left">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-violet-500" />
+                        <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                          Email Certificate with PDF Attachment
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          Google Drive Auto-Save
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500">
+                        Dispatches official emails with high-res PDF certificate attached via Google Apps Script & Gmail.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={sendEmailNotifications}
+                        onChange={(e) => setSendEmailNotifications(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-zinc-300 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-violet-600"></div>
+                    </label>
+                  </div>
+
                   <p className="text-xs text-zinc-500 text-center">
-                    All <strong className="text-zinc-900 dark:text-zinc-100">{totalCount}</strong> recipients will receive a uniquely signed HMAC credential with a public QR code verification page.
+                    All <strong className="text-zinc-900 dark:text-zinc-100">{totalCount}</strong> recipients will receive a uniquely signed HMAC credential with a public QR code verification page and Google Drive archived PDF.
                   </p>
                 </div>
               )}
@@ -925,6 +1026,18 @@ export function IssueCertificatesDialog({
                           <ExternalLink className="w-3 h-3" />
                           <span>Verify</span>
                         </a>
+
+                        {cert.drive_view_link && (
+                          <a
+                            href={cert.drive_view_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Drive PDF</span>
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))}

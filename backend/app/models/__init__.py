@@ -1,3 +1,4 @@
+from app.models.alumni import Alumni
 from app.models.annual_summary import AnnualSummary
 from app.models.attendance_session import AttendanceSession
 from app.models.certificate import Certificate
@@ -25,6 +26,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.task import Task
 
 __all__ = [
+    "Alumni",
     "AnnualSummary",
     "AttendanceSession",
     "Certificate",

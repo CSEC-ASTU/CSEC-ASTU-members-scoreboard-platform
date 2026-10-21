@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Requ
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from pydantic import BaseModel
 from app.core.permissions import has_permission, is_club_wide_officer
 from app.core.rate_limit import RateLimiter
 from app.dependencies import AppSettings, DbSession, RequireUser, _load_user_from_token
-from app.models import LoginAttemptFailure, PointEvent
+from app.models import LoginAttemptFailure, Member, PointEvent
 from app.models.enums import MemberRole, PointEventStatus, PointEventType
 from app.schemas import (
     AnnualResetPreview,
@@ -267,5 +268,77 @@ async def dispatch_weekly_performers(
         "bot_response": bot_res,
         "message": message_text,
     }
+
+
+class SendPresidentialEmailRequest(BaseModel):
+    subject: str
+    title: str
+    message_body: str
+    target_audience: str = "active_only"
+    division_id: UUID | None = None
+    badge: str = "OFFICIAL NOTICE"
+    cta_text: str | None = None
+    cta_url: str | None = None
+    sender_title: str = "Office of the President"
+
+
+@router.post("/communications/send-email", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+async def send_presidential_email(
+    body: SendPresidentialEmailRequest,
+    db: DbSession,
+    user: RequireUser,
+    settings: AppSettings,
+) -> dict:
+    """Send an official club broadcast email via Google Apps Script (Gmail).
+
+    STRICT GOVERNANCE RULE: ONLY the Club President can broadcast official executive emails.
+    """
+    if user.member.role != MemberRole.PRESIDENT:
+        raise HTTPException(
+            status_code=403,
+            detail="Access Denied: Only the Club President has executive authority to broadcast official emails.",
+        )
+
+    # 1. Query target recipients
+    stmt = select(Member.full_name, Member.email).where(Member.email.is_not(None))
+
+    if body.target_audience == "active_only":
+        stmt = stmt.where(Member.is_active.is_(True))
+    elif body.target_audience == "officers_only":
+        stmt = stmt.where(
+            Member.role.in_([MemberRole.PRESIDENT, MemberRole.VICE_PRESIDENT, MemberRole.DIVISION_HEAD]),
+            Member.is_active.is_(True),
+        )
+    elif body.target_audience == "division":
+        if not body.division_id:
+            raise HTTPException(status_code=400, detail="division_id is required when target_audience is 'division'")
+        stmt = stmt.where(Member.division_id == body.division_id, Member.is_active.is_(True))
+
+    rows = await db.execute(stmt)
+    recipients = [{"name": r.full_name, "email": r.email} for r in rows.all() if r.email and "@" in r.email]
+
+    if not recipients:
+        return {"status": "skipped", "message": "No matching recipients found with valid email addresses."}
+
+    # 2. Dispatch via Google Apps Script
+    from app.services.apps_script import dispatch_presidential_announcement_to_gas
+
+    res = await dispatch_presidential_announcement_to_gas(
+        settings,
+        subject=body.subject,
+        title=body.title,
+        message_body=body.message_body,
+        recipients=recipients,
+        badge=body.badge,
+        cta_text=body.cta_text,
+        cta_url=body.cta_url,
+        sender_title=body.sender_title,
+    )
+    return {
+        "status": res.get("status", "completed"),
+        "recipients_count": len(recipients),
+        "detail": res,
+    }
+
 
 

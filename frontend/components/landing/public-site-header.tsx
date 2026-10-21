@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useCurrentUser } from "@/components/user-context"
 import { cn } from "@/lib/utils"
+import { motion, smoothSpring } from "@/lib/motion"
 
 interface PublicSiteHeaderProps {
   className?: string
@@ -14,7 +15,10 @@ export function PublicSiteHeader({ className, active }: PublicSiteHeaderProps) {
   const { isAuthenticated } = useCurrentUser()
 
   return (
-    <header
+    <motion.header
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...smoothSpring, delay: 0.1 }}
       className={cn(
         "relative z-20 flex w-full items-center justify-between gap-4",
         className
@@ -29,7 +33,7 @@ export function PublicSiteHeader({ className, active }: PublicSiteHeaderProps) {
           className="h-7 w-auto invert opacity-95 transition-opacity group-hover:opacity-100"
           priority
         />
-        <span className="font-[family-name:var(--font-landing-display)] text-sm font-semibold tracking-tight text-zinc-100 sm:text-base">
+        <span className="font-[family-name:var(--font-landing-display)] text-sm font-bold tracking-tight text-zinc-100 sm:text-base">
           CSEC ASTU
         </span>
       </Link>
@@ -62,13 +66,15 @@ export function PublicSiteHeader({ className, active }: PublicSiteHeaderProps) {
             Connect
           </a>
         )}
-        <Link
-          href={isAuthenticated ? "/dashboard" : "/login"}
-          className="ml-1 rounded-lg bg-zinc-100 px-3.5 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white sm:text-sm"
-        >
-          {isAuthenticated ? "Dashboard" : "Member Login"}
-        </Link>
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={smoothSpring}>
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/login"}
+            className="ml-1 rounded-lg bg-zinc-100 px-3.5 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white sm:text-sm"
+          >
+            {isAuthenticated ? "Dashboard" : "Member Login"}
+          </Link>
+        </motion.div>
       </nav>
-    </header>
+    </motion.header>
   )
 }

@@ -116,3 +116,46 @@ async def test_dispatch_certificate_batch_to_gas_success():
         assert result["total_processed"] == 1
         assert cert.drive_view_link == "https://drive.google.com/file/d/test12345/view"
         assert cert.drive_file_id == "test12345"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_presidential_announcement_to_gas_success():
+    from app.services.apps_script import dispatch_presidential_announcement_to_gas
+
+    settings = Settings(
+        apps_script_webhook_url="https://script.google.com/macros/s/test/exec",
+        apps_script_secret="test-secret",
+    )
+    recipients = [{"name": "Dawit", "email": "dawit@astu.edu.et"}]
+
+    mock_response = Response(
+        status_code=200,
+        json={
+            "status": "success",
+            "action": "send_announcement",
+            "total_sent": 1,
+            "total_failed": 0,
+            "total_recipients": 1,
+        },
+    )
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = mock_response
+        result = await dispatch_presidential_announcement_to_gas(
+            settings,
+            subject="Official Address",
+            title="Q4 General Assembly",
+            message_body="Welcome to the assembly.",
+            recipients=recipients,
+            cta_text="Join Stream",
+            cta_url="https://meet.google.com/abc",
+        )
+
+        assert result["status"] == "success"
+        assert result["total_sent"] == 1
+        assert mock_post.called
+        sent_payload = mock_post.call_args[1]["json"]
+        assert sent_payload["action"] == "send_announcement"
+        assert sent_payload["subject"] == "Official Address"
+        assert sent_payload["cta_text"] == "Join Stream"
+

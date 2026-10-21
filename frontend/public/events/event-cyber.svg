@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad-cyber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d12"/>
+      <stop offset="50%" stop-color="#0c181a"/>
+      <stop offset="100%" stop-color="#090a0f"/>
+    </linearGradient>
+    <radialGradient id="glow-cyber" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid-cyber" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="640" height="360" fill="url(#bg-grad-cyber)"/>
+  <rect width="640" height="360" fill="url(#grid-cyber)"/>
+  <circle cx="320" cy="160" r="180" fill="url(#glow-cyber)"/>
+
+  <!-- Shield & Cyber Nodes -->
+  <g transform="translate(260, 80)">
+    <!-- Shield Geometry -->
+    <path d="M 60 10 L 110 30 C 110 90, 75 135, 60 150 C 45 135, 10 90, 10 30 Z" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6 4"/>
+    <path d="M 60 25 L 98 42 C 98 88, 70 122, 60 134 C 50 122, 22 88, 22 42 Z" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="1.5"/>
+    
+    <!-- Lock / Core Key -->
+    <rect x="46" y="68" width="28" height="24" rx="4" fill="#34d399"/>
+    <path d="M 52 68 L 52 56 C 52 50, 68 50, 68 56 L 68 68" fill="none" stroke="#34d399" stroke-width="3"/>
+    <circle cx="60" cy="78" r="2.5" fill="#090a0f"/>
+  </g>
+
+  <!-- Circuit traces -->
+  <g stroke="rgba(52, 211, 153, 0.4)" stroke-width="1.5" fill="none">
+    <path d="M 160 160 L 220 160 L 250 130"/>
+    <circle cx="160" cy="160" r="4" fill="#10b981"/>
+    <path d="M 480 160 L 420 160 L 390 190"/>
+    <circle cx="480" cy="160" r="4" fill="#10b981"/>
+  </g>
+
+  <text x="320" y="310" text-anchor="middle" font-family="monospace" font-size="12" fill="rgba(52, 211, 153, 0.7)" letter-spacing="4">ACTIVE DIRECTORY · CTF DRILLS · DEFENSE</text>
+</svg>

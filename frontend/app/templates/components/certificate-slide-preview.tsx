@@ -20,6 +20,31 @@ export function CertificateSlidePreview({
 }: CertificateSlidePreviewProps) {
   const accent = template.accentColor || "#d97706"
 
+  // If the template has an authentic Canva / PowerPoint design image, render it directly!
+  if (template.previewImageUrl) {
+    return (
+      <div
+        className={cn(
+          "relative w-full aspect-[16/10] sm:aspect-[16/9] bg-zinc-950 rounded-md overflow-hidden shadow-sm select-none border border-zinc-200/90 dark:border-white/10 group flex items-center justify-center",
+          className
+        )}
+      >
+        <img
+          src={template.previewImageUrl}
+          alt={template.title}
+          className="w-full h-full object-contain"
+        />
+        {recipientName && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/25">
+            <span className="px-3 py-1 bg-black/80 backdrop-blur-xs text-white text-xs font-semibold rounded-md shadow-md border border-white/15">
+              {recipientName}
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(

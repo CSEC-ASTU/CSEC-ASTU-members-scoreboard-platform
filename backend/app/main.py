@@ -64,10 +64,15 @@ def create_app() -> FastAPI:
             request_id,
         )
         detail = str(exc) if settings.debug else "Internal server error"
+        headers = {"X-Request-ID": request_id}
+        origin = request.headers.get("origin")
+        if origin and (origin in settings.cors_origins or "*" in settings.cors_origins):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
         return JSONResponse(
             status_code=500,
             content={"detail": detail},
-            headers={"X-Request-ID": request_id},
+            headers=headers,
         )
 
     @app.api_route("/ping", methods=["GET", "HEAD"], tags=["monitoring"])

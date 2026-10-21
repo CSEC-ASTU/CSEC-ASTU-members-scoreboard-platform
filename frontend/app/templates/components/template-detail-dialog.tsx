@@ -20,6 +20,7 @@ import {
   Calendar,
   CheckCircle2,
   ExternalLink,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { CertificateTemplate } from "../types"
@@ -29,6 +30,7 @@ interface TemplateDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUseForIssuance?: (template: CertificateTemplate) => void
+  onDelete?: (templateId: string) => void
 }
 
 export function TemplateDetailDialog({
@@ -36,6 +38,7 @@ export function TemplateDetailDialog({
   open,
   onOpenChange,
   onUseForIssuance,
+  onDelete,
 }: TemplateDetailDialogProps) {
   const [copiedTags, setCopiedTags] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -43,11 +46,11 @@ export function TemplateDetailDialog({
   if (!template) return null
 
   const handleCopyTags = () => {
-    const tags = `{{STUDENT_NAME}}\n{{STUDENT_ID}}\n{{DIVISION_NAME}}\n{{CERT_TITLE}}\n{{DESCRIPTION}}\n{{ISSUE_DATE}}\n{{ACADEMIC_YEAR}}\n{{CERT_CODE}}\n{{QR_CODE}}`
+    const tags = `{{FULL_NAME}}\n{{EVENT_NAME}}\n{{CERTIFICATE_ID}}\n{{ISSUE_DATE}}\n{{VERIFY_URL}}`
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(tags)
       setCopiedTags(true)
-      toast.success("PowerPoint placeholder tags copied to clipboard")
+      toast.success("Placeholder tags copied to clipboard")
       setTimeout(() => setCopiedTags(false), 2000)
     }
   }
@@ -120,11 +123,30 @@ export function TemplateDetailDialog({
                 {template.division}
               </span>
             </div>
+            {template.googleSlideId || template.driveFileUrl ? (
+              <div className="grid grid-cols-3 py-2 px-3 items-center">
+                <span className="text-zinc-400 dark:text-zinc-500 font-medium">Google Slides</span>
+                <span className="col-span-2 flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300 truncate">
+                    {template.googleSlideId || template.driveFileUrl?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]}
+                  </span>
+                  <a
+                    href={`https://docs.google.com/presentation/d/${template.googleSlideId || template.driveFileUrl?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400 hover:underline shrink-0"
+                  >
+                    <span>Open</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </span>
+              </div>
+            ) : null}
             <div className="grid grid-cols-3 py-2 px-3">
-              <span className="text-zinc-400 dark:text-zinc-500 font-medium">Editable</span>
-              <span className="col-span-2 text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Yes · Fully Customizable in PowerPoint
+              <span className="text-zinc-400 dark:text-zinc-500 font-medium">Canva / Slides</span>
+              <span className="col-span-2 text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                Yes · Auto-populated via Google Slides
               </span>
             </div>
             <div className="grid grid-cols-3 py-2 px-3">
@@ -138,7 +160,7 @@ export function TemplateDetailDialog({
             <div className="space-y-0.5 text-xs">
               <span className="font-semibold text-zinc-800 dark:text-zinc-200 block">Canva Dynamic Tags</span>
               <span className="text-[11px] text-zinc-500">
-                Contains placeholders: <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{STUDENT_NAME}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{CERT_CODE}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{QR_CODE}}"}</code>
+                Placeholders populated: <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{FULL_NAME}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{EVENT_NAME}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{CERTIFICATE_ID}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{ISSUE_DATE}}"}</code>, <code className="text-zinc-700 dark:text-zinc-300 font-mono">{"{{VERIFY_URL}}"}</code>
               </span>
             </div>
             <Button
@@ -155,26 +177,51 @@ export function TemplateDetailDialog({
 
         {/* ── Pinned Bottom Actions Bar ───────────────────────────────────── */}
         <div className="p-3 sm:px-6 py-3 border-t border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-[#0f0f13] flex items-center justify-between gap-3 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="h-8 text-xs border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
-          >
-            Close
-          </Button>
-
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="h-8 text-xs border-zinc-300 dark:border-zinc-700 font-medium gap-1.5 shadow-sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 text-xs border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download (.pptx)</span>
+              Close
             </Button>
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(template.id)}
+                className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-500/10 gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {template.driveFileUrl ? (
+              <a
+                href={template.driveFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open in Google Drive</span>
+              </a>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="h-8 text-xs border-zinc-300 dark:border-zinc-700 font-medium gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download (.pptx)</span>
+              </Button>
+            )}
 
             {onUseForIssuance && (
               <Button

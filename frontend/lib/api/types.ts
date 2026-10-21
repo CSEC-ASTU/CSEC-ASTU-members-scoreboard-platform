@@ -645,3 +645,48 @@ export interface LumaIngestExecuteOut {
   certificate_codes: string[]
 }
 
+export interface AlumniItem {
+  id: string
+  full_name: string
+  photo_url?: string | null
+  current_role: string
+  division_id?: string | null
+  division_name?: string | null
+  graduation_year?: number | null
+  description: string
+  profile_url?: string | null
+  is_featured: boolean
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at?: string | null
+}
+
+export interface AlumniCreateIn {
+  full_name: string
+  photo_url?: string | null
+  current_role: string
+  division_id?: string | null
+  division_name?: string | null
+  graduation_year?: number | null
+  description: string
+  profile_url?: string | null
+  is_featured?: boolean
+  is_active?: boolean
+  sort_order?: number
+}
+
+export interface AlumniUpdateIn {
+  full_name?: string
+  photo_url?: string | null
+  current_role?: string
+  division_id?: string | null
+  division_name?: string | null
+  graduation_year?: number | null
+  description?: string
+  profile_url?: string | null
+  is_featured?: boolean
+  is_active?: boolean
+  sort_order?: number
+}
+

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
@@ -224,3 +224,42 @@ async def revoke_issued_certificate(
     assert c is not None
 
     return _certificate_out(c)
+
+
+@router.post("/templates/upload")
+async def upload_certificate_template(
+    user: RequireUser,
+    file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Upload a certificate template file (.pptx or slide preview image) directly to Google Drive."""
+    import os
+    content = await file.read()
+    filename = file.filename or "template.pptx"
+    ext = os.path.splitext(filename)[1].lower()
+    mime_map = {
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".ppt": "application/vnd.ms-powerpoint",
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".svg": "image/svg+xml",
+    }
+    mime_type = mime_map.get(ext) or file.content_type or "application/octet-stream"
+    try:
+        from app.services.apps_script import upload_template_file_to_gas
+        return await upload_template_file_to_gas(
+            settings,
+            file_bytes=content,
+            filename=filename,
+            mime_type=mime_type,
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception("Template upload to Google Drive failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Google Drive upload failed: {exc}",
+        )
+

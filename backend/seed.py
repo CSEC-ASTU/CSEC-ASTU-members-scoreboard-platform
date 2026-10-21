@@ -16,7 +16,7 @@ import asyncio
 from sqlalchemy import delete, select, func
 
 from app.database import AsyncSessionLocal
-from app.models import Division, Member, Permission, PlatformSetting, Task, PointEvent
+from app.models import Alumni, Division, Member, Permission, PlatformSetting, Task, PointEvent
 from app.models.enums import MemberRole, PermissionScopeType, PointEventStatus, PointEventType
 
 DIVISIONS_DATA = [
@@ -374,6 +374,49 @@ async def run_seed(president_email: str | None = None, president_name: str | Non
             for ev in sample_events:
                 db.add(ev)
             print("  [+] Added 3 initial audit trail ledger records.")
+
+        # 9. Seed Sample Honorable Alumni if none exist
+        alumni_count = (await db.execute(select(func.count()).select_from(Alumni))).scalar() or 0
+        if alumni_count == 0:
+            print("  [+] Seeding Initial Honorable Alumni Profiles...")
+            sample_alumni = [
+                Alumni(
+                    full_name="Kidus Yohannes",
+                    current_role="Software Engineer @ Google",
+                    division_name="Competitive Programming",
+                    graduation_year=2022,
+                    description="Former CSEC CP Lead and regional algorithm finalist. Architecting high-throughput distributed backend pipelines.",
+                    profile_url="https://linkedin.com",
+                    is_featured=True,
+                    is_active=True,
+                    sort_order=1,
+                ),
+                Alumni(
+                    full_name="Selamawit Tadesse",
+                    current_role="Information Security Analyst @ Ethio Telecom",
+                    division_name="Cybersecurity",
+                    graduation_year=2023,
+                    description="Pioneered ASTU's offensive security training lab and spearheaded university CTF teams across Africa.",
+                    profile_url="https://linkedin.com",
+                    is_featured=True,
+                    is_active=True,
+                    sort_order=2,
+                ),
+                Alumni(
+                    full_name="Blen Mengistu",
+                    current_role="Senior Full-Stack Architect @ Safaricom",
+                    division_name="Development",
+                    graduation_year=2021,
+                    description="Led early club software projects and guided dozens of freshmen through production system engineering practices.",
+                    profile_url="https://github.com",
+                    is_featured=True,
+                    is_active=True,
+                    sort_order=3,
+                ),
+            ]
+            for al in sample_alumni:
+                db.add(al)
+            print(f"  [+] Seeded {len(sample_alumni)} initial honorable alumni records.")
 
         await db.commit()
     print("Seeding completed successfully!")

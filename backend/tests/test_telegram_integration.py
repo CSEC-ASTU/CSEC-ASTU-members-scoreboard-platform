@@ -85,3 +85,63 @@ async def test_do_notify_silent_on_network_error():
     with patch("httpx.AsyncClient.post", side_effect=Exception("Connection refused")):
         # Should not raise exception
         await _do_notify("http://localhost:9999", "secret", event_id)
+
+
+def test_notify_bot_prefers_in_process_when_bot_token_set():
+    settings = Settings(
+        telegram_bot_token="bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        telegram_bot_url="http://remote-bot:8001",
+        internal_api_secret="secret123",
+    )
+    with patch("asyncio.create_task") as mock_task:
+        eid = uuid.uuid4()
+        notify_bot(settings, eid)
+        mock_task.assert_called_once()
+        # Close coroutine to avoid unawaited warning
+        mock_task.call_args[0][0].close()
+
+
+def test_telegram_bot_helpers():
+    from types import SimpleNamespace
+    from app.models.enums import PointEventStatus, PointEventType
+    from app.services.telegram_bot import format_admin_digest, normalize_username, should_notify_for_event
+
+    assert normalize_username("@FooBar") == "foobar"
+    assert normalize_username("clean_user") == "clean_user"
+
+    settings = Settings(telegram_motivational_min_points=40)
+    event_warning = SimpleNamespace(
+        status=PointEventStatus.APPROVED,
+        event_type=PointEventType.YELLOW_WARNING,
+        points_delta=-25,
+        reason="warning",
+    )
+    assert should_notify_for_event(event_warning, None, settings) is True
+
+    report = {
+        "no_username": [],
+        "pending_handshake": [],
+        "failed_delivery": [],
+        "totals": {"no_username": 0, "pending_handshake": 0, "failed_delivery": 0},
+    }
+    digest = format_admin_digest(report)
+    assert "No username set: 0" in digest
+
+
+def test_telegram_router_internal_secret_rejection():
+    from fastapi import HTTPException
+    from app.api.v1.routers.telegram import require_internal_secret
+
+    settings = Settings(internal_api_secret="my-real-secret-key-12345")
+    with pytest.raises(HTTPException) as exc:
+        require_internal_secret(settings, "wrong-secret")
+    assert exc.value.status_code == 401
+
+    with pytest.raises(HTTPException) as exc:
+        require_internal_secret(settings, None)
+    assert exc.value.status_code == 401
+
+    # Should not raise with valid secret
+    require_internal_secret(settings, "my-real-secret-key-12345")
+
+

@@ -77,6 +77,9 @@ import {
   Loader2,
   Search,
   X,
+  Mail,
+  Send,
+  Eye,
 } from "lucide-react"
 import {
   adminService,
@@ -102,6 +105,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { CsvImportWizard } from "@/components/csec/csv-import-wizard"
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export"
+import { AlumniAdminTab } from "./components/alumni-admin-tab"
 
 const CATEGORIES = Object.keys(TASK_CATEGORY_LABELS) as TaskCategory[]
 
@@ -171,6 +175,58 @@ export default function AdminPage() {
     skipped: number
     errors: string[]
   } | null>(null)
+
+  // Presidential Communications State (§GAS Executive Dispatch)
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailTitle, setEmailTitle] = useState("")
+  const [emailBody, setEmailBody] = useState("")
+  const [emailAudience, setEmailAudience] = useState<"all" | "active_only" | "officers_only" | "division">("active_only")
+  const [emailDivisionId, setEmailDivisionId] = useState<string>("")
+  const [emailBadge, setEmailBadge] = useState("OFFICIAL NOTICE")
+  const [emailCtaText, setEmailCtaText] = useState("")
+  const [emailCtaUrl, setEmailCtaUrl] = useState("")
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false)
+
+  async function handleSendPresidentialEmail() {
+    if (!emailSubject.trim() || !emailTitle.trim() || !emailBody.trim()) {
+      toast.error("Please fill in Subject, Headline Title, and Message Body.")
+      return
+    }
+    if (emailAudience === "division" && !emailDivisionId) {
+      toast.error("Please select a target division.")
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const res = await adminService.sendPresidentialEmail({
+        subject: emailSubject.trim(),
+        title: emailTitle.trim(),
+        message_body: emailBody.trim(),
+        target_audience: emailAudience,
+        division_id: emailAudience === "division" ? emailDivisionId : undefined,
+        badge: emailBadge.trim() || "OFFICIAL NOTICE",
+        cta_text: emailCtaText.trim() || undefined,
+        cta_url: emailCtaUrl.trim() || undefined,
+        sender_title: "Office of the President",
+      })
+      if (res.status === "skipped") {
+        toast.warning(res.detail?.reason || "Skipped: check Apps Script webhook configuration.")
+      } else {
+        toast.success(`Executive broadcast dispatched to ${res.recipients_count} recipient(s)!`)
+        setEmailSubject("")
+        setEmailTitle("")
+        setEmailBody("")
+        setEmailCtaText("")
+        setEmailCtaUrl("")
+        setEmailConfirmOpen(false)
+      }
+    } catch (err: any) {
+      toast.error("Failed to send broadcast", { description: err.message })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
 
   const divisions: DivisionOut[] = divisionsData || []
 
@@ -455,13 +511,20 @@ export default function AdminPage() {
         />
 
         <Tabs defaultValue="catalog" className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full sm:w-auto">
+          <TabsList className="flex flex-wrap items-center gap-1 w-full bg-zinc-100/80 dark:bg-zinc-900/80 p-1 rounded-xl">
             <TabsTrigger value="catalog">Task Catalog</TabsTrigger>
             <TabsTrigger value="import">CSV Import</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
             <TabsTrigger value="failures">Login Failures</TabsTrigger>
             <TabsTrigger value="reset">Annual Reset</TabsTrigger>
+            <TabsTrigger value="alumni">Alumni</TabsTrigger>
+            {currentUser?.role === "president" && (
+              <TabsTrigger value="communications" className="text-violet-600 dark:text-violet-400 font-medium">
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Executive Broadcast
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* 1. Task Catalog Tab */}
@@ -1019,9 +1082,303 @@ export default function AdminPage() {
               </div>
             </div>
           </TabsContent>
+
+          {/* 7. Executive Presidential Communications Tab */}
+          {currentUser?.role === "president" && (
+            <TabsContent value="communications" className="mt-4 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left: Email Composer */}
+                <div className="lg:col-span-7 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 p-6 space-y-5 shadow-sm">
+                  <div className="space-y-1 pb-4 border-b border-zinc-100 dark:border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider border-violet-500/30 text-violet-600 dark:text-violet-400 bg-violet-500/10">
+                        Presidential Authority Only
+                      </Badge>
+                      <span className="text-xs text-zinc-400">· Powered by Google Cloud (GAS)</span>
+                    </div>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 pt-1">
+                      Executive Announcement Dispatcher
+                    </h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Deliver official notices and presidential addresses directly to members&apos; personal inboxes via the club&apos;s authenticated Gmail engine.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    {/* Audience Selector */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                        Target Audience
+                      </Label>
+                      <Select
+                        value={emailAudience}
+                        onValueChange={(val: any) => setEmailAudience(val)}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Select audience" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active_only">Active Enrolled Members (Default)</SelectItem>
+                          <SelectItem value="all">All Registered Club Accounts</SelectItem>
+                          <SelectItem value="officers_only">Club Officers &amp; Division Heads Only</SelectItem>
+                          <SelectItem value="division">Specific Division Enrollees</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {emailAudience === "division" && (
+                      <div className="space-y-2 animate-in fade-in duration-200">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Target Division
+                        </Label>
+                        <Select
+                          value={emailDivisionId}
+                          onValueChange={(val) => setEmailDivisionId(val)}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Choose division..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {divisions.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name} Division
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Subject Line */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                        Email Subject Line
+                      </Label>
+                      <Input
+                        placeholder="e.g. Official Address: General Assembly & Q4 Strategy"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Announcement Headline */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Announcement Headline
+                        </Label>
+                        <Input
+                          placeholder="e.g. Q4 General Assembly & Strategy"
+                          value={emailTitle}
+                          onChange={(e) => setEmailTitle(e.target.value)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      {/* Header Badge */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Letterhead Badge Tag
+                        </Label>
+                        <Input
+                          placeholder="e.g. EXECUTIVE NOTICE, URGENT"
+                          value={emailBadge}
+                          onChange={(e) => setEmailBadge(e.target.value)}
+                          className="h-9 text-xs font-mono uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Message Body */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Message Body
+                        </Label>
+                        <span className="text-[10px] text-zinc-400">Paragraphs separated by blank lines</span>
+                      </div>
+                      <Textarea
+                        rows={7}
+                        placeholder="Write your presidential announcement or message to the club here. Double line breaks create clean paragraphs..."
+                        value={emailBody}
+                        onChange={(e) => setEmailBody(e.target.value)}
+                        className="text-xs leading-relaxed font-sans"
+                      />
+                    </div>
+
+                    {/* Optional CTA */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-xl border border-zinc-200/80 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-950/30">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Action Button Label (Optional)
+                        </Label>
+                        <Input
+                          placeholder="e.g. Join Google Meet Stream"
+                          value={emailCtaText}
+                          onChange={(e) => setEmailCtaText(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                          Action Button Link (Optional)
+                        </Label>
+                        <Input
+                          placeholder="https://..."
+                          value={emailCtaUrl}
+                          onChange={(e) => setEmailCtaUrl(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        onClick={() => {
+                          if (!emailSubject.trim() || !emailTitle.trim() || !emailBody.trim()) {
+                            toast.error("Please fill in Subject, Headline Title, and Message Body.")
+                            return
+                          }
+                          setEmailConfirmOpen(true)
+                        }}
+                        disabled={sendingEmail}
+                        className="bg-violet-600 hover:bg-violet-500 text-white font-medium text-xs h-9 px-5 shadow-lg shadow-violet-500/20"
+                      >
+                        <Send className="mr-1.5 h-3.5 w-3.5" />
+                        Review &amp; Dispatch Broadcast
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Live Minimalist Email Preview */}
+                <div className="lg:col-span-5 rounded-2xl border border-zinc-800 bg-[#09090b] p-6 space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 pb-3 border-b border-zinc-800/80">
+                    <span className="flex items-center gap-1.5 font-medium text-zinc-300">
+                      <Eye className="h-3.5 w-3.5 text-violet-400" /> Live Recipient Inbox Preview
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase">Minimalist Spec</span>
+                  </div>
+
+                  {/* Simulated Email Viewport */}
+                  <div className="rounded-xl border border-zinc-800 bg-[#111114] p-5 space-y-4 text-left shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="pb-3 border-b border-zinc-800/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9px] font-bold tracking-widest uppercase bg-[#1a1a1e] border border-[#2e2e34] text-zinc-300 px-2 py-0.5 rounded">
+                          {emailBadge.trim() || "OFFICIAL NOTICE"}
+                        </span>
+                        <span className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+                          CSEC ASTU
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-white tracking-tight leading-snug">
+                        {emailTitle.trim() || "Announcement Headline"}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400">
+                        Dispatched from the Office of the President
+                      </p>
+                    </div>
+
+                    {/* Greeting & Body */}
+                    <div className="space-y-2.5 text-xs text-zinc-300 leading-relaxed min-h-[120px]">
+                      <p className="text-zinc-200">
+                        Hello <strong className="text-white">Dawit Bekele</strong>,
+                      </p>
+                      {emailBody.trim() ? (
+                        emailBody
+                          .split(/\n\s*\n/)
+                          .map((para, i) => (
+                            <p key={i} className="text-zinc-300/90 whitespace-pre-line">
+                              {para}
+                            </p>
+                          ))
+                      ) : (
+                        <p className="italic text-zinc-600">
+                          (Message preview will appear here in clean typography as you type...)
+                        </p>
+                      )}
+
+                      {/* Optional Button Preview */}
+                      {emailCtaText.trim() && (
+                        <div className="pt-3">
+                          <span className="inline-block bg-white text-zinc-950 font-semibold px-4 py-2 rounded-lg text-xs shadow-md">
+                            {emailCtaText.trim()} &rarr;
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Signature Preview */}
+                      <div className="pt-5 mt-4 border-t border-zinc-800/60">
+                        <p className="font-semibold text-white text-xs">Executive Leadership</p>
+                        <p className="text-[11px] text-zinc-500">Computer Science &amp; Engineering Club · ASTU</p>
+                      </div>
+                    </div>
+
+                    {/* Footer Preview */}
+                    <div className="pt-3 border-t border-zinc-800/50 text-center">
+                      <p className="text-[10px] font-mono text-zinc-600 tracking-wider">
+                        EXECUTIVE BROADCAST SERVICE · ADAMA SCIENCE &amp; TECHNOLOGY UNIVERSITY
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Alumni Management Tab */}
+          <TabsContent value="alumni" className="mt-4">
+            <AlumniAdminTab />
+          </TabsContent>
         </Tabs>
       </div>
       )}
+
+      {/* Presidential Broadcast Confirmation Dialog */}
+      <AlertDialog open={emailConfirmOpen} onOpenChange={setEmailConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-semibold text-zinc-100">
+              Confirm Official Executive Broadcast
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-zinc-400 space-y-2 pt-2">
+              <p>
+                You are about to dispatch this official presidential communication via the club&apos;s authenticated Gmail engine.
+              </p>
+              <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/60 space-y-1 font-mono text-[11px] text-zinc-300">
+                <div><span className="text-zinc-500">Subject:</span> {emailSubject}</div>
+                <div><span className="text-zinc-500">Headline:</span> {emailTitle}</div>
+                <div><span className="text-zinc-500">Audience:</span> {emailAudience.replace("_", " ").toUpperCase()}</div>
+              </div>
+              <p className="text-amber-500/90 font-medium">
+                ⚠️ This action sends real emails to member inboxes and cannot be recalled.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sendingEmail}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleSendPresidentialEmail()
+              }}
+              disabled={sendingEmail}
+              className="bg-violet-600 hover:bg-violet-500 text-white"
+            >
+              {sendingEmail ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Dispatching...
+                </>
+              ) : (
+                "Confirm & Dispatch via Gmail"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Task Create/Edit Modal */}
       <Dialog open={open} onOpenChange={setOpen}>

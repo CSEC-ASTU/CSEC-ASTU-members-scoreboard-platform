@@ -72,7 +72,7 @@ export function LumaRegisterButton({
         type="button"
         disabled
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 px-5 py-2.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500 cursor-not-allowed border border-zinc-200 dark:border-zinc-700/40",
+          "inline-flex items-center justify-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-zinc-500 cursor-not-allowed",
           className
         )}
       >
@@ -89,7 +89,7 @@ export function LumaRegisterButton({
         type="button"
         disabled
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 px-5 py-2.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500 cursor-not-allowed border border-zinc-200 dark:border-zinc-700/40",
+          "inline-flex items-center justify-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-zinc-500 cursor-not-allowed",
           className
         )}
       >
@@ -105,7 +105,7 @@ export function LumaRegisterButton({
       <a
         href={href}
         className={cn(
-          "luma-checkout--button inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2.5 text-xs font-semibold shadow-md transition-all active:scale-[0.98] border border-primary/20 hover:shadow-primary/20",
+          "luma-checkout--button inline-flex items-center justify-center gap-2 rounded bg-zinc-100 text-zinc-950 hover:bg-white px-4 py-2 text-xs font-semibold shadow-sm transition-colors",
           className
         )}
         data-luma-action="checkout"

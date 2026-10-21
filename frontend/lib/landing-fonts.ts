@@ -1,21 +1,20 @@
-import { Syne, DM_Sans } from "next/font/google"
-
 /**
- * Landing typography. Keep font options minimal so `next/font` can resolve
- * Google Fonts reliably during Vercel/CI builds.
+ * Landing typography — grounded, engineering-grade pairing.
+ *
+ * Display:  Space Grotesk — geometric, tight, authoritative headlines.
+ * Body:     Inter — system-grade readability, wide language support.
+ * Mono:     JetBrains Mono — for data, stats, and technical accents.
  */
-export const landingDisplay = Syne({
-  subsets: ["latin"],
-  variable: "--font-landing-display",
-  display: "swap",
-  preload: true,
-})
+export const landingDisplay = {
+  variable: "",
+}
 
-export const landingBody = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-landing-body",
-  display: "swap",
-  preload: true,
-})
+export const landingBody = {
+  variable: "",
+}
 
-export const landingFontClassName = `${landingDisplay.variable} ${landingBody.variable} font-[family-name:var(--font-landing-body)]`
+export const landingMono = {
+  variable: "",
+}
+
+export const landingFontClassName = "font-[family-name:var(--font-landing-body)]"

@@ -2,7 +2,7 @@ name: Keep-Alive Ping Services
 
 on:
   schedule:
-    # Runs every 10 minutes (Render services spin down after 15 minutes of inactivity)
+    # Trigger check every 10 minutes
     - cron: '*/10 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
@@ -12,50 +12,69 @@ concurrency:
 
 jobs:
   ping:
-    name: Ping Render Services
+    name: Ping Render Backend
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Ping Web Backend & Telegram Bot
+      - name: Ping Unified Backend & Monitoring Endpoints
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           BOT_URL: ${{ secrets.TELEGRAM_BOT_URL }}
+          ALWAYS_KEEP_ALIVE: ${{ vars.ALWAYS_KEEP_ALIVE || secrets.ALWAYS_KEEP_ALIVE }}
         run: |
-          if [ -z "$BACKEND_URL" ] || [ -z "$BOT_URL" ]; then
-            echo "::error::BACKEND_URL or TELEGRAM_BOT_URL secret is not configured in repository secrets."
-            echo "Please configure both secrets under Repository Settings -> Secrets and variables -> Actions."
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::error::BACKEND_URL secret is not configured in repository secrets."
+            echo "Please configure BACKEND_URL under Repository Settings -> Secrets and variables -> Actions."
             exit 1
+          fi
+
+          # Peak hours logic:
+          # Kenya/Nairobi (EAT) = UTC+3.
+          # 4:00 PM - 11:00 PM EAT = 16:00 - 23:00 EAT = 13:00 - 20:00 UTC (Mon-Fri).
+          CURRENT_DOW=$(date -u '+%u')  # 1 = Mon, 7 = Sun
+          CURRENT_HOUR=$(date -u '+%-H') # 0..23
+
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Current Day of Week: $CURRENT_DOW (1=Mon, 7=Sun)"
+          echo "Current UTC Hour: $CURRENT_HOUR"
+
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
+          IS_OVERRIDE="false"
+          if [ "$ALWAYS_KEEP_ALIVE" = "true" ] || [ "$ALWAYS_KEEP_ALIVE" = "1" ]; then
+            IS_OVERRIDE="true"
+          fi
+
+          if [ "$IS_MANUAL" = "true" ]; then
+            echo "▶ Manual workflow dispatch triggered — forcing keep-alive ping."
+          elif [ "$IS_OVERRIDE" = "true" ]; then
+            echo "▶ ALWAYS_KEEP_ALIVE is enabled — 24/7 mode active."
+          else
+            # Default mode: Check if within Mon-Fri, 13:00 - 20:59 UTC
+            if [ "$CURRENT_DOW" -gt 5 ] || [ "$CURRENT_HOUR" -lt 13 ] || [ "$CURRENT_HOUR" -gt 20 ]; then
+              echo "⏸ Outside peak lab hours (16:00–23:00 EAT / Mon–Fri) and 24/7 override not set."
+              echo "Allowing Render free container to sleep and conserve monthly instance hours."
+              exit 0
+            fi
+            echo "▶ Within peak lab hours (16:00–23:00 EAT / Mon–Fri) — sending keep-alive ping."
           fi
 
           # Clean secrets: strip whitespace, surrounding quotes, and trailing slashes
           CLEAN_BACKEND=$(echo "$BACKEND_URL" | tr -d '"' | tr -d "'" | xargs)
           CLEAN_BACKEND="${CLEAN_BACKEND%/}"
-          CLEAN_BOT=$(echo "$BOT_URL" | tr -d '"' | tr -d "'" | xargs)
-          CLEAN_BOT="${CLEAN_BOT%/}"
 
-          # Ping the DB-free /ping endpoint so Neon can still scale to zero.
-          # (/api/v1/health runs SQL and would keep the database awake 24/7.)
+          # Ping the DB-free /ping endpoint so Neon DB stays auto-suspended.
           CLEAN_BACKEND="${CLEAN_BACKEND%/api/v1/health}"
           CLEAN_BACKEND="${CLEAN_BACKEND%/api/v1}"
           BACKEND_TARGET="$CLEAN_BACKEND/ping"
 
-          if [[ "$CLEAN_BOT" == *"/health"* ]]; then
-            BOT_TARGET="$CLEAN_BOT"
-          else
-            BOT_TARGET="$CLEAN_BOT/health"
-          fi
-
-          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "----------------------------------------------------"
-
-          FAILED=0
-
           echo "Pinging Web Backend at $BACKEND_TARGET..."
           BACKEND_HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
             --retry 2 --retry-delay 5 --max-time 60 "$BACKEND_TARGET" || echo "000")
           BACKEND_TIME=$(curl -sS -o /dev/null -w "%{time_total}" --max-time 10 "$BACKEND_TARGET" 2>/dev/null || echo "0.0")
 
+          FAILED=0
           if [ "$BACKEND_HTTP_CODE" -ge 200 ] && [ "$BACKEND_HTTP_CODE" -lt 400 ]; then
             echo "  -> Backend: SUCCESS (HTTP $BACKEND_HTTP_CODE in ${BACKEND_TIME}s)"
           else
@@ -64,25 +83,29 @@ jobs:
             FAILED=1
           fi
 
-          echo "Pinging Telegram Bot at $BOT_TARGET..."
-          BOT_HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
-            --retry 2 --retry-delay 5 --max-time 60 "$BOT_TARGET" || echo "000")
-          BOT_TIME=$(curl -sS -o /dev/null -w "%{time_total}" --max-time 10 "$BOT_TARGET" 2>/dev/null || echo "0.0")
-
-          if [ "$BOT_HTTP_CODE" -ge 200 ] && [ "$BOT_HTTP_CODE" -lt 400 ]; then
-            echo "  -> Telegram Bot: SUCCESS (HTTP $BOT_HTTP_CODE in ${BOT_TIME}s)"
-          else
-            echo "::error::Telegram Bot ping failed with HTTP $BOT_HTTP_CODE"
-            echo "  -> Telegram Bot: FAILED (HTTP $BOT_HTTP_CODE)"
-            FAILED=1
+          # Optional legacy standalone bot ping (if TELEGRAM_BOT_URL is still configured)
+          if [ -n "$BOT_URL" ]; then
+            CLEAN_BOT=$(echo "$BOT_URL" | tr -d '"' | tr -d "'" | xargs)
+            CLEAN_BOT="${CLEAN_BOT%/}"
+            if [[ "$CLEAN_BOT" == *"/health"* ]]; then
+              BOT_TARGET="$CLEAN_BOT"
+            else
+              BOT_TARGET="$CLEAN_BOT/health"
+            fi
+            echo "Pinging Legacy Telegram Bot at $BOT_TARGET..."
+            BOT_HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+              --retry 2 --retry-delay 5 --max-time 60 "$BOT_TARGET" || echo "000")
+            if [ "$BOT_HTTP_CODE" -ge 200 ] && [ "$BOT_HTTP_CODE" -lt 400 ]; then
+              echo "  -> Telegram Bot: SUCCESS (HTTP $BOT_HTTP_CODE)"
+            else
+              echo "  -> Telegram Bot (legacy): FAILED (HTTP $BOT_HTTP_CODE) - ignorable if unified"
+            fi
           fi
 
           echo "----------------------------------------------------"
           if [ "$FAILED" -ne 0 ]; then
-            echo "❌ Keep-alive ping failed. One or more services are unreachable or degraded."
+            echo "❌ Keep-alive ping failed. Backend service is unreachable."
             exit 1
           fi
 
-          echo "✔ All services are alive and healthy."
-
-
+          echo "✔ Unified backend is alive and healthy."

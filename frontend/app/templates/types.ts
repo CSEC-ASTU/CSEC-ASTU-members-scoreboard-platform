@@ -24,6 +24,9 @@ export interface CertificateTemplate {
   isFeatured?: boolean
   isCustomImported?: boolean
   fileName: string
+  previewImageUrl?: string
+  googleSlideId?: string
+  driveFileUrl?: string
   importedAt?: string
   signatoryLeftTitle: string
   signatoryLeftName: string

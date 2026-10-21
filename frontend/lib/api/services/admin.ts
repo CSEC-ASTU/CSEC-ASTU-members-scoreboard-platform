@@ -47,4 +47,24 @@ export const adminService = {
   }): Promise<Paginated<LoginFailureOut>> => {
     return apiFetch<Paginated<LoginFailureOut>>("/admin/login-failures", { params })
   },
+
+  sendPresidentialEmail: async (payload: {
+    subject: string
+    title: string
+    message_body: string
+    target_audience: "all" | "active_only" | "officers_only" | "division"
+    division_id?: string | null
+    badge?: string
+    cta_text?: string
+    cta_url?: string
+    sender_title?: string
+  }): Promise<{ status: string; recipients_count: number; detail: any }> => {
+    return apiFetch<{ status: string; recipients_count: number; detail: any }>(
+      "/admin/communications/send-email",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    )
+  },
 }

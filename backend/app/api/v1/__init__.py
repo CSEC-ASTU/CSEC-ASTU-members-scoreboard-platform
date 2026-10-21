@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.routers import (
     admin,
+    alumni,
     annual,
     attendance,
     auth,
@@ -17,10 +18,12 @@ from app.api.v1.routers import (
     profile_changes,
     settings,
     tasks,
+    telegram,
 )
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(alumni.router, prefix="/alumni", tags=["alumni"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(members.router, prefix="/members", tags=["members"])
 api_router.include_router(divisions.router, prefix="/divisions", tags=["divisions"])
@@ -42,4 +45,5 @@ api_router.include_router(
     profile_changes.router, prefix="/profile-change-requests", tags=["profile-change-requests"]
 )
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(telegram.router, prefix="/telegram", tags=["telegram"])
 

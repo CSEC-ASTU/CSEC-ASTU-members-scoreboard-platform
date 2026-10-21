@@ -190,14 +190,31 @@ async def issue_certificates(
         db.add(cert)
         created_certs.append(cert)
 
-    await db.commit()
+    await db.flush()
 
-    if data.send_email_notifications and settings.apps_script_webhook_url:
-        await dispatch_certificate_batch_to_gas(
+    if getattr(settings, "apps_script_webhook_url", None):
+        template_slide_id = data.template_id
+        if template_slide_id and template_slide_id.startswith("custom-"):
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The selected template has not been linked to a valid Google Slides presentation. Please paste your Google Slides link or presentation ID in 'Template Slide Source' when issuing.",
+            )
+
+        res = await dispatch_certificate_batch_to_gas(
             settings=settings,
             event_name=data.title,
             certificates=created_certs,
+            template_slide_id=template_slide_id,
+            send_email_notifications=data.send_email_notifications,
         )
+        if res.get("status") == "error":
+            await db.rollback()
+            error_msg = res.get("message") or res.get("detail") or "Certificate template generation failed"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Template generation failed: {error_msg}",
+            )
         await db.commit()
 
     for c in created_certs:

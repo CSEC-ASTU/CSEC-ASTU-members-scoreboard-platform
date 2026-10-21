@@ -1,4 +1,5 @@
 # Master Schemas Barrel — Backwards-Compatible Re-Exports
+from app.schemas.alumni import AlumniBase, AlumniCreate, AlumniOut, AlumniUpdate
 from app.schemas.annual import AnnualResetPreview, AnnualResetResult, AnnualSummaryOut
 from app.schemas.attendance import AttendanceSessionCreate, AttendanceSessionOut
 from app.schemas.auth import MeOut, TelegramConnectOut

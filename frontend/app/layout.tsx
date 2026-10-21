@@ -12,6 +12,7 @@ const APP_DESCRIPTION =
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
+  referrer: "no-referrer-when-downgrade",
   title: {
     default: APP_TITLE,
     template: "%s · CSEC ASTU",
@@ -48,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className="bg-background">
+    <html lang="en" suppressHydrationWarning className="bg-background scroll-smooth">
       <body className={inter.className} suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
       </body>

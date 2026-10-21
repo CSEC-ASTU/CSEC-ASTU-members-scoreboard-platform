@@ -11,4 +11,4 @@ export * from "./attendance"
 export * from "./certificates"
 export * from "./profile-changes"
 export * from "./events"
-
+export * from "./alumni"

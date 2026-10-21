@@ -1,8 +1,26 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _parse_chat_ids(value: object) -> list[str]:
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return [str(x) for x in value if str(x).strip()]
+    if isinstance(value, str):
+        import json
+
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(x) for x in parsed if str(x).strip()]
+        except json.JSONDecodeError:
+            pass
+        return [part.strip() for part in value.split(",") if part.strip()]
+    return []
 
 
 # Values that have appeared in this public repo; never accept them as real secrets.
@@ -58,10 +76,19 @@ class Settings(BaseSettings):
     telegram_bot_url: str = ""
     internal_api_secret: str = ""
     telegram_bot_username: str = ""
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
+    telegram_motivational_min_points: int = 40
+    telegram_admin_chat_ids: Any = Field(default_factory=list)
 
     # Number of reverse proxies in front of the API that append to X-Forwarded-For.
     # 1 = Render only; 2 = Vercel rewrite -> Render (the /api/proxy setup).
     trusted_proxy_hops: int = 1
+
+    @field_validator("telegram_admin_chat_ids", mode="before")
+    @classmethod
+    def parse_admin_chats(cls, value: object) -> list[str]:
+        return _parse_chat_ids(value)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -26,12 +26,12 @@ import { TemplateDetailDialog } from "./components/template-detail-dialog"
 import { ImportTemplateDialog } from "./components/import-template-dialog"
 import { IssueCertificatesDialog } from "./components/issue-certificates-dialog"
 import { LumaIngestDialog } from "./components/luma-ingest-dialog"
-import { DEFAULT_CERTIFICATE_TEMPLATES } from "./default-templates"
 import type { CertificateTemplate, TemplateCategory, SortOption } from "./types"
 import { cn } from "@/lib/utils"
 import { Lock } from "lucide-react"
 import { useCurrentUser } from "@/components/user-context"
 import { canManagePermissions } from "@/lib/permissions"
+import { toast } from "sonner"
 
 const CATEGORIES: TemplateCategory[] = [
   "All",
@@ -55,7 +55,7 @@ export default function CertificateTemplatesPage() {
   const [sortOption, setSortOption] = useState<SortOption>("popular")
   const [selectedDivision, setSelectedDivision] = useState<string>("all")
 
-  // State for all templates (built-in + imported)
+  // State for genuine uploaded templates only (demo templates removed)
   const [customTemplates, setCustomTemplates] = useState<CertificateTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -64,7 +64,7 @@ export default function CertificateTemplatesPage() {
   const [lumaOpen, setLumaOpen] = useState(false)
   const [issuingTemplate, setIssuingTemplate] = useState<CertificateTemplate | null>(null)
 
-  // Load custom imported templates from localStorage on mount
+  // Load custom imported templates from localStorage on mount and auto-heal IDs
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -72,7 +72,29 @@ export default function CertificateTemplatesPage() {
         if (saved) {
           const parsed = JSON.parse(saved)
           if (Array.isArray(parsed)) {
-            setCustomTemplates(parsed)
+            // Auto-heal templates: ensure real Google ID is used as template.id and googleSlideId
+            let updated = false
+            const healed = parsed.map((t: CertificateTemplate) => {
+              let realGoogleId = t.googleSlideId || ""
+              if (!realGoogleId && t.driveFileUrl) {
+                const match = t.driveFileUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)
+                if (match) realGoogleId = match[1]
+              }
+              if (realGoogleId && (t.id.startsWith("custom-") || !t.googleSlideId)) {
+                updated = true
+                return {
+                  ...t,
+                  id: realGoogleId,
+                  googleSlideId: realGoogleId,
+                }
+              }
+              return t
+            })
+
+            setCustomTemplates(healed)
+            if (updated) {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(healed))
+            }
           }
         }
       } catch (e) {
@@ -81,10 +103,13 @@ export default function CertificateTemplatesPage() {
     }
   }, [])
 
-  // Save new imported template to library
+  // Save new imported template to library (replacing any outdated custom-* version with same title)
   const handleTemplateImported = (newTemplate: CertificateTemplate) => {
     setCustomTemplates((prev) => {
-      const next = [newTemplate, ...prev]
+      const filtered = prev.filter(
+        (t) => t.id !== newTemplate.id && !(t.id.startsWith("custom-") && t.title === newTemplate.title)
+      )
+      const next = [newTemplate, ...filtered]
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       } catch (e) {
@@ -94,10 +119,24 @@ export default function CertificateTemplatesPage() {
     })
   }
 
-  // Combined templates pool
-  const allTemplates = useMemo(() => {
-    return [...customTemplates, ...DEFAULT_CERTIFICATE_TEMPLATES]
-  }, [customTemplates])
+  // Delete template from library
+  const handleTemplateDelete = (templateId: string) => {
+    setCustomTemplates((prev) => {
+      const next = prev.filter((t) => t.id !== templateId)
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      } catch (e) {
+        console.error("Failed to delete template from localStorage", e)
+      }
+      return next
+    })
+    setSelectedTemplate(null)
+    setDetailOpen(false)
+    toast.success("Template deleted from your library")
+  }
+
+  // Solely rely on genuine user-uploaded templates
+  const allTemplates = customTemplates
 
   // Filtered & Sorted list
   const filteredTemplates = useMemo(() => {
@@ -161,7 +200,7 @@ export default function CertificateTemplatesPage() {
                 Certificate Templates
               </h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xl font-normal">
-                Professional certificate templates, ready to customize in PowerPoint.
+                Professional certificate templates powered by Google Slides &amp; Canva.
               </p>
             </div>
 
@@ -185,7 +224,7 @@ export default function CertificateTemplatesPage() {
                 className="h-8 text-xs border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.05] font-medium gap-1.5 shadow-sm"
               >
                 <UploadCloud className="w-3.5 h-3.5" />
-                <span>Import Canva (.pptx)</span>
+                <span>Link Google Slide</span>
               </Button>
 
               <Button
@@ -255,7 +294,29 @@ export default function CertificateTemplatesPage() {
         </div>
 
         {/* ── 3. Template Gallery: Spacious Responsive Grid ──────────────── */}
-        {filteredTemplates.length === 0 ? (
+        {allTemplates.length === 0 ? (
+          <div className="py-20 text-center space-y-4 max-w-md mx-auto border border-dashed border-zinc-200 dark:border-white/10 rounded-2xl p-8 bg-zinc-50/50 dark:bg-white/[0.01]">
+            <div className="w-12 h-12 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mx-auto">
+              <UploadCloud className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                No Certificate Templates Yet
+              </h3>
+              <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                All demo templates have been removed. Import your genuine Canva PowerPoint (.pptx) or design slides to begin issuing official certificates.
+              </p>
+            </div>
+            <Button
+              onClick={() => setImportOpen(true)}
+              size="sm"
+              className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white font-medium gap-1.5 shadow-sm"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Import Canva (.pptx)</span>
+            </Button>
+          </div>
+        ) : filteredTemplates.length === 0 ? (
           <div className="py-20 text-center space-y-2 max-w-sm mx-auto">
             <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               No templates found
@@ -297,6 +358,7 @@ export default function CertificateTemplatesPage() {
           template={selectedTemplate}
           open={detailOpen}
           onOpenChange={setDetailOpen}
+          onDelete={handleTemplateDelete}
           onUseForIssuance={(tmpl) => {
             setIssuingTemplate(tmpl)
             setIssueOpen(true)

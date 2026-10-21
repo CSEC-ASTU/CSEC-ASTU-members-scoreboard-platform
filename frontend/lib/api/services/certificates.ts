@@ -39,4 +39,30 @@ export const certificatesService = {
       body: JSON.stringify({ reason }),
     })
   },
+
+  uploadTemplateFile: async (file: File): Promise<{
+    file_id: string
+    google_slide_id?: string
+    url: string
+    drive_url: string
+    google_slide_url?: string
+    file_name: string
+  }> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiFetch<{
+      file_id: string
+      google_slide_id?: string
+      url: string
+      drive_url: string
+      google_slide_url?: string
+      file_name: string
+    }>(
+      "/certificates/templates/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    )
+  },
 }
