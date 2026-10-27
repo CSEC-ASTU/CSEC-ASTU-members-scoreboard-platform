@@ -61,6 +61,12 @@ import {
   UserCog,
   Sparkles,
   ArrowRightLeft,
+  User,
+  Tag,
+  Layers,
+  Zap,
+  CircleDot,
+  Calendar,
 } from "lucide-react"
 import { PermissionsSkeleton } from "@/components/csec/skeletons"
 import {
@@ -389,7 +395,7 @@ export default function PermissionsPage() {
                     {/* Sticky Column 1: Officer Name */}
                     <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[240px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                        <User className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Officer Name</span>
                       </div>
                     </th>
@@ -397,7 +403,7 @@ export default function PermissionsPage() {
                     {/* Column 2: Leadership Role */}
                     <th className="py-3.5 px-5 min-w-[170px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">🏷️</span>
+                        <Tag className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Leadership Role</span>
                       </div>
                     </th>
@@ -405,7 +411,7 @@ export default function PermissionsPage() {
                     {/* Column 3: Assigned Division */}
                     <th className="py-3.5 px-5 min-w-[180px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">🎯</span>
+                        <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Assigned Division</span>
                       </div>
                     </th>
@@ -413,7 +419,7 @@ export default function PermissionsPage() {
                     {/* Column 4: Governance Scope */}
                     <th className="py-3.5 px-5 min-w-[220px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">⚡</span>
+                        <Zap className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Governance Scope</span>
                       </div>
                     </th>
@@ -666,7 +672,7 @@ export default function PermissionsPage() {
                       {/* Sticky Column 1: Delegated Duty */}
                       <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[260px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                          <KeyRound className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Delegated Duty</span>
                         </div>
                       </th>
@@ -674,7 +680,7 @@ export default function PermissionsPage() {
                       {/* Column 2: Delegatee Member */}
                       <th className="py-3.5 px-5 min-w-[200px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">👤</span>
+                          <User className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Delegatee</span>
                         </div>
                       </th>
@@ -682,7 +688,7 @@ export default function PermissionsPage() {
                       {/* Column 3: Scope */}
                       <th className="py-3.5 px-5 min-w-[180px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">🎯</span>
+                          <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Scope</span>
                         </div>
                       </th>
@@ -690,7 +696,7 @@ export default function PermissionsPage() {
                       {/* Column 4: Status */}
                       <th className="py-3.5 px-5 min-w-[140px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">⚪</span>
+                          <CircleDot className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Status</span>
                         </div>
                       </th>
@@ -698,7 +704,7 @@ export default function PermissionsPage() {
                       {/* Column 5: Date Granted */}
                       <th className="py-3.5 px-5 min-w-[140px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">📅</span>
+                          <Calendar className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Granted</span>
                         </div>
                       </th>

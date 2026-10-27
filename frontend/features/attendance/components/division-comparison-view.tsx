@@ -1,6 +1,6 @@
 "use client"
 
-import { Globe, ArrowRight } from "lucide-react"
+import { Globe, ArrowRight, Layers, Target, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { DivisionOut } from "@/lib/api/types"
 
@@ -17,19 +17,19 @@ export function DivisionComparisonView({ divisions, onSelectDivision }: Division
           <tr className="border-b border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white text-xs font-semibold">
             <th className="py-3.5 px-5 min-w-[240px] font-semibold">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                 <span className="font-semibold">Division</span>
               </div>
             </th>
             <th className="py-3.5 px-5 min-w-[180px] font-semibold">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                <span className="text-[13px]">🎯</span>
+                <Target className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                 <span className="font-semibold">Scope</span>
               </div>
             </th>
             <th className="py-3.5 px-5 min-w-[140px] font-semibold">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                <span className="text-[13px]">⚡</span>
+                <Zap className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                 <span className="font-semibold">Quick Action</span>
               </div>
             </th>

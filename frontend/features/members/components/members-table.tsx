@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 import { ROLE_LABELS, type Role } from "@/lib/csec-data"
-import { ChevronRight, ShieldAlert, Github } from "lucide-react"
+import { ChevronRight, ShieldAlert, Github, User, Layers, GraduationCap, TrendingUp, ShieldCheck, Mail } from "lucide-react"
 import type { MemberRowItem } from "../types"
 
 interface MembersTableProps {
@@ -30,7 +30,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {/* Sticky Column 1: Member Name */}
               <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[240px] font-semibold">
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                  <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                  <User className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   <span className="font-semibold">Member Name</span>
                 </div>
               </th>
@@ -38,7 +38,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {/* Column 2: Division */}
               <th className="py-3.5 px-5 min-w-[180px] font-semibold">
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                  <span className="text-[13px]">🎯</span>
+                  <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   <span className="font-semibold">Division</span>
                 </div>
               </th>
@@ -46,7 +46,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {/* Column 3: Department & Year */}
               <th className="py-3.5 px-5 min-w-[170px] font-semibold">
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                  <span className="text-[13px]">🏛️</span>
+                  <GraduationCap className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   <span className="font-semibold">Department</span>
                 </div>
               </th>
@@ -54,7 +54,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {/* Column 4: Cycle Score */}
               <th className="py-3.5 px-5 min-w-[140px] font-semibold">
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                  <span className="text-[13px]">📊</span>
+                  <TrendingUp className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   <span className="font-semibold">Cycle Score</span>
                 </div>
               </th>
@@ -62,7 +62,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {/* Column 5: Role & Status */}
               <th className="py-3.5 px-5 min-w-[150px] font-semibold">
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                  <span className="text-[13px]">🏷️</span>
+                  <ShieldCheck className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   <span className="font-semibold">Role & Status</span>
                 </div>
               </th>
@@ -71,7 +71,7 @@ export function MembersTable({ rows, officer, membersFetching }: MembersTablePro
               {officer && (
                 <th className="py-3.5 px-5 min-w-[160px] font-semibold">
                   <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                    <span className="text-[13px]">📱</span>
+                    <Mail className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                     <span className="font-semibold">Contact</span>
                   </div>
                 </th>

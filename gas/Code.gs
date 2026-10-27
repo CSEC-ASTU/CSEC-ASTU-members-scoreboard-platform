@@ -264,8 +264,9 @@ function handleCertificateGeneration(data, startTime) {
         replaceTag("DATE", issueDate);
         replaceTag("issue_date", issueDate);
 
-        // Cryptographic verification link tags
-        const verifyLink = `https://csec.astu.edu.et/verify/certificate/${certCode}`;
+        // Cryptographic verification link tags (dynamically derived from environment)
+        const frontendBase = (data.frontend_base_url || "https://csec.astu.edu.et").replace(/\/+$/, "");
+        const verifyLink = attendee.verify_url || `${frontendBase}/verify/certificate/${certCode}`;
         replaceTag("VERIFY_URL", verifyLink);
         replaceTag("VERIFY URL", verifyLink);
         replaceTag("VERIFICATION_URL", verifyLink);
@@ -278,6 +279,71 @@ function handleCertificateGeneration(data, startTime) {
             replaceTag(key.replace(/_/g, " "), value);
             replaceTag(key.toUpperCase().replace(/_/g, " "), value);
           }
+        }
+
+        // Replace {{QR_CODE}} placeholder shape with authentic cryptographic QR code image
+        try {
+          const slides = presentation.getSlides();
+          let qrBlob = null;
+
+          for (let s = 0; s < slides.length; s++) {
+            const slide = slides[s];
+            const shapes = slide.getShapes();
+            for (let sh = 0; sh < shapes.length; sh++) {
+              const shape = shapes[sh];
+              let text = "";
+              try {
+                text = shape.getText().asString();
+              } catch (_) {
+                continue;
+              }
+
+              if (text && (
+                text.includes("{{QR_CODE}}") ||
+                text.includes("{{QR}}") ||
+                text.includes("{QR_CODE}") ||
+                text.includes("[QR_CODE]") ||
+                text.includes("{{qr_code}}")
+              )) {
+                // Lazy-fetch QR code image only when placeholder exists
+                if (!qrBlob && verifyLink) {
+                  const qrApiUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(verifyLink) + "&size=300&margin=1&format=png&ecLevel=Q";
+                  try {
+                    const qrResp = UrlFetchApp.fetch(qrApiUrl, { muteHttpExceptions: true });
+                    if (qrResp.getResponseCode() === 200) {
+                      qrBlob = qrResp.getBlob();
+                    }
+                  } catch (fetchErr) {
+                    Logger.log("Failed to fetch QR code from primary service: " + fetchErr);
+                    // Fallback to QRServer
+                    try {
+                      const fallbackUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=4&data=" + encodeURIComponent(verifyLink);
+                      const fbResp = UrlFetchApp.fetch(fallbackUrl, { muteHttpExceptions: true });
+                      if (fbResp.getResponseCode() === 200) {
+                        qrBlob = fbResp.getBlob();
+                      }
+                    } catch (fbErr) {
+                      Logger.log("Fallback QR fetch also failed: " + fbErr);
+                    }
+                  }
+                }
+
+                if (qrBlob) {
+                  const left = shape.getLeft();
+                  const top = shape.getTop();
+                  const width = shape.getWidth();
+                  const height = shape.getHeight();
+                  shape.remove();
+                  const insertedImg = slide.insertImage(qrBlob, left, top, width, height);
+                  try {
+                    insertedImg.setLinkUrl(verifyLink);
+                  } catch (_) {}
+                }
+              }
+            }
+          }
+        } catch (qrErr) {
+          Logger.log("Non-fatal QR Code replacement error: " + qrErr);
         }
 
         presentation.saveAndClose();
@@ -303,13 +369,15 @@ function handleCertificateGeneration(data, startTime) {
       }
     }
 
-    const verifyUrl = `https://csec.astu.edu.et/verify/certificate/${attendee.certificate_code}`;
+    const frontendBase = (data.frontend_base_url || "https://csec.astu.edu.et").replace(/\/+$/, "");
+    const verifyUrl = attendee.verify_url || `${frontendBase}/verify/certificate/${attendee.certificate_code}`;
+    const verifyPortalUrl = `${frontendBase}/verify`;
 
     // Send Minimalist Certificate Email via Gmail (only if email notifications enabled and PDF rendered)
     const shouldSendEmail = data.send_email_notifications !== false;
     if (shouldSendEmail && pdfBlob && attendee.recipient_email && attendee.recipient_email.includes("@")) {
       try {
-        sendCertificateEmail(attendee, eventName, pdfBlob, driveViewUrl, verifyUrl);
+        sendCertificateEmail(attendee, eventName, pdfBlob, driveViewUrl, verifyUrl, verifyPortalUrl);
         emailSent = true;
       } catch (emailErr) {
         Logger.log("Email dispatch failed for " + attendee.recipient_email + ": " + emailErr);
@@ -432,14 +500,16 @@ function handlePresidentialAnnouncement(data, startTime) {
  */
 
 /**
- * Template 1: Minimalist Certificate Delivery Email
+ * Template 1: Clean Collegiate Certificate Delivery Email
+ * Designed in clean light mode matching CSEC ASTU card aesthetic and intentional typography.
  */
-function sendCertificateEmail(attendee, eventName, pdfBlob, driveUrl, verifyUrl) {
-  const subject = `🎓 Official Certificate: ${eventName} — CSEC-ASTU`;
+function sendCertificateEmail(attendee, eventName, pdfBlob, driveUrl, verifyUrl, verifyPortalUrl) {
+  const subject = `Official Certificate: ${eventName} — CSEC ASTU`;
   const name = escapeHtml(attendee.recipient_name);
   const event = escapeHtml(eventName);
   const code = escapeHtml(attendee.certificate_code);
   const issueDate = escapeHtml(attendee.issue_date);
+  const portalUrl = verifyPortalUrl || (verifyUrl ? verifyUrl.replace(/\/certificate\/.*$/, "") : "https://csec.astu.edu.et/verify");
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -447,120 +517,166 @@ function sendCertificateEmail(attendee, eventName, pdfBlob, driveUrl, verifyUrl)
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
+  <title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #f4f4f5; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #09090b; -webkit-font-smoothing: antialiased; line-height: 1.5;">
+
+  <!-- Outer Canvas -->
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <!-- Main Card Container -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #111114; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
+
+        <!-- Main Column (No vertical borders, purely horizontal dividing lines) -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 520px;">
           
-          <!-- Minimalist Header Banner -->
+          <!-- Brand Header -->
           <tr>
-            <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #1f1f23;">
+            <td style="padding: 0 0 20px 0; border-bottom: 1px solid #e4e4e7;">
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #38bdf8; background-color: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px; padding: 4px 10px;">
-                      VERIFIED CREDENTIAL
-                    </div>
+                    <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: #09090b;">
+                      CSEC ASTU
+                    </span>
+                    <span style="font-size: 13px; color: #d4d4d8; margin: 0 6px;">/</span>
+                    <span style="font-size: 13px; color: #71717a;">
+                      Computer Science &amp; Engineering
+                    </span>
                   </td>
                   <td align="right">
-                    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #71717a;">CSEC ASTU</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding-top: 18px;">
-                    <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; line-height: 1.3;">
-                      Certificate of Achievement
-                    </h1>
-                    <p style="margin: 6px 0 0 0; font-size: 13px; color: #a1a1aa; line-height: 1.5;">
-                      Official credential record from the Computer Science &amp; Engineering Club
-                    </p>
+                    <span style="display: inline-block; font-size: 11px; font-weight: 600; color: #059669; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; padding: 2px 10px;">
+                      Verified
+                    </span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Content Body -->
+          <!-- Intro Message -->
           <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #d4d4d8;">
-                Dear <strong style="color: #ffffff;">${name}</strong>,
+            <td style="padding: 32px 0 28px 0;">
+              <h1 style="margin: 0 0 10px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.025em; color: #09090b; line-height: 1.25;">
+                Your certificate is ready
+              </h1>
+              <p style="margin: 0; font-size: 14.5px; line-height: 1.6; color: #52525b;">
+                Hi ${name}, your completion requirements for <strong style="color: #09090b;">${event}</strong> have been verified and recorded. A signed copy of your certificate has been issued and attached to this email.
               </p>
-              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.65; color: #a1a1aa;">
-                Congratulations on successfully completing participation requirements for <strong style="color: #f4f4f5;">${event}</strong>. Your performance has been verified and permanently archived on the university club ledger.
-              </p>
+            </td>
+          </tr>
 
-              <!-- Credential Meta Card -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #18181b; border: 1px solid #27272a; border-radius: 10px; margin-bottom: 28px;">
+          <!-- Credential Specimen (Horizontal Dividing Lines Only — No Vertical Side Borders) -->
+          <tr>
+            <td style="padding: 0 0 28px 0;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 1px solid #09090b; border-bottom: 1px solid #09090b;">
+                
+                <!-- Card Header Row -->
                 <tr>
-                  <td style="padding: 16px 20px; border-bottom: 1px solid #222226;">
-                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a;">Credential Identifier</div>
-                    <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 15px; font-weight: 700; color: #38bdf8; margin-top: 4px; letter-spacing: 0.04em;">
+                  <td style="padding: 20px 0; border-bottom: 1px solid #e4e4e7;">
+                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #7c3aed; margin-bottom: 4px;">
+                      CSEC ASTU Credential
+                    </div>
+                    <div style="font-size: 18px; font-weight: 700; color: #09090b; letter-spacing: -0.015em;">
+                      ${event}
+                    </div>
+                    <div style="font-size: 13.5px; color: #71717a; margin-top: 4px;">
+                      Conferred upon <strong style="color: #09090b; font-weight: 600;">${name}</strong>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Credential Code Row -->
+                <tr>
+                  <td style="padding: 16px 0; border-bottom: 1px solid #e4e4e7;">
+                    <div style="font-size: 11px; color: #71717a; margin-bottom: 4px;">
+                      Certificate code
+                    </div>
+                    <div style="font-family: ui-monospace, 'JetBrains Mono', Menlo, Monaco, Consolas, monospace; font-size: 16px; font-weight: 700; color: #09090b; letter-spacing: 0.04em;">
                       ${code}
                     </div>
                   </td>
                 </tr>
+
+                <!-- Card Meta Details Row -->
                 <tr>
-                  <td style="padding: 14px 20px;">
+                  <td style="padding: 16px 0;">
                     <table width="100%" border="0" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td width="50%">
-                          <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a;">Issue Date</div>
-                          <div style="font-size: 13px; font-weight: 500; color: #f4f4f5; margin-top: 2px;">${issueDate}</div>
+                        <td width="50%" valign="top">
+                          <div style="font-size: 11px; color: #71717a;">Issue date</div>
+                          <div style="font-size: 13.5px; font-weight: 500; color: #09090b; margin-top: 2px;">${issueDate}</div>
                         </td>
-                        <td width="50%">
-                          <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a;">Issuing Authority</div>
-                          <div style="font-size: 13px; font-weight: 500; color: #f4f4f5; margin-top: 2px;">CSEC-ASTU</div>
+                        <td width="50%" valign="top">
+                          <div style="font-size: 11px; color: #71717a;">Authority</div>
+                          <div style="font-size: 13.5px; font-weight: 500; color: #09090b; margin-top: 2px;">CSEC ASTU under Dept. of CSE</div>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-              </table>
 
-              <!-- Action Buttons -->
-              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 8px;">
+              </table>
+            </td>
+          </tr>
+
+          <!-- Primary Actions -->
+          <tr>
+            <td style="padding: 0 0 32px 0;">
+              <table border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="padding-right: 12px;">
-                    <a href="${verifyUrl}" target="_blank" style="display: inline-block; background-color: #ffffff; color: #09090b; font-size: 13px; font-weight: 600; text-decoration: none; padding: 11px 22px; border-radius: 8px; letter-spacing: -0.01em;">
-                      Verify Credential &rarr;
+                  <td style="padding-right: 14px;">
+                    <a href="${verifyUrl}" target="_blank" style="display: inline-block; background-color: #09090b; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                      Verify certificate
                     </a>
                   </td>
                   ${driveUrl ? `
                   <td>
-                    <a href="${driveUrl}" target="_blank" style="display: inline-block; background-color: #1f1f23; color: #e4e4e7; border: 1px solid #323238; font-size: 13px; font-weight: 500; text-decoration: none; padding: 10px 20px; border-radius: 8px;">
-                      Drive Archive
+                    <a href="${driveUrl}" target="_blank" style="display: inline-block; font-size: 13px; font-weight: 500; color: #52525b; text-decoration: underline;">
+                      Open Drive copy
                     </a>
                   </td>` : ''}
                 </tr>
               </table>
-
-              <p style="margin: 24px 0 0 0; font-size: 12px; color: #71717a; line-height: 1.5;">
-                ${pdfBlob ? '⚡ A print-ready, high-resolution PDF certificate is attached directly to this message.' : ''}
-              </p>
             </td>
           </tr>
 
-          <!-- Minimalist Footer -->
+          <!-- Permanent Verification & Domain Advisory -->
           <tr>
-            <td style="padding: 20px 32px 24px 32px; background-color: #0c0c0e; border-top: 1px solid #1f1f23; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #71717a; line-height: 1.5;">
-                Computer Science &amp; Engineering Club &middot; Adama Science and Technology University
-              </p>
-              <p style="margin: 4px 0 0 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; color: #52525b;">
-                AUTHENTICATED VIA CSEC CREDENTIAL AUTHORITY
-              </p>
+            <td style="padding: 0 0 32px 0;">
+              <div style="border-top: 1px solid #e4e4e7; padding-top: 22px;">
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #09090b;">
+                  Need to verify manually or check this credential later?
+                </p>
+                <p style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #71717a;">
+                  The QR code on your certificate points to our current domain. If the QR code is not working, or if university domains change in the future, you or any employer can verify your credential at any time by entering your certificate code (<span style="font-family: ui-monospace, Menlo, monospace; font-weight: 600; color: #09090b;">${code}</span>) on the official verification page:
+                </p>
+                <div style="margin-top: 10px;">
+                  <a href="${portalUrl}" target="_blank" style="font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 12.5px; font-weight: 600; color: #7c3aed; text-decoration: none;">
+                    ${portalUrl}
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Collegiate Footer Strip -->
+          <tr>
+            <td style="padding: 24px 0 0 0; border-top: 1px solid #e4e4e7;">
+              <div style="font-size: 12px; color: #71717a; line-height: 1.5;">
+                CSEC ASTU · Adama Science and Technology University
+              </div>
+              <div style="font-size: 11px; color: #a1a1aa; margin-top: 3px;">
+                High-resolution vector PDF certificate attached. Cryptographically signed.
+              </div>
             </td>
           </tr>
 
         </table>
+
       </td>
     </tr>
   </table>
+
 </body>
 </html>
   `;
@@ -578,7 +694,8 @@ function sendCertificateEmail(attendee, eventName, pdfBlob, driveUrl, verifyUrl)
 }
 
 /**
- * Template 2: Minimalist Executive Presidential Announcement Email
+ * Template 2: Clean Executive Presidential Announcement Email
+ * Designed in clean light mode matching CSEC ASTU collegiate identity and intentional typography.
  */
 function sendPresidentialEmail(opts) {
   const recipientEmail = opts.recipientEmail;
@@ -594,7 +711,7 @@ function sendPresidentialEmail(opts) {
   let bodyContent = opts.messageBody || "";
   if (!bodyContent.includes("<p>") && !bodyContent.includes("<div>")) {
     const paragraphs = bodyContent.split(/\n\s*\n/);
-    bodyContent = paragraphs.map(p => `<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: #d4d4d8;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+    bodyContent = paragraphs.map(p => `<p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.65; color: #52525b;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
   }
 
   const htmlBody = `
@@ -605,90 +722,103 @@ function sendPresidentialEmail(opts) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #f4f4f5; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #09090b; -webkit-font-smoothing: antialiased; line-height: 1.5;">
+
+  <!-- Outer Canvas -->
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; padding: 40px 16px;">
     <tr>
       <td align="center">
-        <!-- Main Card Container -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #111114; border: 1px solid #27272a; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
+
+        <!-- Main Column (No vertical borders, purely horizontal dividing lines) -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 520px;">
           
-          <!-- Minimalist Executive Header -->
+          <!-- Brand Header -->
           <tr>
-            <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #1f1f23;">
+            <td style="padding: 0 0 20px 0; border-bottom: 1px solid #e4e4e7;">
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #a1a1aa; background-color: #1a1a1e; border: 1px solid #2e2e34; border-radius: 6px; padding: 4px 10px;">
-                      ${badge}
-                    </div>
+                    <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: #09090b;">
+                      CSEC ASTU
+                    </span>
+                    <span style="font-size: 13px; color: #d4d4d8; margin: 0 6px;">/</span>
+                    <span style="font-size: 13px; color: #71717a;">
+                      Computer Science &amp; Engineering
+                    </span>
                   </td>
                   <td align="right">
-                    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #71717a;">CSEC ASTU</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding-top: 18px;">
-                    <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; line-height: 1.3;">
-                      ${title}
-                    </h1>
-                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;">
-                      Dispatched from the ${senderTitle}
-                    </p>
+                    <span style="display: inline-block; font-size: 11px; font-weight: 600; color: #7c3aed; background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 9999px; padding: 2px 10px;">
+                      ${badge}
+                    </span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
+          <!-- Headline & Dispatch Attribution -->
+          <tr>
+            <td style="padding: 32px 0 20px 0;">
+              <h1 style="margin: 0 0 6px 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: #09090b; line-height: 1.3;">
+                ${title}
+              </h1>
+              <p style="margin: 0; font-size: 13px; color: #71717a;">
+                Dispatched from the ${senderTitle}
+              </p>
+            </td>
+          </tr>
+
           <!-- Content Body -->
           <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.6; color: #f4f4f5;">
-                Hello <strong style="color: #ffffff;">${recipientName}</strong>,
+            <td style="padding: 0 0 28px 0;">
+              <p style="margin: 0 0 16px 0; font-size: 14.5px; line-height: 1.6; color: #09090b;">
+                Hello <strong style="color: #09090b;">${recipientName}</strong>,
               </p>
 
-              <!-- Main message content -->
-              <div style="color: #d4d4d8; font-size: 14px; line-height: 1.7;">
+              <!-- Main message text -->
+              <div style="font-size: 14px; line-height: 1.65; color: #52525b;">
                 ${bodyContent}
               </div>
 
               <!-- Optional Call-to-Action Button -->
               ${ctaText && ctaUrl ? `
-              <table border="0" cellspacing="0" cellpadding="0" style="margin-top: 28px; margin-bottom: 8px;">
+              <table border="0" cellspacing="0" cellpadding="0" style="margin-top: 24px;">
                 <tr>
                   <td>
-                    <a href="${ctaUrl}" target="_blank" style="display: inline-block; background-color: #ffffff; color: #09090b; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px; letter-spacing: -0.01em;">
-                      ${ctaText} &rarr;
+                    <a href="${ctaUrl}" target="_blank" style="display: inline-block; background-color: #09090b; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                      ${ctaText}
                     </a>
                   </td>
                 </tr>
               </table>
               ` : ''}
 
-              <!-- Signature -->
-              <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid #1f1f23;">
-                <p style="margin: 0; font-size: 13px; font-weight: 600; color: #ffffff;">Executive Leadership</p>
-                <p style="margin: 2px 0 0 0; font-size: 12px; color: #71717a;">Computer Science &amp; Engineering Club &middot; ASTU</p>
+              <!-- Leadership Signature -->
+              <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e4e4e7;">
+                <p style="margin: 0; font-size: 13px; font-weight: 600; color: #09090b;">Executive Leadership</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: #71717a;">CSEC ASTU under Dept. of CSE · Adama Science and Technology University</p>
               </div>
             </td>
           </tr>
 
-          <!-- Minimalist Footer -->
+          <!-- Collegiate Footer Strip -->
           <tr>
-            <td style="padding: 20px 32px 24px 32px; background-color: #0c0c0e; border-top: 1px solid #1f1f23; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #71717a; line-height: 1.5;">
+            <td style="padding: 24px 0 0 0; border-top: 1px solid #e4e4e7;">
+              <div style="font-size: 12px; color: #71717a; line-height: 1.5;">
                 You are receiving this official correspondence as an enrolled member of CSEC ASTU.
-              </p>
-              <p style="margin: 4px 0 0 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; color: #52525b;">
-                EXECUTIVE BROADCAST SERVICE &middot; ADAMA SCIENCE &amp; TECHNOLOGY UNIVERSITY
-              </p>
+              </div>
+              <div style="font-size: 11px; color: #a1a1aa; margin-top: 3px;">
+                Executive Communication Service · Adama Science and Technology University
+              </div>
             </td>
           </tr>
 
         </table>
+
       </td>
     </tr>
   </table>
+
 </body>
 </html>
   `;

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   FileText,
   Share2,
+  Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -26,7 +28,16 @@ interface Props {
 }
 
 export function VerifyCertificateClient({ cert, queriedCode }: Props) {
+  const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [searchCode, setSearchCode] = useState("")
+
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = searchCode.trim().toUpperCase()
+    if (!trimmed) return
+    router.push(`/verify/certificate/${encodeURIComponent(trimmed)}`)
+  }
 
   const copyVerificationLink = () => {
     if (typeof window !== "undefined") {
@@ -40,18 +51,40 @@ export function VerifyCertificateClient({ cert, queriedCode }: Props) {
   // Case 1: Certificate Not Found
   if (!cert) {
     return (
-      <div className="max-w-md mx-auto text-center py-16 space-y-4">
+      <div className="max-w-md mx-auto text-center py-16 space-y-6">
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
           <AlertOctagon className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-white">Credential Not Found</h2>
-        <p className="text-sm text-zinc-400">
-          No certificate matching code <span className="font-mono text-zinc-300 font-semibold">{queriedCode}</span> was found in the official registry.
-        </p>
-        <div className="pt-4">
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white">Credential Not Found</h2>
+          <p className="text-sm text-zinc-400">
+            No certificate matching code <span className="font-mono text-zinc-200 font-semibold">{queriedCode}</span> was found in the official registry.
+          </p>
+        </div>
+
+        {/* Retry search box */}
+        <form onSubmit={handleLookup} className="flex items-center gap-2 max-w-sm mx-auto">
+          <input
+            type="text"
+            value={searchCode}
+            onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
+            placeholder="Try another code: e.g. CSEC-2026-..."
+            className="flex-1 px-3.5 py-2 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
+          />
+          <Button type="submit" size="sm" className="bg-zinc-100 text-zinc-950 hover:bg-white text-xs font-semibold cursor-pointer">
+            Search
+          </Button>
+        </form>
+
+        <div className="pt-2 flex items-center justify-center gap-3">
+          <Link href="/verify">
+            <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-300 hover:text-white text-xs">
+              Registry Lookup Portal
+            </Button>
+          </Link>
           <Link href="/">
-            <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-300 hover:text-white">
-              Return to Platform Home
+            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white text-xs">
+              Platform Home
             </Button>
           </Link>
         </div>
@@ -256,6 +289,31 @@ export function VerifyCertificateClient({ cert, queriedCode }: Props) {
             </Button>
           </a>
         </div>
+      </div>
+
+      {/* 3. Verify Another Certificate Strip */}
+      <div className="rounded-xl border border-zinc-800/80 bg-[#101116] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-2">
+          <Search className="w-3.5 h-3.5 text-zinc-500" />
+          <span>Need to verify another credential?</span>
+        </div>
+        <form onSubmit={handleLookup} className="flex items-center gap-2 w-full sm:w-auto">
+          <input
+            type="text"
+            value={searchCode}
+            onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
+            placeholder="e.g. CSEC-2026-DEV-..."
+            className="flex-1 sm:w-56 px-3 py-1.5 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 uppercase"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs border-zinc-700 hover:bg-zinc-800 text-zinc-200 shrink-0 cursor-pointer"
+          >
+            Check
+          </Button>
+        </form>
       </div>
     </div>
   )

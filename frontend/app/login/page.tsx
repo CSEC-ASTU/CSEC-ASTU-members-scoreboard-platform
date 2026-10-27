@@ -1,9 +1,10 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { AlertCircle, Lock, Sparkles } from "lucide-react"
+import Image from "next/image"
+import { AlertCircle, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"
 import { authService } from "@/lib/api"
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -15,7 +16,6 @@ const ERROR_MESSAGES: Record<string, string> = {
 }
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const errorParam = searchParams.get("error")
   const [loading, setLoading] = useState(false)
@@ -29,68 +29,86 @@ function LoginForm() {
   const errorMessage = errorParam ? (ERROR_MESSAGES[errorParam] || `Authentication failed (${errorParam})`) : null
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-between items-center bg-[#09090B] text-zinc-100 selection:bg-zinc-800 selection:text-white font-sans p-6 sm:p-10 relative overflow-hidden">
-      {/* Subtle ambient lighting glows */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[450px] w-[600px] rounded-full bg-zinc-800/20 blur-[130px]" />
-      <div className="pointer-events-none absolute -bottom-40 left-1/2 -translate-x-1/2 h-[350px] w-[500px] rounded-full bg-blue-600/5 blur-[120px]" />
+    <div className="relative min-h-screen w-full bg-[#0B0C0E] text-zinc-100 antialiased selection:bg-violet-500/30 selection:text-violet-200 flex flex-col justify-between">
+      {/* Authentic Student Photo Backdrop matching Hero */}
+      <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden opacity-50">
+        <Image
+          src="/images/hero-lecture.jpg?v=2"
+          alt="CSEC ASTU Members"
+          fill
+          priority
+          className="object-cover object-[center_60%] grayscale-[10%]"
+        />
+        {/* Balanced vignettes: deeper contrast while preserving student photo presence */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E]/75 via-[#0B0C0E]/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/80 via-[#0B0C0E]/25 to-transparent" />
+      </div>
 
-      {/* Subtle background grid pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: `radial-gradient(#ffffff 1px, transparent 1px)`,
-          backgroundSize: "28px 28px",
-        }}
-      />
+      {/* Architectural Header */}
+      <header className="relative z-10 w-full border-b border-zinc-800/60 px-6 py-4 md:px-12 md:py-5 lg:px-16">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <Image
+              src="/csec_astu.svg"
+              alt="CSEC ASTU"
+              width={26}
+              height={18}
+              className="h-5 w-auto invert opacity-90 transition-opacity group-hover:opacity-100"
+            />
+            <div className="flex flex-col">
+              <span className="font-semibold text-sm tracking-tight text-zinc-100">CSEC ASTU</span>
+              <span className="font-mono text-[10px] text-zinc-500 hidden sm:inline">Dept. of Computer Science &amp; Engineering</span>
+            </div>
+          </Link>
 
-      {/* Top mini navbar */}
-      <header className="w-full max-w-5xl flex items-center justify-between z-10">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs shadow-sm transition-transform group-hover:scale-105">
-            CS
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-white">
-            CSEC ASTU
-          </span>
-        </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-xs font-mono text-zinc-400 hover:text-zinc-100 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Return to Overview</span>
+          </Link>
+        </div>
       </header>
 
-      {/* Centered Notion/Linear-Style Login Card */}
-      <main className="w-full max-w-[400px] z-10 my-auto py-10 space-y-6">
-        {/* Header Branding */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner mb-1">
-            <Sparkles className="h-6 w-6 text-zinc-300" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Welcome back
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Sign in with your university Google account to access your points ledger and division tasks.
-          </p>
-        </div>
-
-        {/* Error Alert if redirected with error */}
-        {errorMessage && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 flex items-start gap-3 text-left">
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-red-300">Login Error</p>
-              <p className="text-xs text-red-200/80 leading-relaxed">{errorMessage}</p>
+      {/* Centered Minimalist Login Core */}
+      <main className="relative z-10 mx-auto my-auto w-full max-w-md px-6 py-12">
+        <div className="rounded-xl border border-zinc-800/80 bg-[#121316]/85 p-8 backdrop-blur-md shadow-2xl">
+          {/* Eyebrow & Headline */}
+          <div className="mb-6">
+            <div className="mb-3 inline-flex items-center gap-2 text-xs font-mono font-medium text-violet-400">
+              <span>ASTU · DEPT OF CSE</span>
+              <span className="text-zinc-600">/</span>
+              <span>MEMBER PORTAL</span>
             </div>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-100">
+              Sign in to your ledger
+            </h1>
+            <p className="mt-2 text-xs sm:text-sm leading-relaxed text-zinc-400">
+              Authenticate with your verified university Google account to manage your points, division tasks, and credentials.
+            </p>
           </div>
-        )}
 
-        {/* OAuth Box */}
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-5">
+          {/* Error Message Alert */}
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-500/30 bg-red-950/40 p-3.5 flex items-start gap-3">
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="text-xs font-semibold text-red-300">Authentication Error</div>
+                <div className="text-xs text-red-200/80 leading-relaxed">{errorMessage}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Primary Action Button */}
           <button
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full relative flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-zinc-900 font-semibold text-sm hover:bg-zinc-100 active:scale-[0.99] transition-all shadow-md hover:shadow-zinc-700/10 disabled:opacity-75 disabled:cursor-not-allowed group border border-zinc-200"
+            className="w-full flex items-center justify-center gap-3 rounded bg-zinc-100 px-4 py-3 text-xs font-semibold text-zinc-950 transition-all hover:bg-white active:scale-[0.99] disabled:opacity-75 disabled:cursor-not-allowed shadow-sm"
           >
             {loading ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
             ) : (
               <>
                 <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
@@ -111,35 +129,36 @@ function LoginForm() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>Continue with Google Single Sign-On</span>
               </>
             )}
           </button>
 
-          <div className="pt-2 border-t border-zinc-800/70 flex items-center justify-center gap-1.5 text-[11px] text-zinc-500">
-            <Lock className="h-3 w-3 text-zinc-500" />
-            <span>Secure session · ASTU student auth</span>
+          {/* Verification Badge */}
+          <div className="mt-5 flex items-center justify-center gap-1.5 border-t border-zinc-800/80 pt-4 text-[11px] font-mono text-zinc-500">
+            <ShieldCheck className="h-3.5 w-3.5 text-zinc-400" />
+            <span>OAuth 2.0 · ASTU verified member session</span>
           </div>
         </div>
 
-        {/* Bottom Helper Info */}
-        <div className="text-center space-y-2">
-          <p className="text-xs text-zinc-500">
-            Looking for public workshops?{" "}
-            <Link href="/events/explore" className="text-zinc-300 underline-offset-2 hover:underline">
-              Browse open events
-            </Link>{" "}
-            without signing in.
-          </p>
-          <p className="text-xs text-zinc-500">
-            Having trouble signing in? Reach out to your division lead or club admin.
+        {/* Public Events Alternative */}
+        <div className="mt-6 flex flex-col items-center gap-2 text-center">
+          <Link
+            href="/events/explore"
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <span>Looking for public workshops? Browse campus events</span>
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+          <p className="text-[11px] text-zinc-600">
+            Need access? Check with your division head or email your club lead.
           </p>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full max-w-5xl z-10 text-center py-2 text-xs text-zinc-600">
-        <p>Adama Science and Technology University · Computer Science &amp; Engineering Club</p>
+      {/* Collegiate Minimal Footer */}
+      <footer className="relative z-10 w-full border-t border-zinc-800/60 px-6 py-5 text-center text-xs font-mono text-zinc-500">
+        Dept. of Computer Science &amp; Engineering · Adama Science and Technology University · Adama, Ethiopia
       </footer>
     </div>
   )

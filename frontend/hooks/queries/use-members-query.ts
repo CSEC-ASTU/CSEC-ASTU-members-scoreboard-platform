@@ -31,10 +31,20 @@ export function useMemberDetail(memberId?: string) {
   })
 }
 
-export function useMemberEvents(memberId?: string | null) {
+export function useMemberEvents(
+  memberId?: string | null,
+  params?: {
+    page?: number
+    page_size?: number
+    status?: any
+    event_type?: any
+    division_id?: string
+    academic_year?: number
+  }
+) {
   return useQuery({
-    queryKey: ["point-events", memberId],
-    queryFn: () => pointEventsService.listEvents({ member_id: memberId! }),
+    queryKey: ["point-events", memberId, params],
+    queryFn: () => pointEventsService.listEvents({ member_id: memberId!, ...params }),
     enabled: Boolean(memberId),
     staleTime: 30 * 1000,
   })

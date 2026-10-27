@@ -31,17 +31,20 @@ def build_apps_script_payload(
     send_email_notifications: bool = True,
 ) -> dict[str, Any]:
     """Format batch certificate payload matching Code.gs webhook specification."""
+    base_frontend = settings.frontend_url.rstrip("/")
     attendees = []
     for cert in certificates:
         if not cert.recipient_email and not include_all_recipients:
             continue
 
         issue_date_str = cert.issued_at.strftime("%B %d, %Y")
+        verify_url = f"{base_frontend}/verify/certificate/{cert.cert_code}"
         attendees.append(
             {
                 "recipient_name": cert.recipient_name,
                 "recipient_email": cert.recipient_email or "",
                 "certificate_code": cert.cert_code,
+                "verify_url": verify_url,
                 "issue_date": issue_date_str,
                 "custom_attributes": cert.custom_attributes or {},
             }
@@ -51,6 +54,7 @@ def build_apps_script_payload(
         "action": "generate_certificates",
         "secret": settings.apps_script_secret,
         "event_name": event_name,
+        "frontend_base_url": base_frontend,
         "output_folder_id": settings.google_drive_folder_id,
         "send_email_notifications": send_email_notifications,
         "attendees": attendees,

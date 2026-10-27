@@ -9,7 +9,7 @@ import { MemberAvatar, TierBadge } from "@/components/csec/ui-bits"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCurrentUser } from "@/components/user-context"
 import { DIVISIONS } from "@/lib/csec-data"
-import { Trophy, Crown, Medal, Calendar, Download, ChevronRight } from "lucide-react"
+import { Trophy, Crown, Medal, Calendar, Download, ChevronRight, Hash, User, Layers, TrendingUp, Activity, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { leaderboardService, type LeaderboardItemOut, type DivisionOut } from "@/lib/api"
@@ -222,13 +222,16 @@ export default function LeaderboardPage() {
                     <tr className="border-b border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white text-xs font-semibold">
                       {/* Column 1: Rank */}
                       <th className="py-3.5 px-5 w-20 font-semibold text-center">
-                        <span className="font-semibold"># Rank</span>
+                        <div className="flex items-center justify-center gap-1.5 text-zinc-900 dark:text-white">
+                          <Hash className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
+                          <span className="font-semibold">Rank</span>
+                        </div>
                       </th>
 
                       {/* Column 2: Sticky Member Name */}
                       <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[240px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                          <User className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Member Name</span>
                         </div>
                       </th>
@@ -236,7 +239,7 @@ export default function LeaderboardPage() {
                       {/* Column 3: Division */}
                       <th className="py-3.5 px-5 min-w-[180px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">🎯</span>
+                          <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Division</span>
                         </div>
                       </th>
@@ -244,7 +247,7 @@ export default function LeaderboardPage() {
                       {/* Column 4: Cycle Score */}
                       <th className="py-3.5 px-5 min-w-[140px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">🏆</span>
+                          <TrendingUp className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Cycle Points</span>
                         </div>
                       </th>
@@ -252,7 +255,7 @@ export default function LeaderboardPage() {
                       {/* Column 5: Career Score */}
                       <th className="py-3.5 px-5 min-w-[130px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">📈</span>
+                          <Activity className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Career Score</span>
                         </div>
                       </th>
@@ -260,7 +263,7 @@ export default function LeaderboardPage() {
                       {/* Column 6: Tier Badge */}
                       <th className="py-3.5 px-5 min-w-[130px] font-semibold">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                          <span className="text-[13px]">🏅</span>
+                          <Award className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold">Tier Badge</span>
                         </div>
                       </th>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Flame, CheckCircle2, Clock, Award, Table as TableIcon, Globe } from "lucide-react"
+import { Flame, CheckCircle2, Clock, Award, Table as TableIcon, Globe, FileText, Layers, Calendar, CircleDot, TrendingUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { PersonalSessionItem, PersonalStats } from "../types"
@@ -192,37 +192,37 @@ export function PersonalTimeline({
                 <tr className="border-b border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white text-xs font-semibold">
                   <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[280px] font-semibold">
                     <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                      <FileText className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Meeting / Session Topic</span>
                     </div>
                   </th>
                   <th className="py-3.5 px-5 min-w-[160px] font-semibold">
                     <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="text-[13px]">🎯</span>
+                      <Layers className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Scope</span>
                     </div>
                   </th>
                   <th className="py-3.5 px-5 min-w-[130px] font-semibold">
                     <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="text-[13px]">📅</span>
+                      <Calendar className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Date</span>
                     </div>
                   </th>
                   <th className="py-3.5 px-5 min-w-[140px] font-semibold text-center">
                     <div className="flex items-center justify-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="text-[13px]">⚪</span>
+                      <CircleDot className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Status</span>
                     </div>
                   </th>
                   <th className="py-3.5 px-5 min-w-[120px] font-semibold text-center">
                     <div className="flex items-center justify-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="text-[13px]">📊</span>
+                      <TrendingUp className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Points</span>
                     </div>
                   </th>
                   <th className="py-3.5 px-5 min-w-[170px] font-semibold">
                     <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                      <span className="text-[13px]">⏰</span>
+                      <Clock className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                       <span className="font-semibold">Check-In Standing</span>
                     </div>
                   </th>

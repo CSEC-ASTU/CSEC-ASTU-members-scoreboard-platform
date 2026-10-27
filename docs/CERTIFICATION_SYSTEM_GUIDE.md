@@ -75,30 +75,57 @@ All certificates share the master CSEC-ASTU dark-mode foundation (`#0b0d13` to `
 
 ---
 
-## 3. Canva-to-PowerPoint (.pptx) Template Instructions
+## 3. Slide & Canva Template Technical Guidelines (.pptx / Google Slides)
 
-Designers in the Social Media division must adhere to the following technical rules when building templates in Canva:
+Designers in the Social Media division and division technical leads must adhere to the following technical rules when building templates in Canva, PowerPoint, or Google Slides:
 
-1. **Orientation**: Standard Landscape (16:9 Widescreen or A4 Landscape `297mm × 210mm`).
-2. **Dynamic Placeholder Text Runs**:
-   Leave exact mustache tags inside the text boxes so the automated Python engine can inject student data:
-   - `{{STUDENT_NAME}}` (Recipient Full Name — Headline font)
-   - `{{STUDENT_ID}}` (University ID: e.g., UGR/12345/14)
-   - `{{DIVISION_NAME}}`
-   - `{{CERT_TITLE}}`
-   - `{{DESCRIPTION}}`
-   - `{{ISSUE_DATE}}`
-   - `{{ACADEMIC_YEAR}}`
-   - `{{CERT_CODE}}`
-3. **QR Code Placement**:
-   - Place a square shape/box labeled `{{QR_CODE}}` in a high-contrast bottom corner.
-   - The backend `python-pptx` worker will swap this shape with the generated cryptographic QR code image.
-4. **Signatories**:
-   - Left Block: President Signature PNG, Name, and Title ("President, CSEC-ASTU").
-   - Right Block: Vice President / Division Head Signature PNG, Name, and Title.
-5. **Export Format**:
-   - In Canva, navigate to **Share** $\rightarrow$ **More** $\rightarrow$ **Microsoft PowerPoint (.pptx)**.
-   - Deliver the `.pptx` file to the platform administrator.
+### A. Dimensions & Layout
+1. **Orientation**: Standard Landscape (16:9 Widescreen `1920×1080` or A4 Landscape `297mm × 210mm`).
+2. **Safe Margin**: Keep all essential elements, border insets, signatures, and stamps at least `15mm` (or `60px`) away from the canvas edges to allow clean printing and framing.
+
+### B. Dynamic Text Placeholders
+Leave exact mustache tags inside dedicated text boxes so the automated cloud rendering engine can dynamically inject recipient and event data:
+- `{{STUDENT_NAME}}` / `{{FULL_NAME}}` — Recipient full name (Headline font, centered).
+- `{{STUDENT_ID}}` — Recipient University ID (e.g., `UGR/12345/14` or organization name for external participants).
+- `{{DIVISION_NAME}}` — Issuing division (e.g., `Cybersecurity Division`).
+- `{{CERT_TITLE}}` / `{{EVENT_NAME}}` — Event or credential title.
+- `{{DESCRIPTION}}` — Conferred honor / track citation body text.
+- `{{ISSUE_DATE}}` — Date formatted automatically (e.g., `October 27, 2026`).
+- `{{ACADEMIC_YEAR}}` — Active cycle academic year (e.g., `2026`).
+- `{{CERT_CODE}}` — Unique credential identifier (e.g., `CSEC-2026-DEV-A9B8C7`).
+- `{{VERIFY_URL}}` — Full textual verification link (optional, if printed as text).
+
+### C. QR Code Placeholder Specification (`{{QR_CODE}}`)
+To enable seamless automated QR code replacement, designers must insert a dedicated placeholder shape:
+1. **Shape Type**: A 1:1 **Square Rectangle Shape** (not a loose text box or irregular circle).
+2. **Placeholder Text**: Inside the square shape, type the exact text: `{{QR_CODE}}`.
+3. **Recommended Size**:
+   - On 16:9 widescreen slides: `80px × 80px` to `110px × 110px`.
+   - On A4 print layouts: `18mm × 18mm` to `22mm × 22mm`.
+4. **Placement**:
+   - Place in a quiet, high-contrast corner (typically bottom-right or bottom-center adjacent to the official foil seal and signatories).
+   - Maintain a minimum of `10px` clear margin around the box.
+5. **Styling**: Give the square a subtle light background (e.g., white or `#ffffff15` with a thin accent border). The engine will delete this placeholder shape and insert a sharp 300 DPI vector QR code in its exact bounding box (`left, top, width, height`).
+6. **Automated Behavior**:
+   - The engine reads the environment domain (`FRONTEND_URL` from `.env`, defaulting to `https://csec.astu.edu.et`).
+   - The QR code encodes `{FRONTEND_URL}/verify/certificate/{CERT_CODE}`.
+   - In the generated PDF, the QR code is also an interactive clickable hyperlink.
+7. **Human-Readable Credential Code (`{{CERT_CODE}}`)**:
+   - Directly beneath the `{{QR_CODE}}` square (with a 2–4px vertical margin), place a small monospace text run: `{{CERT_CODE}}` (e.g., 6–8pt font size in high-contrast neutral or light gray).
+   - When generated, this resolves to the unique code (e.g., `CSEC-2026-DEV-A9B8C7`).
+   - **Fail-safe verification**: If an employer does not have a QR camera scanner or if the club domain ever migrates, the employer can visit `/verify` on the new website and enter this printed code directly.
+
+### D. Signatories & Official Seals
+1. **Left Signatory Block**: President Signature (transparent PNG), Name, and Title ("President, CSEC-ASTU").
+2. **Right Signatory Block**: Vice President / Division Head Signature (transparent PNG), Name, and Title.
+3. **Official Seal**: Centered gold/division foil seal stamp between the signatories.
+
+### E. Template Export & Ingestion
+1. **From Canva**: Click **Share** $\rightarrow$ **More** $\rightarrow$ **Microsoft PowerPoint (.pptx)** and download the `.pptx` file.
+2. **Import to Platform**:
+   - Go to `http://localhost:3000/templates` (or production templates dashboard).
+   - Click **Import Canva Template (.pptx)** to upload and link the slide template.
+   - Alternatively, open the `.pptx` in Google Drive, save as Google Slides, and paste the presentation ID into the issuance dialog.
 
 ---
 

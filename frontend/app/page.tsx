@@ -9,11 +9,12 @@ import { TimelineSection } from "@/components/sections/timeline-section"
 import { AlumniSection } from "@/components/sections/alumni-section"
 import { useCurrentUser } from "@/components/user-context"
 import { useState, useEffect } from "react"
-import { ArrowRight, ArrowDown } from "lucide-react"
+import { ArrowRight, ArrowDown, ShieldCheck } from "lucide-react"
 
 export default function Home() {
   const { isAuthenticated } = useCurrentUser()
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isPastHero, setIsPastHero] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,20 +25,47 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  useEffect(() => {
+    const heroEl = document.getElementById("about")
+    if (!heroEl) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsPastHero(!entry.isIntersecting)
+      },
+      {
+        threshold: 0.25,
+      }
+    )
+
+    observer.observe(heroEl)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <main className="relative min-h-screen w-full bg-[#0B0C0E] text-zinc-100 antialiased selection:bg-violet-500/30 selection:text-violet-200">
-      {/* Fixed Authentic Student Photo Backdrop (Live Preview) */}
-      <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden opacity-55">
-        <Image
-          src="/images/hero-lecture.jpg?v=2"
-          alt="CSEC ASTU Members"
-          fill
-          priority
-          className="object-cover object-[center_60%] grayscale-[10%]"
-        />
-        {/* Directional Vignettes: Deep on left for text contrast, open and light on right for student visibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E]/70 via-[#0B0C0E]/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/95 via-[#0B0C0E]/40 via-45% to-transparent" />
+      {/* Fixed Authentic Student Photo Backdrop with dynamic cinematic focal zoom */}
+      <div
+        className={`fixed inset-0 z-0 pointer-events-none select-none overflow-hidden transition-opacity duration-1000 ease-out ${
+          isPastHero ? "opacity-35" : "opacity-55"
+        }`}
+      >
+        <div
+          className={`relative h-full w-full origin-[50%_60%] transition-transform duration-1000 ease-out will-change-transform motion-reduce:transform-none ${
+            isPastHero ? "scale-[1.07]" : "scale-100"
+          }`}
+        >
+          <Image
+            src="/images/hero-lecture.jpg?v=2"
+            alt="CSEC ASTU Members"
+            fill
+            priority
+            className="object-cover object-[center_60%] grayscale-[10%]"
+          />
+          {/* Directional Vignettes: Gentle on left for text contrast, light and open on right for student visibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E]/55 via-[#0B0C0E]/15 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/80 via-[#0B0C0E]/25 via-45% to-transparent" />
+        </div>
       </div>
 
       {/* Editorial Architectural Header */}
@@ -80,6 +108,9 @@ export default function Home() {
             <a href="#alumni" className="text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
               Alumni
             </a>
+            <Link href="/verify" className="text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
+              Verify
+            </Link>
             <a href="#community" className="text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
               Contact
             </a>
@@ -87,6 +118,14 @@ export default function Home() {
 
           {/* Action Controls */}
           <div className="flex items-center gap-3">
+            <Link
+              href="/verify"
+              className="inline-flex items-center gap-1.5 rounded border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Verify</span>
+            </Link>
+
             <Link
               href="/events/explore"
               className="hidden sm:inline-flex rounded border border-zinc-700 bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
@@ -227,6 +266,7 @@ export default function Home() {
             <a href="https://t.me/CSEC_ASTU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram</a>
             <a href="https://www.linkedin.com/company/csec-astu" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
             <a href="https://github.com/CSEC-ASTU" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
+            <Link href="/verify" className="hover:text-white transition-colors">Verify Credential</Link>
             <Link href="/login" className="hover:text-white transition-colors">Member Sign In</Link>
           </div>
         </div>

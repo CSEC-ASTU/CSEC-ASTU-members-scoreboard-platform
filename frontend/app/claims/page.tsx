@@ -6,7 +6,7 @@ import Layout from "@/components/kokonutui/layout"
 import { PageHeader } from "@/components/csec/page-header"
 import { Button } from "@/components/ui/button"
 import { useCurrentUser } from "@/components/user-context"
-import { Plus, History, Trophy, Clock, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Plus, History, Trophy, Clock, CheckCircle2, AlertTriangle, FileText, Tag, TrendingUp, CircleDot, MessageSquare, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ClaimsSkeleton } from "@/components/csec/skeletons"
 import { useMemberEvents } from "@/lib/hooks/use-queries"
@@ -194,7 +194,7 @@ export default function ClaimsHistoryPage() {
                     {/* Sticky Column 1: Event / Task */}
                     <th className="sticky left-0 z-20 bg-white dark:bg-[#0B0B0E] py-3.5 px-5 min-w-[260px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="font-serif text-[13px] text-zinc-500 dark:text-zinc-400 font-bold">Aa</span>
+                        <FileText className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Event / Task</span>
                       </div>
                     </th>
@@ -202,7 +202,7 @@ export default function ClaimsHistoryPage() {
                     {/* Column 2: Type */}
                     <th className="py-3.5 px-5 min-w-[130px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">🏷️</span>
+                        <Tag className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Type</span>
                       </div>
                     </th>
@@ -210,7 +210,7 @@ export default function ClaimsHistoryPage() {
                     {/* Column 3: Points */}
                     <th className="py-3.5 px-5 min-w-[120px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">📊</span>
+                        <TrendingUp className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Points</span>
                       </div>
                     </th>
@@ -218,7 +218,7 @@ export default function ClaimsHistoryPage() {
                     {/* Column 4: Status */}
                     <th className="py-3.5 px-5 min-w-[130px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">⚪</span>
+                        <CircleDot className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Status</span>
                       </div>
                     </th>
@@ -226,7 +226,7 @@ export default function ClaimsHistoryPage() {
                     {/* Column 5: Notes & Decision */}
                     <th className="py-3.5 px-5 min-w-[240px] font-semibold">
                       <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">💬</span>
+                        <MessageSquare className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Notes & Decision</span>
                       </div>
                     </th>
@@ -234,7 +234,7 @@ export default function ClaimsHistoryPage() {
                     {/* Column 6: Date */}
                     <th className="py-3.5 px-5 min-w-[130px] text-right font-semibold">
                       <div className="flex items-center justify-end gap-2 text-zinc-900 dark:text-white">
-                        <span className="text-[13px]">📅</span>
+                        <Calendar className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <span className="font-semibold">Date</span>
                       </div>
                     </th>

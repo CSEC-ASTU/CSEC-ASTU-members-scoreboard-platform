@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useReveal } from "@/hooks/use-reveal"
 
 export function ServicesSection({ isActive }: { isActive?: boolean }) {
@@ -11,20 +10,8 @@ export function ServicesSection({ isActive }: { isActive?: boolean }) {
     <section
       id="divisions"
       ref={ref}
-      className="relative w-full border-t border-zinc-800/80 bg-[#0B0C0E] overflow-hidden px-6 py-24 md:px-12 lg:px-16"
+      className="relative w-full border-t border-zinc-800/80 bg-transparent overflow-hidden px-6 py-24 md:px-12 lg:px-16"
     >
-      {/* Authentic Student Collective Backdrop */}
-      <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden opacity-35">
-        <Image
-          src="/images/hero-lecture.jpg?v=2"
-          alt="CSEC ASTU Members and Technical Guild"
-          fill
-          className="object-cover object-[center_55%] grayscale-[20%]"
-        />
-        {/* Directional vignettes ensuring seamless transitions and high text contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0C0E] via-[#0B0C0E]/45 to-[#0B0C0E]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/85 via-transparent to-[#0B0C0E]/85" />
-      </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
         {/* Section Header */}
