@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { LineChart, Receipt, ArrowRight, Sparkles, AlertTriangle, Send } from "lucide-react"
+import { LineChart, Receipt, ArrowRight, AlertTriangle, Send, Plus, FileText, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import List01 from "./list-01"
 import List02 from "./list-02"
@@ -48,13 +48,13 @@ export default function Content() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800/80 pb-5">
+      {/* Header Banner — Grounded in Department context without cliché uppercase tracking */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-zinc-200/80 dark:border-white/[0.08] pb-5">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-mono font-medium text-violet-600 dark:text-violet-400">
-            <span>ASTU · DEPT OF CSE</span>
-            <span className="text-zinc-400 dark:text-zinc-600">/</span>
-            <span>MEMBER PERFORMANCE LEDGER</span>
+          <div className="mb-1.5 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+            <span>ASTU Dept. of Computer Science & Engineering</span>
+            <span className="text-zinc-300 dark:text-zinc-700">·</span>
+            <span>Performance Ledger</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             Welcome back, {currentUser.name.split(" ")[0]}
@@ -64,55 +64,55 @@ export default function Content() {
           </p>
         </div>
 
-        <Link
-          href="/tasks"
-          className="inline-flex items-center gap-2 self-start sm:self-auto rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 px-4 py-2 text-xs font-semibold transition-colors shadow-sm"
-        >
-          <span>Claim a Task</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <Link
+            href="/claims"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] hover:bg-zinc-50 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-200 px-3.5 py-2 text-xs font-semibold transition-colors shadow-sm"
+          >
+            <FileText className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
+            <span>My Claims</span>
+          </Link>
+          <Link
+            href="/tasks"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 px-3.5 py-2 text-xs font-semibold transition-colors shadow-sm"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Claim a Task</span>
+          </Link>
+        </div>
       </div>
 
-      {/* Mandatory Telegram Connection Prompt */}
+      {/* Telegram Connection Strip (Integrated, quiet notice instead of a jarring banner) */}
       {isAuthenticated && !isTelegramConnected && (
-        <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/20 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="rounded-lg bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 border border-amber-500/20">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    Telegram Account Not Linked
-                  </h3>
-                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-amber-700 dark:text-amber-300 border border-amber-500/30 uppercase tracking-wide">
-                    Action Required
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed">
-                  Connecting your Telegram account is required to maintain active member standing. You will not receive automated point approvals, attendance alerts, warning notices, or club digests until your account is linked.
-                </p>
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="rounded-md bg-amber-500/10 p-1.5 text-amber-600 dark:text-amber-400 shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5" />
             </div>
-
-            <Link
-              href="/profile"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 text-xs font-semibold transition-colors shrink-0 shadow-sm"
-            >
-              <Send className="h-3.5 w-3.5" />
-              <span>Connect Telegram</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            <div>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Telegram Account Unlinked</span>
+              <span className="text-zinc-500 dark:text-zinc-400 ml-2">
+                Link your Telegram handle to receive automated approval notifications and maintain standing.
+              </span>
+            </div>
           </div>
+
+          <Link
+            href="/profile"
+            className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 text-xs font-medium transition-colors shrink-0 self-start sm:self-auto"
+          >
+            <Send className="h-3 w-3" />
+            <span>Link Account</span>
+            <ChevronRight className="h-3 w-3" />
+          </Link>
         </div>
       )}
 
-      {/* Hero Spotlight + Quick Pulse */}
+      {/* Hero Performance Ledger Strip — Single unified surface */}
       <List01 />
 
-      {/* Points trend chart */}
-      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-[#121316]/90 p-5 sm:p-6 shadow-sm">
+      {/* Points trend chart — Kept exactly intact with refined container */}
+      <div className="rounded-xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0E0F12] p-5 sm:p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="flex items-center gap-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             <div className="rounded-md bg-zinc-100 dark:bg-white/[0.06] p-1.5 text-zinc-500 dark:text-zinc-400">
@@ -120,23 +120,23 @@ export default function Content() {
             </div>
             <span>Division Contribution Trend</span>
           </h2>
-          <span className="text-xs font-mono text-zinc-400">Active Cycle Progress</span>
+          <span className="text-xs text-zinc-400 dark:text-zinc-500">Active Cycle Progress</span>
         </div>
         <List03 />
       </div>
 
-      {/* My recent point events */}
-      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-[#121316]/90 p-5 sm:p-6 shadow-sm">
+      {/* Recent point events ledger */}
+      <div className="rounded-xl border border-zinc-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0E0F12] p-5 sm:p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="flex items-center gap-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             <div className="rounded-md bg-zinc-100 dark:bg-white/[0.06] p-1.5 text-zinc-500 dark:text-zinc-400">
               <Receipt className="h-3.5 w-3.5" />
             </div>
-            <span>My Recent Point Events</span>
+            <span>Recent Point Events</span>
           </h2>
           <Link
             href="/claims"
-            className="text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors"
+            className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors"
           >
             <span>View full ledger</span>
             <ArrowRight className="h-3 w-3" />

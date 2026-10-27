@@ -45,6 +45,7 @@ export function EventsSection({ isActive }: EventsSectionProps) {
   const isVisible = isActive !== undefined ? isActive : revealVisible
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [now] = useState(() => Date.now())
 
   useEffect(() => {
     async function loadEvents() {
@@ -183,7 +184,7 @@ export function EventsSection({ isActive }: EventsSectionProps) {
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((evt) => {
-                const isPast = new Date(evt.end_time).getTime() < Date.now()
+                const isPast = new Date(evt.end_time).getTime() < now
                 return (
                   <EventCard
                     key={evt.id}

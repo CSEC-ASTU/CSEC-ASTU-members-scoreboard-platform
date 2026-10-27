@@ -238,7 +238,7 @@ export function ImportTemplateDialog({
                 <ol className="list-decimal list-inside space-y-1 text-zinc-600 dark:text-zinc-400">
                   <li>In Canva, design your certificate with placeholders like <code className="text-violet-500 font-mono">{"{{STUDENT_NAME}}"}</code>.</li>
                   <li>Click <strong>Share &gt; More &gt; Google Slides</strong> (or download as PPTX and in Google Drive choose <strong>Open with Google Slides</strong>).</li>
-                  <li>Click <strong>Share</strong> in Google Slides and set to <strong>"Anyone with the link can view"</strong>.</li>
+                  <li>Click <strong>Share</strong> in Google Slides and set to <strong>&ldquo;Anyone with the link can view&rdquo;</strong>.</li>
                   <li>Copy the browser link and paste it in the box above!</li>
                 </ol>
               </div>
