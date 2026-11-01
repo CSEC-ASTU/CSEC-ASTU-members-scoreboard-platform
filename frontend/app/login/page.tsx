@@ -31,17 +31,17 @@ function LoginForm() {
   return (
     <div className="relative min-h-screen w-full bg-[#0B0C0E] text-zinc-100 antialiased selection:bg-violet-500/30 selection:text-violet-200 flex flex-col justify-between">
       {/* Authentic Student Photo Backdrop matching Hero */}
-      <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden opacity-50">
+      <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden opacity-65">
         <Image
           src="/images/hero-lecture.jpg?v=2"
           alt="CSEC ASTU Members"
           fill
           priority
-          className="object-cover object-[center_60%] grayscale-[10%]"
+          className="object-cover object-[center_60%] grayscale-[5%]"
         />
-        {/* Balanced vignettes: deeper contrast while preserving student photo presence */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E]/75 via-[#0B0C0E]/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/80 via-[#0B0C0E]/25 to-transparent" />
+        {/* Very light, airy vignettes letting the authentic student backdrop shine through */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E]/50 via-[#0B0C0E]/15 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/60 via-transparent to-transparent" />
       </div>
 
       {/* Architectural Header */}
@@ -85,7 +85,7 @@ function LoginForm() {
               Sign in to your ledger
             </h1>
             <p className="mt-2 text-xs sm:text-sm leading-relaxed text-zinc-400">
-              Authenticate with your verified university Google account to manage your points, division tasks, and credentials.
+              Authenticate with your verified personal Google account to manage your points, division tasks, and credentials.
             </p>
           </div>
 
@@ -137,7 +137,7 @@ function LoginForm() {
           {/* Verification Badge */}
           <div className="mt-5 flex items-center justify-center gap-1.5 border-t border-zinc-800/80 pt-4 text-[11px] font-mono text-zinc-500">
             <ShieldCheck className="h-3.5 w-3.5 text-zinc-400" />
-            <span>OAuth 2.0 · ASTU verified member session</span>
+            <span>· CSEC ASTU verified member session</span>
           </div>
         </div>
 

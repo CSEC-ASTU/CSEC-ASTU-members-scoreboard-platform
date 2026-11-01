@@ -67,6 +67,7 @@ import {
   Zap,
   CircleDot,
   Calendar,
+  Search,
 } from "lucide-react"
 import { PermissionsSkeleton } from "@/components/csec/skeletons"
 import {
@@ -90,7 +91,7 @@ export default function PermissionsPage() {
 
   const { data: grantsData, isLoading: grantsLoading } = useMemberPermissions({ page_size: 100 }, allowed)
   const { data: catalogData, isLoading: catalogLoading } = usePermissionCatalog(allowed)
-  const { data: membersData, isLoading: membersLoading } = useMembers({ page_size: 100 })
+  const { data: membersData, isLoading: membersLoading } = useMembers({ page_size: 500 })
   const { data: divisionsData, isLoading: divisionsLoading } = useDivisions()
 
   const grantMutation = useGrantPermissionMutation()
@@ -126,6 +127,8 @@ export default function PermissionsPage() {
   const [selectedRole, setSelectedRole] = useState<Role | "">("")
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("none")
   const [roleSubmitting, setRoleSubmitting] = useState(false)
+  const [roleSearchQuery, setRoleSearchQuery] = useState("")
+  const [permSearchQuery, setPermSearchQuery] = useState("")
 
   // Layoff dialog state
   const [layoffTarget, setLayoffTarget] = useState<MemberOut | null>(null)
@@ -162,6 +165,31 @@ export default function PermissionsPage() {
     return true
   })
 
+  const filteredEligibleMembers = useMemo(() => {
+    if (!roleSearchQuery.trim()) return eligibleRoleMembers
+    const q = roleSearchQuery.toLowerCase()
+    return eligibleRoleMembers.filter(
+      (m) =>
+        m.full_name.toLowerCase().includes(q) ||
+        (m.email && m.email.toLowerCase().includes(q)) ||
+        (m.telegram_username && m.telegram_username.toLowerCase().includes(q))
+    )
+  }, [eligibleRoleMembers, roleSearchQuery])
+
+  const filteredPermMembers = useMemo(() => {
+    if (!permSearchQuery.trim()) return members
+    const q = permSearchQuery.toLowerCase()
+    return members.filter(
+      (m) =>
+        m.full_name.toLowerCase().includes(q) ||
+        (m.email && m.email.toLowerCase().includes(q)) ||
+        (m.telegram_username && m.telegram_username.toLowerCase().includes(q))
+    )
+  }, [members, permSearchQuery])
+
+  const roleTargetMember = roleTargetMemberId ? membersMap.get(roleTargetMemberId) : null
+  const permTargetMember = targetMemberId ? membersMap.get(targetMemberId) : null
+
   // Leadership groups for overview card
   const presidents = members.filter((m) => m.is_active && m.role === "president")
   const vicePresidents = members.filter((m) => m.is_active && m.role === "vice_president")
@@ -172,6 +200,7 @@ export default function PermissionsPage() {
     setRoleTargetMemberId(member.id)
     setSelectedRole(member.role as Role)
     setSelectedDivisionId(member.division_id || "none")
+    setRoleSearchQuery("")
     setOpen(true)
   }
 
@@ -207,6 +236,7 @@ export default function PermissionsPage() {
       setScopeType("club")
       setScopeDivisionId("none")
       setCustomScope("")
+      setPermSearchQuery("")
     } catch (err) {
       toast.error("Failed to grant permission", {
         description: err instanceof Error ? err.message : "Ensure you have authority to delegate this scope.",
@@ -254,6 +284,7 @@ export default function PermissionsPage() {
       setRoleTargetMemberId("")
       setSelectedRole("")
       setSelectedDivisionId("none")
+      setRoleSearchQuery("")
     } catch (err: any) {
       toast.error("Failed to assign role", {
         description: err instanceof Error ? err.message : "Unable to assign role.",
@@ -352,6 +383,8 @@ export default function PermissionsPage() {
                     variant="outline"
                     onClick={() => {
                       setGrantMode("role")
+                      setRoleTargetMemberId("")
+                      setRoleSearchQuery("")
                       setOpen(true)
                     }}
                     disabled={loading}
@@ -489,6 +522,8 @@ export default function PermissionsPage() {
                             size="sm"
                             onClick={() => {
                               setGrantMode("role")
+                      setRoleTargetMemberId("")
+                      setRoleSearchQuery("")
                               setSelectedRole("president")
                               setOpen(true)
                             }}
@@ -944,18 +979,101 @@ export default function PermissionsPage() {
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Target Member</Label>
-                <Select value={targetMemberId} onValueChange={setTargetMemberId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a member" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {members.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.full_name} ({m.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {permTargetMember ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-950/20">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <MemberAvatar name={permTargetMember.full_name} size={32} />
+                      <div className="min-w-0">
+                        <div className="font-medium text-xs text-zinc-900 dark:text-zinc-100 flex items-center gap-2 truncate">
+                          <span className="truncate">{permTargetMember.full_name}</span>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 shrink-0 font-normal">
+                            {ROLE_LABELS[permTargetMember.role as Role] || permTargetMember.role}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                          {permTargetMember.email}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTargetMemberId("")}
+                      className="text-xs h-7 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+                      <Input
+                        placeholder="Search members by name or email..."
+                        value={permSearchQuery}
+                        onChange={(e) => setPermSearchQuery(e.target.value)}
+                        className="pl-8 text-xs h-9 bg-zinc-50 dark:bg-zinc-900/60"
+                        autoFocus
+                      />
+                      {permSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setPermSearchQuery("")}
+                          className="absolute right-2.5 top-2 text-xs text-zinc-400 hover:text-zinc-200"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-52 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-zinc-950">
+                      {filteredPermMembers.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-zinc-500">
+                          No members found matching &quot;{permSearchQuery}&quot;
+                        </div>
+                      ) : (
+                        filteredPermMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setTargetMemberId(m.id)
+                              setPermSearchQuery("")
+                            }}
+                            className="w-full flex items-center justify-between p-2.5 text-left hover:bg-violet-50/60 dark:hover:bg-violet-950/30 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <MemberAvatar name={m.full_name} size={24} />
+                              <div className="truncate">
+                                <div className="font-medium text-xs text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 truncate">
+                                  {m.full_name}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 truncate">
+                                  {m.email}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0 font-normal">
+                              {ROLE_LABELS[m.role as Role] || m.role}
+                            </Badge>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 px-0.5">
+                      <span>Showing {filteredPermMembers.length} member{filteredPermMembers.length === 1 ? "" : "s"}</span>
+                      {permSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setPermSearchQuery("")}
+                          className="text-violet-600 dark:text-violet-400 hover:underline"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -1014,27 +1132,107 @@ export default function PermissionsPage() {
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Target Member</Label>
-                <Select
-                  value={roleTargetMemberId}
-                  onValueChange={(val) => {
-                    setRoleTargetMemberId(val)
-                    const target = membersMap.get(val)
-                    if (target?.division_id) {
-                      setSelectedDivisionId(target.division_id)
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target member..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {eligibleRoleMembers.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.full_name} ({ROLE_LABELS[m.role as Role] || m.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {roleTargetMember ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-950/20">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <MemberAvatar name={roleTargetMember.full_name} size={32} />
+                      <div className="min-w-0">
+                        <div className="font-medium text-xs text-zinc-900 dark:text-zinc-100 flex items-center gap-2 truncate">
+                          <span className="truncate">{roleTargetMember.full_name}</span>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 shrink-0 font-normal">
+                            {ROLE_LABELS[roleTargetMember.role as Role] || roleTargetMember.role}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                          {roleTargetMember.email}
+                          {roleTargetMember.division_id && divisionsMap.get(roleTargetMember.division_id)
+                            ? ` • ${divisionsMap.get(roleTargetMember.division_id)}`
+                            : ""}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRoleTargetMemberId("")}
+                      className="text-xs h-7 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+                      <Input
+                        placeholder="Search 200+ members by name or email..."
+                        value={roleSearchQuery}
+                        onChange={(e) => setRoleSearchQuery(e.target.value)}
+                        className="pl-8 text-xs h-9 bg-zinc-50 dark:bg-zinc-900/60"
+                        autoFocus
+                      />
+                      {roleSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setRoleSearchQuery("")}
+                          className="absolute right-2.5 top-2 text-xs text-zinc-400 hover:text-zinc-200"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-52 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-zinc-950">
+                      {filteredEligibleMembers.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-zinc-500">
+                          No members found matching &quot;{roleSearchQuery}&quot;
+                        </div>
+                      ) : (
+                        filteredEligibleMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setRoleTargetMemberId(m.id)
+                              if (m.division_id) {
+                                setSelectedDivisionId(m.division_id)
+                              }
+                              setRoleSearchQuery("")
+                            }}
+                            className="w-full flex items-center justify-between p-2.5 text-left hover:bg-violet-50/60 dark:hover:bg-violet-950/30 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <MemberAvatar name={m.full_name} size={24} />
+                              <div className="truncate">
+                                <div className="font-medium text-xs text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 truncate">
+                                  {m.full_name}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 truncate">
+                                  {m.email}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0 font-normal">
+                              {ROLE_LABELS[m.role as Role] || m.role}
+                            </Badge>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 px-0.5">
+                      <span>Showing {filteredEligibleMembers.length} eligible member{filteredEligibleMembers.length === 1 ? "" : "s"}</span>
+                      {roleSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setRoleSearchQuery("")}
+                          className="text-violet-600 dark:text-violet-400 hover:underline"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

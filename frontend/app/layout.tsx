@@ -5,20 +5,74 @@ import { AppProviders } from "@/components/providers/app-providers"
 
 const inter = Inter({ subsets: ["latin"], display: "swap", preload: true })
 
+const SITE_URL = "https://csec-community.vercel.app"
 const APP_NAME = "CSEC ASTU"
-const APP_TITLE = "CSEC ASTU — Member Management"
+const APP_TITLE = "CSEC ASTU — Computer Science Club & Member Scoreboard"
 const APP_DESCRIPTION =
-  "Member management and accountability platform for the CSEC ASTU computer science club: points, tasks, and approvals."
+  "Official member management, leaderboard, event discovery, and extracurricular achievement platform for the CSEC ASTU computer science club."
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   applicationName: APP_NAME,
-  referrer: "no-referrer-when-downgrade",
+  referrer: "origin-when-cross-origin",
   title: {
     default: APP_TITLE,
     template: "%s · CSEC ASTU",
   },
   description: APP_DESCRIPTION,
-  generator: "v0.app",
+  keywords: [
+    "CSEC ASTU",
+    "CSEC",
+    "ASTU",
+    "Computer Science Club",
+    "Adama Science and Technology University",
+    "Student Developers Ethiopia",
+    "Tech Community Ethiopia",
+    "Member Scoreboard",
+    "Student Achievements",
+    "Tech Events ASTU",
+  ],
+  authors: [{ name: "CSEC ASTU", url: SITE_URL }],
+  creator: "CSEC ASTU",
+  publisher: "CSEC ASTU",
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    siteName: "CSEC ASTU Community Platform",
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "CSEC ASTU — Computer Science Club & Member Scoreboard",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    site: "@csec_astu",
+    creator: "@csec_astu",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

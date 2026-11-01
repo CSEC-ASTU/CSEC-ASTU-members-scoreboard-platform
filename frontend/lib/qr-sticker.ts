@@ -1,6 +1,6 @@
 /** Shared helpers for CSEC laptop verification QR stickers. */
 
-export const PRODUCTION_BASE_URL = "https://csec-astu-members-platform.vercel.app"
+export const PRODUCTION_BASE_URL = "https://csec-community.vercel.app"
 
 export function memberVerificationUrl(memberId: string): string {
   return `${PRODUCTION_BASE_URL}/members/${memberId}`
