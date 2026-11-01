@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:3000"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: Any = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # Required, no defaults: a missing value must fail at startup rather than fall back
     # to credentials that are visible in the repository.
@@ -92,15 +92,21 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors(cls, value: object) -> object:
+    def parse_cors(cls, value: object) -> list[str]:
         if isinstance(value, str):
             import json
 
             try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                return [part.strip() for part in value.split(",") if part.strip()]
-        return value
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(p).strip().rstrip("/") for p in parsed if p]
+            except Exception:
+                pass
+            raw = value.strip().lstrip("[").rstrip("]")
+            return [part.strip().strip("'\"").rstrip("/") for part in raw.split(",") if part.strip().strip("'\"")]
+        elif isinstance(value, list):
+            return [str(p).strip().rstrip("/") for p in value if p]
+        return ["http://localhost:3000"]
 
     @model_validator(mode="after")
     def require_real_secrets(self) -> "Settings":

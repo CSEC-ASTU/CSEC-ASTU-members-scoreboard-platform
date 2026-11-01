@@ -71,7 +71,7 @@ async def test_connect_telegram_without_bot_username(test_member_user):
 
 
 def test_notify_bot_noop_when_unconfigured():
-    settings = Settings(telegram_bot_url="", internal_api_secret="")
+    settings = Settings(telegram_bot_url="", internal_api_secret="", telegram_bot_token="")
     # Should safely return without scheduling a task
     with patch("asyncio.create_task") as mock_task:
         notify_bot(settings, uuid.uuid4())
