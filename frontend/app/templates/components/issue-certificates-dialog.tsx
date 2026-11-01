@@ -17,6 +17,7 @@ import { CertificateSlidePreview } from "./certificate-slide-preview"
 import { membersService } from "@/lib/api/services/members"
 import { divisionsService } from "@/lib/api/services/divisions"
 import { certificatesService } from "@/lib/api/services/certificates"
+import { useCurrentUser } from "@/components/user-context"
 import type { CertificateTemplate } from "../types"
 import type {
   MemberOut,
@@ -60,6 +61,7 @@ export function IssueCertificatesDialog({
   onOpenChange,
   onSuccess,
 }: IssueCertificatesDialogProps) {
+  const { currentUser } = useCurrentUser()
   const [activeTab, setActiveTab] = useState<"details" | "recipients" | "results">("details")
   const [recipientSubTab, setRecipientSubTab] = useState<"members" | "outsiders" | "summary">("members")
 
@@ -128,6 +130,11 @@ export function IssueCertificatesDialog({
       setActiveTab("details")
       setIssuedCertificates([])
       return
+    }
+
+    if (currentUser?.role === "division_head" && currentUser.divisionId) {
+      setSelectedDivisionId(currentUser.divisionId)
+      setMemberDivisionFilter(currentUser.divisionId)
     }
 
     const loadData = async () => {
@@ -489,19 +496,29 @@ export function IssueCertificatesDialog({
                   <Label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Host Division Scope
                   </Label>
-                  <select
-                    value={selectedDivisionId}
-                    onChange={(e) => setSelectedDivisionId(e.target.value)}
-                    className="w-full h-9 rounded-md border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#18181d] text-xs px-3 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                  >
-                    <option value="">Club-Wide / CSEC ASTU (Default)</option>
-                    {divisions.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} Division
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-zinc-500">Division granting the recognition.</p>
+                  {currentUser?.role === "division_head" ? (
+                    <div className="w-full h-9 flex items-center px-3 rounded-md border border-violet-500/30 bg-violet-500/10 text-xs text-violet-700 dark:text-violet-300 font-medium">
+                      {divisions.find((d) => d.id === (selectedDivisionId || currentUser.divisionId))?.name || currentUser.division || "Your"} Division (Scoped to your division)
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedDivisionId}
+                      onChange={(e) => setSelectedDivisionId(e.target.value)}
+                      className="w-full h-9 rounded-md border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#18181d] text-xs px-3 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    >
+                      <option value="">Club-Wide / CSEC ASTU (Default)</option>
+                      {divisions.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} Division
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-[11px] text-zinc-500">
+                    {currentUser?.role === "division_head"
+                      ? "As Division Head, your certificates are issued under your division."
+                      : "Division granting the recognition."}
+                  </p>
                 </div>
               </div>
 

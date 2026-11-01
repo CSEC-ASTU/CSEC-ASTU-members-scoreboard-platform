@@ -210,16 +210,10 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                     {canManagePermissions(currentUser) && (
                       <NavItem {...navProps} href="/permissions" icon={KeyRound}>Permissions</NavItem>
                     )}
+                    <NavItem {...navProps} href="/templates" icon={Award}>Certificates</NavItem>
+                    <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
                     {canAccessAdmin(currentUser) && (
-                      <div>
-                        <NavItem {...navProps} href="/templates" icon={Award}>Templates</NavItem>
-                        <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
-                        <NavItem {...navProps} href="/admin" icon={Settings}>Admin Settings</NavItem>
-                      </div>
-                    )}
-                    {/* Division Heads still need claim approvals access */}
-                    {currentUser.role === "division_head" && (
-                      <NavItem {...navProps} href="/approvals" icon={Inbox} badge={pendingForMe}>Approvals</NavItem>
+                      <NavItem {...navProps} href="/admin" icon={Settings}>Admin Settings</NavItem>
                     )}
                   </div>
                 </div>

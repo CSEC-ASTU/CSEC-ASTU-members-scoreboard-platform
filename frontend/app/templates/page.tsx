@@ -28,9 +28,9 @@ import { IssueCertificatesDialog } from "./components/issue-certificates-dialog"
 import { LumaIngestDialog } from "./components/luma-ingest-dialog"
 import type { CertificateTemplate, TemplateCategory, SortOption } from "./types"
 import { cn } from "@/lib/utils"
-import { Lock } from "lucide-react"
+import { Lock, Loader2 } from "lucide-react"
 import { useCurrentUser } from "@/components/user-context"
-import { canManagePermissions } from "@/lib/permissions"
+import { isOfficer, canManagePermissions } from "@/lib/permissions"
 import { toast } from "sonner"
 
 const CATEGORIES: TemplateCategory[] = [
@@ -47,9 +47,15 @@ const CATEGORIES: TemplateCategory[] = [
 const STORAGE_KEY = "csec_custom_certificate_templates_v1"
 
 export default function CertificateTemplatesPage() {
-  const { currentUser } = useCurrentUser()
-  // Issuing certificates is limited to officers (division heads within their division).
-  const allowed = canManagePermissions(currentUser)
+  const { currentUser, isLoading } = useCurrentUser()
+  // Issuing certificates is limited to officers (division heads within their division, president, vice president).
+  const allowed = !isLoading && Boolean(
+    isOfficer(currentUser) ||
+    canManagePermissions(currentUser) ||
+    currentUser?.role === "division_head" ||
+    currentUser?.role === "president" ||
+    currentUser?.role === "vice_president"
+  )
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("All")
   const [sortOption, setSortOption] = useState<SortOption>("popular")
@@ -174,6 +180,17 @@ export default function CertificateTemplatesPage() {
         return 0
       })
   }, [allTemplates, selectedCategory, selectedDivision, searchQuery, sortOption])
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center gap-2 py-24 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+          <p className="text-sm text-zinc-500">Loading certificate workspace...</p>
+        </div>
+      </Layout>
+    )
+  }
 
   if (!allowed) {
     return (
