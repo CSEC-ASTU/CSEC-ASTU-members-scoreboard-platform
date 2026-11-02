@@ -169,8 +169,8 @@ export function BatchAdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+      <DialogContent className="max-w-2xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-xl font-bold">
               <Users className="h-5 w-5 text-indigo-500" />
@@ -186,7 +186,7 @@ export function BatchAdjustmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Member Selection Controls */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -373,7 +373,7 @@ export function BatchAdjustmentDialog({
           </div>
         </div>
 
-        <DialogFooter className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 flex flex-row items-center justify-between sm:justify-between">
+        <DialogFooter className="p-3 sm:p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 flex flex-row items-center justify-between sm:justify-between">
           <div className="text-xs text-zinc-500">
             {selectedMemberIds.size > 0 ? (
               <span>

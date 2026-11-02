@@ -185,7 +185,7 @@ export function ImportTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-6 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-4 sm:p-6 shadow-2xl rounded-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-1 pb-2 border-b border-zinc-100 dark:border-white/[0.06]">
           <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <Presentation className="w-5 h-5 text-violet-500" />

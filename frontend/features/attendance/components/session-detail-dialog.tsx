@@ -68,7 +68,7 @@ export function SessionDetailDialog({ selectedCell, onClose }: SessionDetailDial
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white dark:bg-[#121216] border border-zinc-200 dark:border-white/10 p-5 shadow-2xl space-y-4"
+        className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-xl bg-white dark:bg-[#121216] border border-zinc-200 dark:border-white/10 p-4 sm:p-5 shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/[0.06] pb-2.5">

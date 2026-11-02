@@ -109,7 +109,7 @@ export function CreateEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />

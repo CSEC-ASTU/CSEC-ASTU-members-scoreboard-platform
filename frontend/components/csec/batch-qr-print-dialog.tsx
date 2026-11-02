@@ -320,8 +320,8 @@ export function BatchQrPrintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+      <DialogContent className="max-w-3xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <QrCode className="h-5 w-5" />
             Batch Print Laptop QR Stickers
@@ -332,7 +332,7 @@ export function BatchQrPrintDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 space-y-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 space-y-3 shrink-0">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
             <Input
@@ -473,7 +473,7 @@ export function BatchQrPrintDialog({
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0 gap-2 sm:gap-2">
+        <DialogFooter className="px-4 sm:px-6 py-3 sm:py-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0 gap-2 sm:gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

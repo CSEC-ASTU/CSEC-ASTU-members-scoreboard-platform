@@ -248,7 +248,7 @@ export function LaptopStickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 bg-zinc-950 border-zinc-800 text-zinc-100 shadow-2xl">
+      <DialogContent className="max-w-md p-4 sm:p-6 bg-zinc-950 border-zinc-800 text-zinc-100 shadow-2xl">
         <DialogHeader className="space-y-1 text-left">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-zinc-100 border border-zinc-700">

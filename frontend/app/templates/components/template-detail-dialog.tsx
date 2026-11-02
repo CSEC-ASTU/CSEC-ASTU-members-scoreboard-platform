@@ -79,7 +79,7 @@ export function TemplateDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[94vw] max-w-xl sm:max-w-2xl max-h-[88vh] bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-0 overflow-hidden shadow-2xl rounded-2xl flex flex-col">
+      <DialogContent className="w-[94vw] max-w-xl sm:max-w-2xl max-h-[92dvh] sm:max-h-[88vh] bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-0 overflow-hidden shadow-2xl rounded-2xl flex flex-col">
         <DialogTitle className="sr-only">{template.title}</DialogTitle>
         <DialogDescription className="sr-only">{template.description}</DialogDescription>
 
@@ -176,7 +176,7 @@ export function TemplateDetailDialog({
         </div>
 
         {/* ── Pinned Bottom Actions Bar ───────────────────────────────────── */}
-        <div className="p-3 sm:px-6 py-3 border-t border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-[#0f0f13] flex items-center justify-between gap-3 shrink-0">
+        <div className="p-3 sm:px-6 py-3 border-t border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-[#0f0f13] flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

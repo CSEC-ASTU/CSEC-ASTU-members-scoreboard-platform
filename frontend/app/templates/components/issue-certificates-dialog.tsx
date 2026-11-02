@@ -405,12 +405,12 @@ export function IssueCertificatesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-0 overflow-hidden shadow-2xl rounded-2xl flex flex-col">
+      <DialogContent className="w-[96vw] max-w-4xl max-h-[92dvh] sm:max-h-[90vh] bg-white dark:bg-[#0f0f13] border-zinc-200 dark:border-white/10 p-0 overflow-hidden shadow-2xl rounded-2xl flex flex-col">
         <DialogTitle className="sr-only">Issue Official Certificates</DialogTitle>
         <DialogDescription className="sr-only">Batch generate cryptographically verified credentials</DialogDescription>
 
         {/* ── Dialog Header (Notion Editorial Style) ──────────────────────── */}
-        <div className="px-6 py-4 border-b border-zinc-200 dark:border-white/[0.08] bg-zinc-50/50 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-white/[0.08] bg-zinc-50/50 dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm shrink-0"
@@ -474,7 +474,7 @@ export function IssueCertificatesDialog({
         </div>
 
         {/* ── Dialog Body (Scrollable) ────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* TAB 1: Certificate Particulars & Dynamic Variables */}
           {activeTab === "details" && (
             <div className="space-y-6">
@@ -1088,7 +1088,7 @@ export function IssueCertificatesDialog({
 
         {/* ── Dialog Footer (Pinned Actions) ──────────────────────────────── */}
         {activeTab !== "results" && (
-          <div className="px-6 py-3 border-t border-zinc-200 dark:border-white/[0.08] bg-zinc-50/50 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
+          <div className="px-4 sm:px-6 py-3 border-t border-zinc-200 dark:border-white/[0.08] bg-zinc-50/50 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
             <Button
               type="button"
               variant="outline"
